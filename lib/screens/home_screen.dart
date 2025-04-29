@@ -64,43 +64,106 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              _buildInfoSection(),
-              _buildPerformanceChart(),
-              _buildAssessmentAspects(),
-              _buildUsageInstructions(),
-              SizedBox(height: AppSize.heightPercent(5)),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        height: AppSize.buttonHeight,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 5,
-              offset: const Offset(0, -3),
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  _buildInfoSection(),
+                  _buildPerformanceChart(),
+                  _buildAssessmentAspects(),
+                  _buildUsageInstructions(),
+                  SizedBox(
+                    height: AppSize.heightPercent(10),
+                  ), // Add extra space at bottom for sheet
+                ],
+              ),
             ),
+            _buildSwipeableBottomSheet(),
           ],
         ),
-        child: Container(
-          width: AppSize.widthPercent(10),
-          height: 5,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
       ),
+    );
+  }
+
+  Widget _buildSwipeableBottomSheet() {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.05, // Starting size (just the handle showing)
+      minChildSize: 0.05, // Minimum size when collapsed
+      maxChildSize: 0.25, // Maximum size when expanded (25% of screen)
+      builder: (BuildContext context, ScrollController scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Handle indicator
+              Container(
+                margin: EdgeInsets.symmetric(vertical: 12),
+                width: AppSize.widthPercent(10),
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              // Content
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSize.paddingHorizontal,
+                  ),
+                  children: [
+                    // Add your swipeable content here
+                    Text(
+                      'Penilaian',
+                      style: AppSize.getTextStyle(
+                        fontSize: AppSize.subtitleFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: AppSize.heightPercent(2)),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Handle button press
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Mulai',
+                        style: AppSize.getTextStyle(
+                          fontSize: AppSize.bodyFontSize,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    // Additional content can go here
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
