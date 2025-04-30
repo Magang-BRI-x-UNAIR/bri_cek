@@ -6,11 +6,7 @@ class BankBranchCard extends StatelessWidget {
   final BankBranch branch;
   final VoidCallback? onTap;
 
-  const BankBranchCard({
-    super.key,
-    required this.branch,
-    this.onTap,
-  });
+  const BankBranchCard({super.key, required this.branch, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -28,10 +24,7 @@ class BankBranchCard extends StatelessWidget {
               offset: const Offset(0, 3),
             ),
           ],
-          border: Border.all(
-            color: Colors.grey.shade100,
-            width: 1,
-          ),
+          border: Border.all(color: Colors.grey.shade100, width: 1),
         ),
         child: Material(
           color: Colors.transparent,
@@ -51,7 +44,9 @@ class BankBranchCard extends StatelessWidget {
                     backgroundColor: const Color(0xFF0D47A1),
                     margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -72,10 +67,7 @@ class BankBranchCard extends StatelessWidget {
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF0D47A1),
-                          Color(0xFF1976D2),
-                        ],
+                        colors: [Color(0xFF0D47A1), Color(0xFF1976D2)],
                       ),
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [

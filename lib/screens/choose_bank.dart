@@ -1,3 +1,4 @@
+import 'package:bri_cek/screens/choose_date.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/data/bank_branch_data.dart';
 import 'package:bri_cek/models/bank_branch.dart';
@@ -80,10 +81,11 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
       if (query.isEmpty) {
         _filteredBranches = branches;
       } else {
-        _filteredBranches = branches.where((branch) {
-          return branch.name.toLowerCase().contains(query) ||
-              branch.address.toLowerCase().contains(query);
-        }).toList();
+        _filteredBranches =
+            branches.where((branch) {
+              return branch.name.toLowerCase().contains(query) ||
+                  branch.address.toLowerCase().contains(query);
+            }).toList();
       }
     });
   }
@@ -112,12 +114,11 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
               animation: _headerAnimation,
               builder: (context, child) {
                 return Transform.translate(
-                  offset: Offset(0,
-                      (1 - _headerAnimation.value) * -AppSize.heightPercent(6)),
-                  child: Opacity(
-                    opacity: _headerAnimation.value,
-                    child: child,
+                  offset: Offset(
+                    0,
+                    (1 - _headerAnimation.value) * -AppSize.heightPercent(6),
                   ),
+                  child: Opacity(opacity: _headerAnimation.value, child: child),
                 );
               },
               child: Container(
@@ -129,7 +130,8 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
                     colors: [
                       Color(0xFF2680C5),
                       Color(
-                          0xFF3D91D1), // Intermediate color for smoother gradient
+                        0xFF3D91D1,
+                      ), // Intermediate color for smoother gradient
                       Color(0xFFF37021),
                     ],
                     stops: [0.0, 0.5, 1.0],
@@ -161,7 +163,8 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(
-                                    AppSize.cardBorderRadius),
+                                  AppSize.cardBorderRadius,
+                                ),
                               ),
                               child: Icon(
                                 Icons.account_balance,
@@ -211,59 +214,101 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
             SizedBox(height: AppSize.screenHeight * 0.02),
             // Bank Branch List dengan animasi
             Expanded(
-              child: _filteredBranches.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 60,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "No banks found",
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 16 : 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[600],
+              child:
+                  _filteredBranches.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 60,
+                              color: Colors.grey[400],
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Try a different search term",
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 12 : 14,
-                              color: Colors.grey[500],
+                            const SizedBox(height: 16),
+                            Text(
+                              "No banks found",
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[600],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : AnimatedBuilder(
-                      animation: _listAnimationController,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _listAnimationController.value,
-                          child: child,
-                        );
-                      },
-                      child: ListView.builder(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: paddingHorizontal),
-                        itemCount: _filteredBranches.length,
-                        itemBuilder: (context, index) {
-                          final branch = _filteredBranches[index];
-
-                          // Animasi staggered untuk setiap item dalam list
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: BankBranchCard(branch: branch),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Try a different search term",
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 12 : 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : AnimatedBuilder(
+                        animation: _listAnimationController,
+                        builder: (context, child) {
+                          return Opacity(
+                            opacity: _listAnimationController.value,
+                            child: child,
                           );
                         },
+                        child: ListView.builder(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: paddingHorizontal,
+                          ),
+                          itemCount: _filteredBranches.length,
+                          itemBuilder: (context, index) {
+                            final branch = _filteredBranches[index];
+
+                            // Animasi staggered untuk setiap item dalam list
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: BankBranchCard(
+                                branch: branch,
+                                onTap: () {
+                                  // Tampilkan SnackBar terlebih dahulu
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Selected: ${branch.name}'),
+                                      duration: const Duration(
+                                        milliseconds: 1500,
+                                      ), // Durasi pop-up
+                                      behavior: SnackBarBehavior.floating,
+                                      margin: const EdgeInsets.fromLTRB(
+                                        16,
+                                        0,
+                                        16,
+                                        16,
+                                      ),
+                                      backgroundColor: const Color(0xFF0D47A1),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
+
+                                  // Tunggu beberapa saat sebelum berpindah halaman
+                                  Future.delayed(
+                                    const Duration(milliseconds: 500),
+                                    () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) => ChooseDateScreen(
+                                                selectedBank: branch.name,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
             ),
           ],
         ),

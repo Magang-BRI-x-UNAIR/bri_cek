@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (BuildContext context, ScrollController scrollController) {
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color.fromRGBO(224, 240, 255, 1),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: [
               BoxShadow(
@@ -148,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         SizedBox(width: AppSize.widthPercent(3)),
                         // Penilaian text
                         Text(
-                          'Penilaian',
+                          'Beri Penilaian Bank',
                           style: AppSize.getTextStyle(
                             fontSize: AppSize.subtitleFontSize,
                             fontWeight: FontWeight.bold,
