@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:bri_cek/screens/choose_bank.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -128,24 +129,55 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     horizontal: AppSize.paddingHorizontal,
                   ),
                   children: [
-                    // Add your swipeable content here
-                    Text(
-                      'Penilaian',
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.subtitleFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                    // Row with image and text
+                    Row(
+                      children: [
+                        // Image
+                        Container(
+                          width: AppSize.widthPercent(15),
+                          height: AppSize.heightPercent(6),
+                          decoration: BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage(
+                                'assets/images/assess_bank_person.png',
+                              ),
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: AppSize.widthPercent(3)),
+                        // Penilaian text
+                        Text(
+                          'Penilaian',
+                          style: AppSize.getTextStyle(
+                            fontSize: AppSize.subtitleFontSize,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
                     ),
+
                     SizedBox(height: AppSize.heightPercent(2)),
+
+                    // Mulai Button with navigation
                     ElevatedButton(
                       onPressed: () {
-                        // Handle button press
+                        // Navigate to ChooseBankScreen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ChooseBankScreen(),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          vertical: AppSize.heightPercent(1.5),
                         ),
                       ),
                       child: Text(
@@ -1375,46 +1407,64 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       },
       child: Padding(
         padding: EdgeInsets.all(AppSize.paddingHorizontal),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            Container(
-              padding: EdgeInsets.symmetric(
-                vertical: AppSize.paddingVertical / 2,
-                horizontal: AppSize.paddingHorizontal,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade100,
-                borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
-              ),
-              child: Text(
-                'Aspek penilaian',
-                style: AppSize.getTextStyle(
-                  fontSize: AppSize.subtitleFontSize,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.blue.shade700,
+            // First, place the container with assessment items
+            Padding(
+              padding: EdgeInsets.only(top: AppSize.heightPercent(2)),
+              child: Container(
+                padding: EdgeInsets.all(AppSize.paddingHorizontal / 2),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+                  border: Border.all(color: Colors.blue.shade100),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildAssessmentItem(Icons.people, 'Pelayanan'),
+                    _buildAssessmentItem(Icons.assignment, 'Kerapihan'),
+                    _buildAssessmentItem(
+                      Icons.cleaning_services,
+                      'Kebersihan Kantor',
+                    ),
+                    _buildAssessmentItem(Icons.business, 'Kelengkapan Kantor'),
+                  ],
                 ),
               ),
             ),
-            SizedBox(height: AppSize.heightPercent(2)),
-            Container(
-              padding: EdgeInsets.all(AppSize.paddingHorizontal / 2),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
-                border: Border.all(color: Colors.blue.shade100),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildAssessmentItem(Icons.people, 'Pelayanan'),
-                  _buildAssessmentItem(Icons.assignment, 'Kerapihan'),
-                  _buildAssessmentItem(
-                    Icons.cleaning_services,
-                    'Kebersihan\nKantor',
+
+            // Then, position the "Aspek penilaian" container to overlap
+            Positioned(
+              top: 0,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  vertical: AppSize.paddingVertical / 2,
+                  horizontal: AppSize.paddingHorizontal * 3,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(
+                    AppSize.cardBorderRadius / 3,
                   ),
-                  _buildAssessmentItem(Icons.business, 'Kelengkapan\nKantor'),
-                ],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.shade200.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.blue.shade100, width: 1.5),
+                ),
+                child: Text(
+                  'Aspek Penilaian',
+                  style: AppSize.getTextStyle(
+                    fontSize: AppSize.subtitleFontSize,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.blue.shade700,
+                  ),
+                ),
               ),
             ),
           ],
@@ -1424,27 +1474,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildAssessmentItem(IconData icon, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(AppSize.widthPercent(3)),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.blue.shade200),
+    return Container(
+      width: AppSize.widthPercent(18), // Set a consistent width for alignment
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Add padding at the top of the column
+          SizedBox(height: AppSize.heightPercent(2.5)),
+
+          // Icon container
+          Container(
+            padding: EdgeInsets.all(AppSize.widthPercent(3)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Icon(icon, color: Colors.orange, size: AppSize.iconSize),
           ),
-          child: Icon(icon, color: Colors.orange, size: AppSize.iconSize),
-        ),
-        SizedBox(height: AppSize.heightPercent(1)),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: AppSize.getTextStyle(
-            fontSize: AppSize.smallFontSize,
-            color: Colors.blue.shade800,
+
+          SizedBox(height: AppSize.heightPercent(1)),
+
+          // Text container with top alignment
+          Container(
+            height: AppSize.heightPercent(5), // Fixed height for text container
+            width: double.infinity,
+            child: Align(
+              alignment: Alignment.topCenter, // Align text to top-center
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppSize.getTextStyle(
+                  fontSize: AppSize.smallFontSize,
+                  color: Colors.blue.shade800,
+                ),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1471,26 +1541,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             _buildInstructionStep(
               '1',
               'Pada button',
-              'pengguna dapat geser kekatas.',
-              Colors.blue,
+              'Anda dapat geser keatas.',
             ),
             _buildInstructionStep(
               '2',
-              'Lalu pengguna dapat klik "Mulai"',
+              'Lalu Anda dapat klik "Mulai"',
               'untuk menjalankan fitur tersebut',
-              Colors.blue,
             ),
             _buildInstructionStep(
               '3',
-              'Untuk melakukan penilaian pengguna dapat',
-              'menambahkan tempat untuk melakukan penilaian.',
-              Colors.blue,
+              'Untuk melakukan penilaian, Anda dapat',
+              'memilih kantor untuk melakukan penilaian.',
             ),
             _buildInstructionStep(
               '4',
-              'Setelah itu pengguna dapat memilih tempat / divisi',
-              'dan terdapat nama yang menjabat di divisi tersebut, pengguna dapat memilihnya untuk penilaian.',
-              Colors.blue,
+              'Setelah itu pilih aspek dan terdapat nama yang menjabat di divisi tersebut, Anda dapat',
+              'memilihnya untuk penilaian.',
             ),
           ],
         ),
@@ -1498,37 +1564,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildInstructionStep(
-    String number,
-    String title,
-    String subtitle,
-    Color color,
-  ) {
+  Widget _buildInstructionStep(String number, String title, String? subtitle) {
     return Padding(
       padding: EdgeInsets.only(bottom: AppSize.heightPercent(1.5)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$number.',
-            style: AppSize.getTextStyle(
-              fontSize: AppSize.bodyFontSize,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          Container(
+            width: AppSize.widthPercent(5),
+            child: Text(
+              '$number.',
+              style: AppSize.getTextStyle(
+                fontSize: AppSize.bodyFontSize,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
           ),
-          SizedBox(width: AppSize.widthPercent(2)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text(
-                      title,
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.bodyFontSize,
-                        color: Colors.black87,
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: AppSize.getTextStyle(
+                          fontSize: AppSize.bodyFontSize,
+                          color: Colors.black87,
+                        ),
+                        softWrap: true,
+                        overflow: TextOverflow.visible,
                       ),
                     ),
                     if (number == '1') ...[
@@ -1544,12 +1611,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ],
                   ],
                 ),
+                SizedBox(height: 4),
                 Text(
-                  subtitle,
+                  subtitle ?? '',
                   style: AppSize.getTextStyle(
                     fontSize: AppSize.bodyFontSize,
                     color: Colors.black87,
                   ),
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
                 ),
               ],
             ),
