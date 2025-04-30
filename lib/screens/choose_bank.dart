@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:bri_cek/data/bank_branch_data.dart';
 import 'package:bri_cek/models/bank_branch.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:bri_cek/widgets/bank_branch_card.dart';
+import 'package:flutter/material.dart';
 
 class ChooseBankScreen extends StatefulWidget {
   const ChooseBankScreen({super.key});
@@ -80,10 +80,11 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
       if (query.isEmpty) {
         _filteredBranches = branches;
       } else {
-        _filteredBranches = branches.where((branch) {
-          return branch.name.toLowerCase().contains(query) ||
-              branch.address.toLowerCase().contains(query);
-        }).toList();
+        _filteredBranches =
+            branches.where((branch) {
+              return branch.name.toLowerCase().contains(query) ||
+                  branch.address.toLowerCase().contains(query);
+            }).toList();
       }
     });
   }
@@ -112,95 +113,148 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
               animation: _headerAnimation,
               builder: (context, child) {
                 return Transform.translate(
-                  offset: Offset(0,
-                      (1 - _headerAnimation.value) * -AppSize.heightPercent(6)),
-                  child: Opacity(
-                    opacity: _headerAnimation.value,
-                    child: child,
+                  offset: Offset(
+                    0,
+                    (1 - _headerAnimation.value) * -AppSize.heightPercent(6),
                   ),
+                  child: Opacity(opacity: _headerAnimation.value, child: child),
                 );
               },
               child: Container(
-                padding: AppSize.getHeaderPadding(),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                width: double.infinity,
+                height: AppSize.heightPercent(22),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
                     begin: Alignment.bottomLeft,
                     end: Alignment.topRight,
                     colors: [
                       Color(0xFF2680C5),
-                      Color(
-                          0xFF3D91D1), // Intermediate color for smoother gradient
+                      Color(0xFF3D91D1),
                       Color(0xFFF37021),
                     ],
                     stops: [0.0, 0.5, 1.0],
                   ),
                   borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(AppSize.cardBorderRadius * 2),
+                    bottom: Radius.circular(30),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.withOpacity(0.2),
-                      blurRadius: 15,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Stack(
                   children: [
-                    // Top row with app title and icons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Left side - Title/Logo
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(AppSize.widthPercent(2)),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(
-                                    AppSize.cardBorderRadius),
-                              ),
-                              child: Icon(
-                                Icons.account_balance,
-                                color: Colors.white,
-                                size: AppSize.iconSize,
-                              ),
-                            ),
-                            SizedBox(width: AppSize.widthPercent(2)),
-                            Text(
-                              "Bank BRI",
-                              style: AppSize.getTextStyle(
-                                fontSize: AppSize.subtitleFontSize,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    SizedBox(height: AppSize.heightPercent(4)),
-
-                    // Main header text
-                    Text(
-                      "Pilih Bank yang",
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.titleFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    // Cloud decorations
+                    Positioned(
+                      top: AppSize.heightPercent(15),
+                      left: AppSize.widthPercent(20),
+                      child: Icon(
+                        Icons.cloud,
+                        color: Colors.white.withOpacity(0.3),
+                        size: AppSize.widthPercent(13),
                       ),
                     ),
-                    SizedBox(height: AppSize.heightPercent(0.5)),
-                    Text(
-                      "ingin dituju",
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.titleFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    Positioned(
+                      top: AppSize.heightPercent(3),
+                      left: AppSize.widthPercent(42),
+                      child: Icon(
+                        Icons.cloud,
+                        color: Colors.white.withOpacity(0.2),
+                        size: AppSize.widthPercent(12),
+                      ),
+                    ),
+                    Positioned(
+                      top: AppSize.heightPercent(10),
+                      left: AppSize.widthPercent(89),
+                      child: Icon(
+                        Icons.cloud,
+                        color: Colors.white.withOpacity(0.2),
+                        size: AppSize.widthPercent(15),
+                      ),
+                    ),
+
+                    // Bank icon
+                    Positioned(
+                      right: AppSize.widthPercent(8),
+                      top: AppSize.heightPercent(3),
+                      child: Container(
+                        width: AppSize.widthPercent(45),
+                        height: AppSize.heightPercent(20),
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage(
+                              'assets/images/bank_transparent.png',
+                            ),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Konten utama header
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: AppSize.widthPercent(6),
+                        top: AppSize.heightPercent(2),
+                        right: AppSize.widthPercent(6),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Top row with app title and icons
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // Left side - Title/Logo
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(
+                                      AppSize.widthPercent(2),
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(
+                                        AppSize.cardBorderRadius,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.account_balance,
+                                      color: Colors.white,
+                                      size: AppSize.iconSize,
+                                    ),
+                                  ),
+                                  SizedBox(width: AppSize.widthPercent(2)),
+                                  Text(
+                                    "Bank BRI",
+                                    style: AppSize.getTextStyle(
+                                      fontSize: AppSize.subtitleFontSize,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: AppSize.heightPercent(1.5)),
+
+                          // Main header text
+                          Text(
+                            "Pilih Bank yang",
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.titleFontSize,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: AppSize.heightPercent(0.2)),
+                          Text(
+                            "ingin dituju",
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.titleFontSize,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -211,59 +265,61 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
             SizedBox(height: AppSize.screenHeight * 0.02),
             // Bank Branch List dengan animasi
             Expanded(
-              child: _filteredBranches.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 60,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "No banks found",
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 16 : 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[600],
+              child:
+                  _filteredBranches.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 60,
+                              color: Colors.grey[400],
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Try a different search term",
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 12 : 14,
-                              color: Colors.grey[500],
+                            const SizedBox(height: 16),
+                            Text(
+                              "No banks found",
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[600],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : AnimatedBuilder(
-                      animation: _listAnimationController,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _listAnimationController.value,
-                          child: child,
-                        );
-                      },
-                      child: ListView.builder(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: paddingHorizontal),
-                        itemCount: _filteredBranches.length,
-                        itemBuilder: (context, index) {
-                          final branch = _filteredBranches[index];
-
-                          // Animasi staggered untuk setiap item dalam list
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: BankBranchCard(branch: branch),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Try a different search term",
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 12 : 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : AnimatedBuilder(
+                        animation: _listAnimationController,
+                        builder: (context, child) {
+                          return Opacity(
+                            opacity: _listAnimationController.value,
+                            child: child,
                           );
                         },
+                        child: ListView.builder(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: paddingHorizontal,
+                          ),
+                          itemCount: _filteredBranches.length,
+                          itemBuilder: (context, index) {
+                            final branch = _filteredBranches[index];
+
+                            // Animasi staggered untuk setiap item dalam list
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: BankBranchCard(branch: branch),
+                            );
+                          },
+                        ),
                       ),
-                    ),
             ),
           ],
         ),
