@@ -1,8 +1,9 @@
 import 'dart:math';
-import 'package:flutter/material.dart';
+
+import 'package:bri_cek/screens/choose_bank.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:bri_cek/screens/choose_bank.dart';
+import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -155,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               'Beri Penilaian Kantor Kas',
                               style: AppSize.getTextStyle(
                                 fontSize: AppSize.bodyFontSize,
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w500,
                                 color: Colors.black87,
                               ),
                             ),
@@ -174,22 +175,63 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 );
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
+                                padding: EdgeInsets.symmetric(),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                padding: EdgeInsets.symmetric(
-                                  vertical: AppSize.heightPercent(1.5),
-                                  horizontal: AppSize.widthPercent(4),
+                                backgroundColor:
+                                    Colors
+                                        .transparent, // Make transparent to show gradient
+                                elevation: 0, // Remove shadow
+                              ).copyWith(
+                                backgroundColor: MaterialStateProperty.all(
+                                  Colors.transparent,
                                 ),
-                                minimumSize: Size(AppSize.widthPercent(54), 0),
+                                overlayColor: MaterialStateProperty.all(
+                                  Colors.transparent,
+                                ),
+                                foregroundColor: MaterialStateProperty.all(
+                                  Colors.white,
+                                ),
                               ),
-                              child: Text(
-                                'Mulai',
-                                style: AppSize.getTextStyle(
-                                  fontSize: AppSize.bodyFontSize,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF00529C),
+                                      Color(0xFF0086FF),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: AppSize.widthPercent(5),
+                                    vertical: AppSize.heightPercent(1.2),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Mulai',
+                                        style: AppSize.getTextStyle(
+                                          fontSize: AppSize.bodyFontSize,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: AppSize.widthPercent(25)),
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        color: Colors.white,
+                                        size: AppSize.iconSize,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
