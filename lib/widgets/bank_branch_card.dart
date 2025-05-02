@@ -1,3 +1,5 @@
+import 'package:bri_cek/screens/bank_details_screen.dart';
+import 'package:bri_cek/screens/choose_date.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/models/bank_branch.dart';
 import 'package:bri_cek/utils/app_size.dart';
@@ -27,7 +29,13 @@ class BankBranchCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
           onTap: () {
-            // Handle branch selection
+            // Handle card tap - navigate to detail screen or selection
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BankDetailScreen(branch: branch),
+              ),
+            );
           },
           child: Padding(
             padding: EdgeInsets.all(AppSize.paddingHorizontal * 0.5),
