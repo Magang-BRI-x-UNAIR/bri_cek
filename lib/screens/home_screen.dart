@@ -153,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Beri Beri Penilaian Bank Kantor Kas',
+                              'Beri Penilaian Bank',
                               style: AppSize.getTextStyle(
                                 fontSize: AppSize.bodyFontSize,
                                 fontWeight: FontWeight.w500,

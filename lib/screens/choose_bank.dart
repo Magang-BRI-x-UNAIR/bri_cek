@@ -131,7 +131,8 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
                     colors: [
                       Color(0xFF2680C5),
                       Color(
-                          0xFF3D91D1), // Intermediate color for smoother gradient
+                        0xFF3D91D1,
+                      ), // Intermediate color for smoother gradient
                       Color(0xFFF37021),
                     ],
                     stops: [0.0, 0.5, 1.0],
@@ -238,29 +239,31 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
 
                           SizedBox(height: AppSize.heightPercent(1.5)),
 
-                    // Main header text
-                    Text(
-                      "Pilih Bank yang",
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.titleFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: AppSize.heightPercent(0.5)),
-                    Text(
-                      "ingin dituju",
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.titleFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                          // Main header text
+                          Text(
+                            "Pilih Bank yang",
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.titleFontSize,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: AppSize.heightPercent(0.5)),
+                          Text(
+                            "ingin dituju",
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.titleFontSize,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-
             SizedBox(height: AppSize.screenHeight * 0.02),
             // Bank Branch List dengan animasi
             Expanded(
@@ -314,7 +317,47 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
                             // Animasi staggered untuk setiap item dalam list
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: BankBranchCard(branch: branch),
+                              child: BankBranchCard(
+                                branch: branch,
+                                onTap: () {
+                                  // Tampilkan SnackBar terlebih dahulu
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Selected: ${branch.name}'),
+                                      duration: const Duration(
+                                        milliseconds: 1500,
+                                      ), // Durasi pop-up
+                                      behavior: SnackBarBehavior.floating,
+                                      margin: const EdgeInsets.fromLTRB(
+                                        16,
+                                        0,
+                                        16,
+                                        16,
+                                      ),
+                                      backgroundColor: const Color(0xFF0D47A1),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
+
+                                  // Tunggu beberapa saat sebelum berpindah halaman
+                                  Future.delayed(
+                                    const Duration(milliseconds: 500),
+                                    () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) => ChooseDateScreen(
+                                                selectedBank: branch.name,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
                             );
                           },
                         ),
