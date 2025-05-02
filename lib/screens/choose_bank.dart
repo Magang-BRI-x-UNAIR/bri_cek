@@ -1,9 +1,9 @@
 import 'package:bri_cek/screens/choose_date.dart';
-import 'package:flutter/material.dart';
 import 'package:bri_cek/data/bank_branch_data.dart';
 import 'package:bri_cek/models/bank_branch.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:bri_cek/widgets/bank_branch_card.dart';
+import 'package:flutter/material.dart';
 
 class ChooseBankScreen extends StatefulWidget {
   const ChooseBankScreen({super.key});
@@ -122,71 +122,121 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
                 );
               },
               child: Container(
-                padding: AppSize.getHeaderPadding(),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                width: double.infinity,
+                height: AppSize.heightPercent(22),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
                     begin: Alignment.bottomLeft,
                     end: Alignment.topRight,
                     colors: [
                       Color(0xFF2680C5),
                       Color(
-                        0xFF3D91D1,
-                      ), // Intermediate color for smoother gradient
+                          0xFF3D91D1), // Intermediate color for smoother gradient
                       Color(0xFFF37021),
                     ],
                     stops: [0.0, 0.5, 1.0],
                   ),
                   borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(AppSize.cardBorderRadius * 2),
+                    bottom: Radius.circular(30),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.withOpacity(0.2),
-                      blurRadius: 15,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Stack(
                   children: [
-                    // Top row with app title and icons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Left side - Title/Logo
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(AppSize.widthPercent(2)),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(
-                                  AppSize.cardBorderRadius,
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.account_balance,
-                                color: Colors.white,
-                                size: AppSize.iconSize,
-                              ),
-                            ),
-                            SizedBox(width: AppSize.widthPercent(2)),
-                            Text(
-                              "Bank BRI",
-                              style: AppSize.getTextStyle(
-                                fontSize: AppSize.subtitleFontSize,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                    // Cloud decorations
+                    Positioned(
+                      top: AppSize.heightPercent(15),
+                      left: AppSize.widthPercent(20),
+                      child: Icon(
+                        Icons.cloud,
+                        color: Colors.white.withOpacity(0.3),
+                        size: AppSize.widthPercent(13),
+                      ),
+                    ),
+                    Positioned(
+                      top: AppSize.heightPercent(3),
+                      left: AppSize.widthPercent(42),
+                      child: Icon(
+                        Icons.cloud,
+                        color: Colors.white.withOpacity(0.2),
+                        size: AppSize.widthPercent(12),
+                      ),
+                    ),
+                    Positioned(
+                      top: AppSize.heightPercent(10),
+                      left: AppSize.widthPercent(89),
+                      child: Icon(
+                        Icons.cloud,
+                        color: Colors.white.withOpacity(0.2),
+                        size: AppSize.widthPercent(15),
+                      ),
                     ),
 
-                    SizedBox(height: AppSize.heightPercent(4)),
+                    // Bank icon
+                    Positioned(
+                      right: AppSize.widthPercent(8),
+                      top: AppSize.heightPercent(3),
+                      child: Container(
+                        width: AppSize.widthPercent(45),
+                        height: AppSize.heightPercent(20),
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage(
+                              'assets/images/bank_transparent.png',
+                            ),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Konten utama header
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: AppSize.widthPercent(6),
+                        top: AppSize.heightPercent(2),
+                        right: AppSize.widthPercent(6),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Top row with app title and icons
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // Left side - Title/Logo
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(
+                                      AppSize.widthPercent(2),
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(
+                                        AppSize.cardBorderRadius,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.account_balance,
+                                      color: Colors.white,
+                                      size: AppSize.iconSize,
+                                    ),
+                                  ),
+                                  SizedBox(width: AppSize.widthPercent(2)),
+                                  Text(
+                                    "Bank BRI",
+                                    style: AppSize.getTextStyle(
+                                      fontSize: AppSize.subtitleFontSize,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: AppSize.heightPercent(1.5)),
 
                     // Main header text
                     Text(
@@ -264,47 +314,7 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
                             // Animasi staggered untuk setiap item dalam list
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: BankBranchCard(
-                                branch: branch,
-                                onTap: () {
-                                  // Tampilkan SnackBar terlebih dahulu
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Selected: ${branch.name}'),
-                                      duration: const Duration(
-                                        milliseconds: 1500,
-                                      ), // Durasi pop-up
-                                      behavior: SnackBarBehavior.floating,
-                                      margin: const EdgeInsets.fromLTRB(
-                                        16,
-                                        0,
-                                        16,
-                                        16,
-                                      ),
-                                      backgroundColor: const Color(0xFF0D47A1),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  );
-
-                                  // Tunggu beberapa saat sebelum berpindah halaman
-                                  Future.delayed(
-                                    const Duration(milliseconds: 500),
-                                    () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) => ChooseDateScreen(
-                                                selectedBank: branch.name,
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
+                              child: BankBranchCard(branch: branch),
                             );
                           },
                         ),

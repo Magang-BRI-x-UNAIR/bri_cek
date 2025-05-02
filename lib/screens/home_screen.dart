@@ -1,8 +1,9 @@
 import 'dart:math';
-import 'package:flutter/material.dart';
+
+import 'package:bri_cek/screens/choose_bank.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:bri_cek/screens/choose_bank.dart';
+import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -98,11 +99,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (BuildContext context, ScrollController scrollController) {
         return Container(
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(224, 240, 255, 1),
+            color: Colors.blue.shade50,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: Colors.blue.shade200),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withOpacity(0.2),
                 spreadRadius: 1,
                 blurRadius: 5,
                 offset: const Offset(0, -3),
@@ -117,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 width: AppSize.widthPercent(10),
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: Colors.grey.shade500,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -134,8 +136,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       children: [
                         // Image
                         Container(
-                          width: AppSize.widthPercent(15),
-                          height: AppSize.heightPercent(6),
+                          width: AppSize.widthPercent(32),
+                          height: AppSize.heightPercent(20),
                           decoration: BoxDecoration(
                             image: DecorationImage(
                               image: AssetImage(
@@ -147,49 +149,96 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                         SizedBox(width: AppSize.widthPercent(3)),
                         // Penilaian text
-                        Text(
-                          'Beri Penilaian Bank',
-                          style: AppSize.getTextStyle(
-                            fontSize: AppSize.subtitleFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Beri Beri Penilaian Bank Kantor Kas',
+                              style: AppSize.getTextStyle(
+                                fontSize: AppSize.bodyFontSize,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                            ),
+
+                            SizedBox(height: AppSize.widthPercent(3)),
+
+                            ElevatedButton(
+                              onPressed: () {
+                                // Navigate to ChooseBankScreen
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => const ChooseBankScreen(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                backgroundColor:
+                                    Colors
+                                        .transparent, // Make transparent to show gradient
+                                elevation: 0, // Remove shadow
+                              ).copyWith(
+                                backgroundColor: MaterialStateProperty.all(
+                                  Colors.transparent,
+                                ),
+                                overlayColor: MaterialStateProperty.all(
+                                  Colors.transparent,
+                                ),
+                                foregroundColor: MaterialStateProperty.all(
+                                  Colors.white,
+                                ),
+                              ),
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF00529C),
+                                      Color(0xFF0086FF),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: AppSize.widthPercent(5),
+                                    vertical: AppSize.heightPercent(1.2),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Mulai',
+                                        style: AppSize.getTextStyle(
+                                          fontSize: AppSize.bodyFontSize,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: AppSize.widthPercent(25)),
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        color: Colors.white,
+                                        size: AppSize.iconSize,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-
-                    SizedBox(height: AppSize.heightPercent(2)),
-
-                    // Mulai Button with navigation
-                    ElevatedButton(
-                      onPressed: () {
-                        // Navigate to ChooseBankScreen
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ChooseBankScreen(),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: EdgeInsets.symmetric(
-                          vertical: AppSize.heightPercent(1.5),
-                        ),
-                      ),
-                      child: Text(
-                        'Mulai',
-                        style: AppSize.getTextStyle(
-                          fontSize: AppSize.bodyFontSize,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    // Additional content can go here
                   ],
                 ),
               ),
@@ -217,10 +266,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         height: AppSize.heightPercent(22),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.bottomLeft,
+            end: Alignment.topRight,
             colors: [Color(0xFF2680C5), Color(0xFF3D91D1), Color(0xFFF37021)],
-            stops: [0.0, 0.6, 1.0],
+            stops: [0.0, 0.5, 1.0],
           ),
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
         ),
@@ -228,62 +277,86 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             // Cloud decorations
             Positioned(
-              top: AppSize.heightPercent(5),
-              left: AppSize.widthPercent(5),
+              top: AppSize.heightPercent(15),
+              left: AppSize.widthPercent(6),
               child: Icon(
                 Icons.cloud,
                 color: Colors.white.withOpacity(0.3),
-                size: AppSize.widthPercent(15),
+                size: AppSize.widthPercent(13),
+              ),
+            ),
+            Positioned(
+              top: AppSize.heightPercent(3),
+              left: AppSize.widthPercent(42),
+              child: Icon(
+                Icons.cloud,
+                color: Colors.white.withOpacity(0.2),
+                size: AppSize.widthPercent(12),
               ),
             ),
             Positioned(
               top: AppSize.heightPercent(10),
-              left: AppSize.widthPercent(15),
+              left: AppSize.widthPercent(89),
               child: Icon(
                 Icons.cloud,
                 color: Colors.white.withOpacity(0.2),
-                size: AppSize.widthPercent(10),
+                size: AppSize.widthPercent(15),
               ),
             ),
 
-            // Characters
+            // Bank icon
             Positioned(
-              right: AppSize.widthPercent(1),
-              bottom: 0,
-              child: Row(
-                children: [
-                  // Male character
-                  Container(
-                    width: AppSize.widthPercent(25),
-                    height: AppSize.heightPercent(15),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      image: DecorationImage(
-                        image: AssetImage('assets/images/male_character.png'),
-                        fit: BoxFit.contain,
-                      ),
-                    ),
+              right: AppSize.widthPercent(8),
+              top: AppSize.heightPercent(3),
+              child: Container(
+                width: AppSize.widthPercent(45),
+                height: AppSize.heightPercent(20),
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/bank_transparent.png'),
+                    fit: BoxFit.cover,
                   ),
+                ),
+              ),
+            ),
 
-                  // Female character
-                  Container(
-                    width: AppSize.widthPercent(25),
-                    height: AppSize.heightPercent(15),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      image: DecorationImage(
-                        image: AssetImage('assets/images/female_character.png'),
-                        fit: BoxFit.contain,
-                      ),
-                    ),
+            // Female character
+            Positioned(
+              right: AppSize.widthPercent(2),
+              top: AppSize.heightPercent(7),
+              child: Container(
+                width: AppSize.widthPercent(35),
+                height: AppSize.heightPercent(15),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/female_character.png'),
+                    fit: BoxFit.contain,
                   ),
-                ],
+                ),
+              ),
+            ),
+
+            // Male Characters
+            Positioned(
+              right: AppSize.widthPercent(23),
+              top: AppSize.heightPercent(4),
+              child: Container(
+                width: AppSize.widthPercent(35),
+                height: AppSize.heightPercent(18),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/male_character.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
             ),
 
             // Greeting text
             Positioned(
-              top: AppSize.heightPercent(5),
+              top: AppSize.heightPercent(7),
               left: AppSize.widthPercent(6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
