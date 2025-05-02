@@ -1,3 +1,4 @@
+import 'package:bri_cek/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:bri_cek/screens/home_screen.dart';
@@ -25,7 +26,7 @@ class BRICek extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const HomeScreen(),
+      home: const SplashScreen(),
       builder: (context, child) {
         AppSize().init(context);
         return MediaQuery(
