@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:bri_cek/screens/home_screen.dart';
-import 'package:bri_cek/screens/choose_bank.dart';
+import 'package:bri_cek/screens/choose_bank_screen.dart';
 import 'package:bri_cek/theme/app_theme.dart';
 import 'package:bri_cek/utils/app_size.dart';
 

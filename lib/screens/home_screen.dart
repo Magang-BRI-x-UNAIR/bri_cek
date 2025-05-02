@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:bri_cek/screens/choose_bank.dart';
+import 'package:bri_cek/screens/choose_bank_screen.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';

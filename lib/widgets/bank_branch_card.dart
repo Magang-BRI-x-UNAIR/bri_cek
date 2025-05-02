@@ -1,147 +1,161 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:bri_cek/models/bank_branch.dart';
+import 'package:bri_cek/utils/app_size.dart';
 
 class BankBranchCard extends StatelessWidget {
   final BankBranch branch;
-  final VoidCallback? onTap;
 
-  const BankBranchCard({
-    super.key,
-    required this.branch,
-    this.onTap,
-  });
+  const BankBranchCard({super.key, required this.branch});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blue.withOpacity(0.06),
-              blurRadius: 12,
-              spreadRadius: 1,
-              offset: const Offset(0, 3),
-            ),
-          ],
-          border: Border.all(
-            color: Colors.grey.shade100,
-            width: 1,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              if (onTap != null) {
-                onTap!();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Selected: ${branch.name}'),
-                    duration: const Duration(seconds: 1),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: const Color(0xFF0D47A1),
-                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+          onTap: () {
+            // Handle branch selection
+          },
+          child: Padding(
+            padding: EdgeInsets.all(AppSize.paddingHorizontal * 0.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Branch image
+                _buildBranchImage(),
+
+                SizedBox(height: AppSize.heightPercent(1)),
+
+                // Branch information
+                Row(
+                  children: [
+                    Expanded(child: _buildBranchInfo()),
+
+                    // Navigation arrow
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.blue[800],
+                      size: AppSize.iconSize * 0.7,
                     ),
-                  ),
-                );
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Bank icon with gradient background
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF0D47A1),
-                          Color(0xFF1976D2),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0D47A1).withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.account_balance_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Branch information
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          branch.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: Color(0xFF333333),
-                            height: 1.3,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        // Address with location icon
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 14,
-                              color: Colors.grey[500],
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                branch.subAddress,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[600],
-                                  height: 1.3,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBranchImage() {
+    final imageHeight = AppSize.heightPercent(15);
+
+    // Container for consistent size and border radius
+    return Container(
+      height: imageHeight,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSize.cardBorderRadius * 0.5),
+        color: Colors.grey[200],
+      ),
+      clipBehavior:
+          Clip.antiAlias, // Ensures the image respects the border radius
+      child: _getBranchImage(),
+    );
+  }
+
+  Widget _getBranchImage() {
+    // Check if it's a local image or network image
+    if (branch.isLocalImage) {
+      return Image.asset(
+        branch.imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback if image can't be loaded
+          return Center(
+            child: Icon(
+              Icons.account_balance,
+              size: AppSize.iconSize * 1.5,
+              color: Colors.grey[400],
+            ),
+          );
+        },
+      );
+    } else {
+      // Handle network images
+      return Image.network(
+        branch.imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value:
+                  loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback if network image fails to load
+          return Center(
+            child: Icon(
+              Icons.account_balance,
+              size: AppSize.iconSize * 1.5,
+              color: Colors.grey[400],
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  Widget _buildBranchInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Branch name
+        Text(
+          branch.name,
+          style: AppSize.getTextStyle(
+            fontSize: AppSize.isSmallScreen ? 14 : 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue[900] ?? Colors.black,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+
+        SizedBox(height: AppSize.heightPercent(0.5)),
+
+        // Branch address
+        Text(
+          branch.address,
+          style: AppSize.getTextStyle(
+            fontSize: AppSize.isSmallScreen ? 12 : 14,
+            color: Colors.grey[600] ?? Colors.black54,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }

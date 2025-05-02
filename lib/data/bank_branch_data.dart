@@ -1,38 +1,46 @@
 import 'package:bri_cek/models/bank_branch.dart';
 
-List<BankBranch> branches = [
+// Sample data for bank branches with local images
+final List<BankBranch> branches = [
   BankBranch(
-    name: "Bank BRI Kantor Kas KK BRI ITC SURABAYA",
-    address: "Jl Jenderal Basuki Rahmat no 8-12 Surabaya Jawa Timur",
-    subAddress:
-        "jl jenderal basuki rahmat no 8-12 kata surabaya jawa timur • 60274",
+    id: '1',
+    name: 'KK Genteng Kali Surabaya',
+    address: 'Jl. Genteng Besar No.26, Surabaya, Jawa Timur',
+    imageUrl: 'assets/images/genteng_kali.jpg',
+    isLocalImage: true,
+    city: 'Surabaya',
+    phoneNumber: '(031) 5345678',
+    operationalHours: 'Senin-Jumat: 08.00-15.00',
   ),
   BankBranch(
-    name: "Bank BRI Kantor Kas KK BRI ITC SURABAYA",
-    address: "Jl Jenderal Basuki Rahmat no 8-12 Surabaya Jawa Timur",
-    subAddress:
-        "jl jenderal basuki rahmat no 8-12 kata surabaya jawa timur • 60274",
+    id: '2',
+    name: 'KK Gubeng Surabaya',
+    address: 'Jl. Raya Gubeng No.8, Gubeng, Surabaya, Jawa Timur 60281',
+    imageUrl: 'assets/images/gubeng.jpg',
+    isLocalImage: true,
+    city: 'Surabaya',
+    phoneNumber: '(031) 5033214',
+    operationalHours: 'Senin-Jumat: 08.00-15.00, Sabtu: 08.00-12.00',
   ),
   BankBranch(
-    name: "Bank BRI Kantor Kas KK BRI ITC SURABAYA",
-    address: "Jl Jenderal Basuki Rahmat no 8-12 Surabaya Jawa Timur",
-    subAddress:
-        "jl jenderal basuki rahmat no 8-12 kata surabaya jawa timur • 60274",
+    id: '3',
+    name: 'KK Bulog Surabaya',
+    address:
+        'Jl. Ahmad Yani No.146-148, Gayungan, Kec. Gayungan, Surabaya, Jawa Timur',
+    imageUrl: 'assets/images/bulog.jpg',
+    isLocalImage: true,
+    city: 'Surabaya',
+    phoneNumber: '(031) 8290123',
+    operationalHours: 'Senin-Jumat: 08.00-15.00',
   ),
   BankBranch(
-    name: "Bank BRI Kantor Kas KK BRI ITC SURABAYA",
-    address: "Jl Jenderal Basuki Rahmat no 8-12 Surabaya Jawa Timur",
-    subAddress:
-        "jl jenderal basuki rahmat no 8-12 kata surabaya jawa timur • 60274",
-  ),
-  BankBranch(
-    name: "Bank BRI KC Surabaya Diponegoro",
-    address: "Jl Diponegoro no 45 Surabaya Jawa Timur",
-    subAddress: "jl diponegoro no 45 kata surabaya jawa timur • 60271",
-  ),
-  BankBranch(
-    name: "Bank BRI KCP Surabaya Kapasan",
-    address: "Jl Kapasan no 131 Surabaya Jawa Timur",
-    subAddress: "jl kapasan no 131 kata surabaya jawa timur • 60141",
+    id: '4',
+    name: 'KK Kodam Surabaya',
+    address: 'Jl. Raya Kodam V Brawijaya, Surabaya, Jawa Timur',
+    imageUrl: 'assets/images/kodam.jpg',
+    isLocalImage: true,
+    city: 'Surabaya',
+    phoneNumber: '(031) 8432678',
+    operationalHours: 'Senin-Jumat: 08.00-15.00',
   ),
 ];
