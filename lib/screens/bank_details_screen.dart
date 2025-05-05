@@ -84,20 +84,59 @@ class BankDetailScreen extends StatelessWidget {
         ],
       ),
       // Enhanced Floating Action Button
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Navigate to ChooseDateScreen passing the current branch
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChooseDateScreen(selectedBank: branch.name),
-            ),
+      floatingActionButton: Builder(
+        builder: (context) {
+          // Check if current week already has a check
+          final now = DateTime.now();
+          final currentWeekNumber = getWeekNumberInMonth(now);
+          final canCheck =
+              !hasCheckInWeek(
+                branch.id,
+                now.year,
+                now.month,
+                currentWeekNumber,
+              );
+
+          return FloatingActionButton.extended(
+            onPressed: () {
+              if (canCheck) {
+                // Navigate to ChooseDateScreen passing the current branch
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) =>
+                            ChooseDateScreen(selectedBank: branch.name),
+                  ),
+                );
+              } else {
+                // Show snackbar indicating check already done this week
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Check already performed this week. Next check available next week.',
+                    ),
+                    backgroundColor: Colors.amber.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    action: SnackBarAction(
+                      label: 'OK',
+                      textColor: Colors.white,
+                      onPressed: () {},
+                    ),
+                  ),
+                );
+              }
+            },
+            backgroundColor: canCheck ? Colors.green : Colors.grey.shade400,
+            icon: Icon(canCheck ? Icons.add_task : Icons.block),
+            label: Text(canCheck ? 'New Check' : 'Check Locked'),
+            elevation: canCheck ? 4 : 2,
+            tooltip:
+                canCheck
+                    ? 'Create a new check'
+                    : 'Check already performed this week',
           );
         },
-        backgroundColor: Colors.green,
-        icon: Icon(Icons.add_task),
-        label: Text('New Check'),
-        elevation: 4,
       ),
     );
   }
@@ -422,7 +461,7 @@ class BankDetailScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Date with calendar icon
+                    // Date with calendar icon and week number
                     Row(
                       children: [
                         Icon(
@@ -431,13 +470,25 @@ class BankDetailScreen extends StatelessWidget {
                           color: Colors.blue.shade700,
                         ),
                         SizedBox(width: AppSize.widthPercent(1)),
-                        Text(
-                          history.formattedDate,
-                          style: AppSize.getTextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: AppSize.smallFontSize,
-                            color: Colors.blue.shade800,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              history.formattedDate,
+                              style: AppSize.getTextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: AppSize.smallFontSize,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                            Text(
+                              'Week ${history.weekNumberInMonth}',
+                              style: AppSize.getTextStyle(
+                                fontSize: AppSize.smallFontSize * 0.85,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
