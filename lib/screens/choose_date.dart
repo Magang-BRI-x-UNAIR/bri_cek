@@ -1,5 +1,7 @@
+import 'package:bri_cek/screens/choose_category_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
+import 'package:intl/intl.dart';
 
 class ChooseDateScreen extends StatefulWidget {
   final String selectedBank;
@@ -13,6 +15,7 @@ class ChooseDateScreen extends StatefulWidget {
 class _ChooseDateScreenState extends State<ChooseDateScreen>
     with TickerProviderStateMixin {
   DateTime _selectedDate = DateTime.now();
+  final DateFormat _dateFormat = DateFormat('dd MMMM yyyy');
 
   @override
   Widget build(BuildContext context) {
@@ -23,11 +26,12 @@ class _ChooseDateScreenState extends State<ChooseDateScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // Header
+            // Header with consistent styling
             Container(
-              padding: AppSize.getHeaderPadding(),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
+              width: double.infinity,
+              height: AppSize.heightPercent(21),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
                   begin: Alignment.bottomLeft,
                   end: Alignment.topRight,
                   colors: [
@@ -38,145 +42,90 @@ class _ChooseDateScreenState extends State<ChooseDateScreen>
                   stops: [0.0, 0.5, 1.0],
                 ),
                 borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(AppSize.cardBorderRadius * 2),
+                  bottom: Radius.circular(30),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.2),
-                    blurRadius: 15,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
                 children: [
-                  // Header Title
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(AppSize.widthPercent(2)),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(
-                                AppSize.cardBorderRadius,
+                  // Cloud decorations
+                  _buildCloudDecoration(
+                    top: AppSize.heightPercent(10),
+                    left: AppSize.widthPercent(20),
+                    size: AppSize.widthPercent(13),
+                    opacity: 0.3,
+                  ),
+                  _buildCloudDecoration(
+                    top: AppSize.heightPercent(3),
+                    left: AppSize.widthPercent(42),
+                    size: AppSize.widthPercent(12),
+                    opacity: 0.2,
+                  ),
+                  _buildCloudDecoration(
+                    top: AppSize.heightPercent(8),
+                    left: AppSize.widthPercent(90),
+                    size: AppSize.widthPercent(15),
+                    opacity: 0.2,
+                  ),
+
+                  // Header content
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: AppSize.widthPercent(6),
+                      top: AppSize.heightPercent(2),
+                      right: AppSize.widthPercent(6),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // App title and logo
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(AppSize.widthPercent(2)),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(
+                                  AppSize.cardBorderRadius,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.account_balance,
+                                color: Colors.white,
+                                size: AppSize.iconSize,
                               ),
                             ),
-                            child: Icon(
-                              Icons.account_balance,
-                              color: Colors.white,
-                              size: AppSize.iconSize,
+                            SizedBox(width: AppSize.widthPercent(2)),
+                            Expanded(
+                              child: Text(
+                                widget.selectedBank,
+                                style: AppSize.getTextStyle(
+                                  fontSize: AppSize.subtitleFontSize,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          SizedBox(width: AppSize.widthPercent(2)),
-                          Text(
-                            widget.selectedBank,
-                            style: AppSize.getTextStyle(
-                              fontSize: AppSize.subtitleFontSize,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: AppSize.heightPercent(4)),
-                  Text(
-                    "Pilih Tanggal",
-                    style: AppSize.getTextStyle(
-                      fontSize: AppSize.titleFontSize,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: AppSize.screenHeight * 0.02),
-
-            // Calendar
-            Expanded(
-              child: Column(
-                children: [
-                  // Calendar Widget
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSize.paddingHorizontal,
-                    ),
-                    child: CalendarDatePicker(
-                      initialDate: _selectedDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                      onDateChanged: (date) {
-                        setState(() {
-                          _selectedDate = date;
-                        });
-                      },
-                    ),
-                  ),
-                  SizedBox(height: AppSize.heightPercent(2)),
-
-                  // Buttons
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSize.paddingHorizontal,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Back Button
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: EdgeInsets.symmetric(
-                              vertical: AppSize.heightPercent(1.5),
-                              horizontal: AppSize.widthPercent(5),
-                            ),
-                          ),
-                          child: Text(
-                            'Back',
-                            style: AppSize.getTextStyle(
-                              fontSize: AppSize.bodyFontSize,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          ],
                         ),
 
-                        // Next Button
-                        ElevatedButton(
-                          onPressed: () {
-                            // Navigate to the next page
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: EdgeInsets.symmetric(
-                              vertical: AppSize.heightPercent(1.5),
-                              horizontal: AppSize.widthPercent(5),
-                            ),
+                        SizedBox(height: AppSize.heightPercent(4)),
+
+                        // Main header text
+                        Text(
+                          "Pilih Tanggal",
+                          style: AppSize.getTextStyle(
+                            fontSize: AppSize.titleFontSize,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          child: Text(
-                            'Next',
-                            style: AppSize.getTextStyle(
-                              fontSize: AppSize.bodyFontSize,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        ),
+                        SizedBox(height: AppSize.heightPercent(1)),
+                        Text(
+                          "Tanggal pemeriksaan bank",
+                          style: AppSize.getTextStyle(
+                            fontSize: AppSize.bodyFontSize,
+                            color: Colors.white.withOpacity(0.9),
                           ),
                         ),
                       ],
@@ -185,9 +134,287 @@ class _ChooseDateScreenState extends State<ChooseDateScreen>
                 ],
               ),
             ),
+
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSize.paddingHorizontal,
+                  vertical: AppSize.heightPercent(2),
+                ),
+                child: Column(
+                  children: [
+                    // Selected Date Display
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: AppSize.heightPercent(2),
+                        horizontal: AppSize.widthPercent(4),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(
+                          AppSize.cardBorderRadius,
+                        ),
+                        border: Border.all(
+                          color: Colors.blue.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Tanggal terpilih:",
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.bodyFontSize,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          SizedBox(height: AppSize.heightPercent(0.5)),
+                          Text(
+                            _dateFormat.format(_selectedDate),
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.subtitleFontSize,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: AppSize.heightPercent(3)),
+
+                    // Calendar with improved styling
+                    Expanded(
+                      child: Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppSize.cardBorderRadius * 1.5,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(AppSize.widthPercent(2)),
+                          child: Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: ColorScheme.light(
+                                primary: Colors.blue,
+                                onPrimary: Colors.white,
+                                onSurface: Colors.black87,
+                              ),
+                            ),
+                            child: CalendarDatePicker(
+                              initialDate: _selectedDate,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                              onDateChanged: (date) {
+                                setState(() {
+                                  _selectedDate = date;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: AppSize.heightPercent(3)),
+
+                    // Buttons with improved styling
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Back Button with improved styling
+                        Expanded(
+                          flex: 2,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.pop(context);
+                              },
+                              borderRadius: BorderRadius.circular(
+                                AppSize.cardBorderRadius,
+                              ),
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.grey.shade700,
+                                      Colors.grey.shade600,
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSize.cardBorderRadius,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.3),
+                                      offset: const Offset(0, 2),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: AppSize.heightPercent(2),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.arrow_back_rounded,
+                                        size: AppSize.iconSize * 0.8,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(
+                                        width: AppSize.widthPercent(1.5),
+                                      ),
+                                      Text(
+                                        'Kembali',
+                                        style: AppSize.getTextStyle(
+                                          fontSize: AppSize.bodyFontSize,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(width: AppSize.widthPercent(4)),
+
+                        // Next Button with improved styling
+                        Expanded(
+                          flex: 3,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                // Show selection feedback
+                                ScaffoldMessenger.of(
+                                  context,
+                                ).removeCurrentSnackBar();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Tanggal dipilih: ${_dateFormat.format(_selectedDate)}',
+                                    ),
+                                    backgroundColor: Colors.blue.shade700,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppSize.cardBorderRadius,
+                                      ),
+                                    ),
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
+
+                                // Navigate to category selection screen with animation
+                                Future.delayed(
+                                  const Duration(milliseconds: 300),
+                                  () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => ChooseCategoryScreen(
+                                              selectedBank: widget.selectedBank,
+                                              selectedDate: _selectedDate,
+                                            ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(
+                                AppSize.cardBorderRadius,
+                              ),
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.blue.shade500,
+                                      Colors.blue.shade700,
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSize.cardBorderRadius,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.blue.withOpacity(0.3),
+                                      offset: const Offset(0, 2),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: AppSize.heightPercent(2),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Lanjutkan',
+                                        style: AppSize.getTextStyle(
+                                          fontSize: AppSize.bodyFontSize,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: AppSize.widthPercent(1.5),
+                                      ),
+                                      Icon(
+                                        Icons.arrow_forward_rounded,
+                                        size: AppSize.iconSize * 0.8,
+                                        color: Colors.white,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+Widget _buildCloudDecoration({
+  required double top,
+  required double left,
+  required double size,
+  required double opacity,
+}) {
+  return Positioned(
+    top: top,
+    left: left,
+    child: Icon(
+      Icons.cloud,
+      color: Colors.white.withOpacity(opacity),
+      size: size,
+    ),
+  );
 }

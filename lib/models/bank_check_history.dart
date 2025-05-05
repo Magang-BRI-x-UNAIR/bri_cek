@@ -1,12 +1,12 @@
 class BankCheckHistory {
   final String id;
-  final String bankBranchId; // Reference to the BankBranch
+  final String bankBranchId;
   final DateTime checkDate;
   final bool isSuccessful;
-  final double score; // Overall score for this check
-  final Map<String, double> aspectScores; // Individual aspect scores
+  final double score;
+  final Map<String, double> aspectScores;
   final String? notes;
-  final String checkedBy; // Person who performed the check
+  final String checkedBy;
 
   BankCheckHistory({
     required this.id,
@@ -39,6 +39,24 @@ class BankCheckHistory {
     final month = months[checkDate.month - 1];
     final year = checkDate.year;
     return '$day $month $year';
+  }
+
+  // Get the week number in the month (1-based)
+  int get weekNumberInMonth {
+    // Calculate the first day of the month
+    final firstDayOfMonth = DateTime(checkDate.year, checkDate.month, 1);
+
+    // Calculate day of month (1-based)
+    final dayOfMonth = checkDate.day;
+
+    // Calculate the week number (1-based)
+    return ((dayOfMonth - 1) ~/ 7) + 1;
+  }
+
+  // Format date with week number
+  String get formattedDateWithWeek {
+    final weekNum = weekNumberInMonth;
+    return '$formattedDate (Week $weekNum)';
   }
 
   // Helper to get aspect score by name

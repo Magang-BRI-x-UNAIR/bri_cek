@@ -101,3 +101,41 @@ List<BankCheckHistory> getHistoriesForBranch(String branchId) {
       .where((history) => history.bankBranchId == branchId)
       .toList();
 }
+
+// Get week number in month for a given date (1-based)
+int getWeekNumberInMonth(DateTime date) {
+  final firstDayOfMonth = DateTime(date.year, date.month, 1);
+  final dayOfMonth = date.day;
+  return ((dayOfMonth - 1) ~/ 7) + 1;
+}
+
+// Check if a bank branch already has a check in a specific week of a month
+bool hasCheckInWeek(String branchId, int year, int month, int weekNumber) {
+  return checkHistories.any(
+    (history) =>
+        history.bankBranchId == branchId &&
+        history.checkDate.year == year &&
+        history.checkDate.month == month &&
+        history.weekNumberInMonth == weekNumber,
+  );
+}
+
+// Get the next available date for checking (first day of the next available week)
+DateTime? getNextAvailableCheckDate(String branchId) {
+  // Get the current date
+  final now = DateTime.now();
+
+  // Check if current week already has a check
+  final currentWeekNumber = getWeekNumberInMonth(now);
+  if (!hasCheckInWeek(branchId, now.year, now.month, currentWeekNumber)) {
+    // Current week is available
+    return now;
+  }
+
+  // Calculate the start of the next week
+  int daysToAdd = 7 - (now.weekday % 7);
+  if (daysToAdd == 7) daysToAdd = 0; // If today is Sunday
+  final nextWeekStart = now.add(Duration(days: daysToAdd));
+
+  return nextWeekStart;
+}
