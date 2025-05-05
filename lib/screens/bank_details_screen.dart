@@ -568,7 +568,17 @@ class BankDetailScreen extends StatelessWidget {
 
                     ElevatedButton.icon(
                       onPressed: () {
-                        // Navigate to history details
+                        // Navigate to history details screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => CheckHistoryDetailScreen(
+                                  history: history,
+                                  branch: branch,
+                                ),
+                          ),
+                        );
                       },
                       icon: Icon(
                         Icons.visibility,
