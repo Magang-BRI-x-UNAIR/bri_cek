@@ -1,3 +1,4 @@
+import 'package:bri_cek/screens/checklist_screen.dart';
 import 'package:bri_cek/screens/employee_info_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
@@ -198,7 +199,7 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Category Grid
+                    // Categories grid
                     Expanded(
                       child: GridView.builder(
                         padding: EdgeInsets.symmetric(
@@ -206,9 +207,9 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                         ),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          childAspectRatio: 1.2,
                           crossAxisSpacing: AppSize.widthPercent(4),
                           mainAxisSpacing: AppSize.heightPercent(2),
+                          childAspectRatio: 1.2,
                         ),
                         itemCount: _categories.length,
                         itemBuilder: (context, index) {
@@ -223,15 +224,13 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                               });
                             },
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
+                              duration: const Duration(milliseconds: 200),
                               decoration: BoxDecoration(
                                 color:
                                     isSelected
                                         ? Colors.blue.shade50
                                         : Colors.white,
-                                borderRadius: BorderRadius.circular(
-                                  AppSize.cardBorderRadius,
-                                ),
+                                borderRadius: BorderRadius.circular(15),
                                 border: Border.all(
                                   color:
                                       isSelected
@@ -246,8 +245,7 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                                             ? Colors.blue.withOpacity(0.2)
                                             : Colors.grey.withOpacity(0.1),
                                     blurRadius: 8,
-                                    spreadRadius: 0.5,
-                                    offset: const Offset(0, 2),
+                                    offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
@@ -260,22 +258,23 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                                         isSelected
                                             ? Colors.blue.shade600
                                             : Colors.grey.shade700,
-                                    size: AppSize.iconSize * 1.5,
+                                    size: AppSize.iconSize * 1.2,
                                   ),
-                                  SizedBox(height: AppSize.heightPercent(1.5)),
+                                  SizedBox(height: AppSize.heightPercent(1)),
                                   Text(
                                     category['name'],
                                     style: AppSize.getTextStyle(
-                                      fontSize: AppSize.bodyFontSize,
+                                      fontSize: AppSize.subtitleFontSize * 0.85,
                                       fontWeight:
                                           isSelected
                                               ? FontWeight.bold
-                                              : FontWeight.normal,
+                                              : FontWeight.w500,
                                       color:
                                           isSelected
                                               ? Colors.blue.shade700
-                                              : Colors.black87,
+                                              : Colors.grey.shade800,
                                     ),
+                                    textAlign: TextAlign.center,
                                   ),
                                 ],
                               ),
@@ -287,190 +286,106 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
 
                     SizedBox(height: AppSize.heightPercent(2)),
 
-                    // Navigation Buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Back Button
-                        Expanded(
-                          flex: 2,
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.pop(context);
-                              },
-                              borderRadius: BorderRadius.circular(
-                                AppSize.cardBorderRadius,
-                              ),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.grey.shade700,
-                                      Colors.grey.shade600,
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppSize.cardBorderRadius,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.grey.withOpacity(0.3),
-                                      offset: const Offset(0, 2),
-                                      blurRadius: 4,
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: AppSize.heightPercent(2),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.arrow_back_rounded,
-                                        size: AppSize.iconSize * 0.8,
-                                        color: Colors.white,
-                                      ),
-                                      SizedBox(
-                                        width: AppSize.widthPercent(1.5),
-                                      ),
-                                      Text(
-                                        'Kembali',
-                                        style: AppSize.getTextStyle(
-                                          fontSize: AppSize.bodyFontSize,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
+                    // Continue button
+                    Container(
+                      width: double.infinity,
+                      height: AppSize.heightPercent(7),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                _selectedCategory != null
+                                    ? Colors.blue.withOpacity(0.3)
+                                    : Colors.transparent,
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
-
-                        SizedBox(width: AppSize.widthPercent(4)),
-
-                        // Next Button
-                        Expanded(
-                          flex: 3,
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap:
-                                  _selectedCategory != null
-                                      ? () {
-                                        // Check which category was selected
-                                        if ([
-                                          'Satpam',
-                                          'Teller',
-                                          'Customer Service',
-                                        ].contains(_selectedCategory)) {
-                                          // Navigate to employee info screen for people-related categories
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder:
-                                                  (context) =>
-                                                      EmployeeInfoScreen(
-                                                        selectedBank:
-                                                            widget.selectedBank,
-                                                        selectedDate:
-                                                            widget.selectedDate,
-                                                        selectedCategory:
-                                                            _selectedCategory!,
-                                                      ),
-                                            ),
-                                          );
-                                        } else {
-                                          // Navigate directly to checklist screen for location-based categories
-                                          // Navigator.push(
-                                          //   context,
-                                          //   MaterialPageRoute(
-                                          //     builder: (context) => ChecklistScreen(
-                                          //       selectedBank: widget.selectedBank,
-                                          //       selectedDate: widget.selectedDate,
-                                          //       selectedCategory: _selectedCategory!,
-                                          //       // Employee data is null for non-people categories
-                                          //       employeeData: null,
-                                          //     ),
-                                          //   ),
-                                          // );
-                                        }
-                                      }
-                                      : null, // Disable if no category selected
-                              borderRadius: BorderRadius.circular(
-                                AppSize.cardBorderRadius,
-                              ),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors:
-                                        _selectedCategory != null
-                                            ? [
-                                              Colors.blue.shade500,
-                                              Colors.blue.shade700,
-                                            ]
-                                            : [
-                                              Colors.grey.shade400,
-                                              Colors.grey.shade500,
-                                            ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppSize.cardBorderRadius,
-                                  ),
-                                  boxShadow:
-                                      _selectedCategory != null
-                                          ? [
-                                            BoxShadow(
-                                              color: Colors.blue.withOpacity(
-                                                0.3,
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap:
+                              _selectedCategory != null
+                                  ? () {
+                                    // Check which category was selected
+                                    if ([
+                                      'Satpam',
+                                      'Teller',
+                                      'Customer Service',
+                                    ].contains(_selectedCategory)) {
+                                      // Navigate to employee info screen for people-related categories
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) => EmployeeInfoScreen(
+                                                selectedBank:
+                                                    widget.selectedBank,
+                                                selectedDate:
+                                                    widget.selectedDate,
+                                                selectedCategory:
+                                                    _selectedCategory!,
                                               ),
-                                              offset: const Offset(0, 2),
-                                              blurRadius: 4,
-                                            ),
-                                          ]
-                                          : [],
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: AppSize.heightPercent(2),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Lanjutkan',
-                                        style: AppSize.getTextStyle(
-                                          fontSize: AppSize.bodyFontSize,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
                                         ),
-                                      ),
-                                      SizedBox(
-                                        width: AppSize.widthPercent(1.5),
-                                      ),
-                                      Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: AppSize.iconSize * 0.8,
-                                        color: Colors.white,
-                                      ),
-                                    ],
-                                  ),
+                                      );
+                                    } else {
+                                      // Navigate directly to checklist screen for location-based categories
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) => ChecklistScreen(
+                                                selectedBank:
+                                                    widget.selectedBank,
+                                                selectedDate:
+                                                    widget.selectedDate,
+                                                selectedCategory:
+                                                    _selectedCategory!,
+                                                // Employee data is null for non-people categories
+                                                employeeData: null,
+                                              ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                  : null, // Disable if no category selected
+                          borderRadius: BorderRadius.circular(15),
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors:
+                                    _selectedCategory != null
+                                        ? [
+                                          Colors.blue.shade500,
+                                          Colors.blue.shade700,
+                                        ]
+                                        : [
+                                          Colors.grey.shade300,
+                                          Colors.grey.shade400,
+                                        ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Lanjutkan',
+                                style: AppSize.getTextStyle(
+                                  fontSize: AppSize.subtitleFontSize,
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      _selectedCategory != null
+                                          ? Colors.white
+                                          : Colors.grey.shade600,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
