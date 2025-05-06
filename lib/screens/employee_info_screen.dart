@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
-// import 'package:bri_cek/screens/checklist_screen.dart';
+import 'package:bri_cek/screens/checklist_screen.dart';
 import 'package:intl/intl.dart';
 
 class EmployeeInfoScreen extends StatefulWidget {
@@ -389,17 +389,19 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                     };
 
                                     // Navigate to checklist screen with employee data
-                                    // Navigator.push(
-                                    //   context,
-                                    //   MaterialPageRoute(
-                                    //     builder: (context) => ChecklistScreen(
-                                    //       selectedBank: widget.selectedBank,
-                                    //       selectedDate: widget.selectedDate,
-                                    //       selectedCategory: widget.selectedCategory,
-                                    //       employeeData: employeeData,
-                                    //     ),
-                                    //   ),
-                                    // );
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => ChecklistScreen(
+                                              selectedBank: widget.selectedBank,
+                                              selectedDate: widget.selectedDate,
+                                              selectedCategory:
+                                                  widget.selectedCategory,
+                                              employeeData: employeeData,
+                                            ),
+                                      ),
+                                    );
                                   } else if (_selectedGender == null) {
                                     // Show error for gender selection
                                     ScaffoldMessenger.of(context).showSnackBar(
