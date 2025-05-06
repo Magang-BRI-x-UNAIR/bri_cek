@@ -1,5 +1,6 @@
 import 'package:bri_cek/data/bank_check_history_data.dart';
 import 'package:bri_cek/models/bank_check_history.dart';
+import 'package:bri_cek/screens/check_history_screen.dart';
 import 'package:bri_cek/screens/choose_date.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/models/bank_branch.dart';

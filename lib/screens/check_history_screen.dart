@@ -480,7 +480,7 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
                     style: AppSize.getTextStyle(
                       fontSize: AppSize.smallFontSize,
                       color: Colors.grey.shade600,
-                      fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 )
