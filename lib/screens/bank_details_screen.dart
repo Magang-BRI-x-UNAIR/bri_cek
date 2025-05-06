@@ -1,5 +1,6 @@
 import 'package:bri_cek/data/bank_check_history_data.dart';
 import 'package:bri_cek/models/bank_check_history.dart';
+import 'package:bri_cek/screens/check_history_screen.dart';
 import 'package:bri_cek/screens/choose_date.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/models/bank_branch.dart';
@@ -568,7 +569,17 @@ class BankDetailScreen extends StatelessWidget {
 
                     ElevatedButton.icon(
                       onPressed: () {
-                        // Navigate to history details
+                        // Navigate to history details screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => CheckHistoryDetailScreen(
+                                  history: history,
+                                  branch: branch,
+                                ),
+                          ),
+                        );
                       },
                       icon: Icon(
                         Icons.visibility,
