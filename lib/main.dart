@@ -1,14 +1,15 @@
+import 'package:bri_cek/firebase_options.dart';
 import 'package:bri_cek/screens/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:bri_cek/screens/home_screen.dart';
-import 'package:bri_cek/screens/choose_bank_screen.dart';
 import 'package:bri_cek/theme/app_theme.dart';
 import 'package:bri_cek/utils/app_size.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Set preferensi orientasi (opsional)
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
