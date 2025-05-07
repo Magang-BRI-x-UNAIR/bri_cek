@@ -16,6 +16,8 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   runApp(const BRICek());
 }
 
@@ -26,6 +28,7 @@ class BRICek extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'BRICek',
       theme: AppTheme.theme,
       home: const SplashScreen(),
       builder: (context, child) {
