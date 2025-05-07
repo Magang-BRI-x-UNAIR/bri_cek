@@ -1,7 +1,12 @@
+import 'dart:math' as Math;
+
 import 'package:bri_cek/data/checklist_item_data.dart';
+import 'package:bri_cek/widgets/progress_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/models/checklist_item.dart';
 import 'package:bri_cek/utils/app_size.dart';
+import 'package:bri_cek/widgets/category_indicators.dart';
+import 'package:bri_cek/widgets/checklist_question_card.dart';
 import 'package:intl/intl.dart';
 
 class ChecklistScreen extends StatefulWidget {
@@ -22,20 +27,119 @@ class ChecklistScreen extends StatefulWidget {
   State<ChecklistScreen> createState() => _ChecklistScreenState();
 }
 
-class _ChecklistScreenState extends State<ChecklistScreen> {
+class _ChecklistScreenState extends State<ChecklistScreen>
+    with SingleTickerProviderStateMixin {
+  // Tambahkan controller dan variabel untuk animasi
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+  late Animation<double> _fadeAnimation;
+
+  // Tipe transisi untuk next/previous
+  bool _isForward = true;
+
+  // Function to get filtered checklist items based on current employee data
+  List<ChecklistItem> _getFilteredChecklistItems() {
+    // If no employee data, return all items
+    if (widget.employeeData == null) return _checklistItems;
+
+    // Get gender from employee data
+    final bool isWoman = widget.employeeData!['gender'] == 'Wanita';
+
+    // Here we should add logic to determine if employee wears hijab
+    // For this example, let's assume we add this data to employeeData
+    final bool hasHijab = widget.employeeData!['hasHijab'] == true;
+
+    // Get current uniform type - in real app you might want to determine this by day or other logic
+    // For this example, let's use a default or get from some configuration
+    final String currentUniformType =
+        widget.employeeData!['uniformType'] ?? 'Korporat';
+
+    // Filter items based on gender, hijab, and uniform type
+    return _checklistItems.where((item) {
+      // Skip items that are gender-specific and don't match
+      if (item.question.startsWith('Wanita:') && !isWoman) return false;
+      if (item.question.startsWith('Pria:') && isWoman) return false;
+
+      // Skip items based on hijab
+      if (item.forHijab == true && !hasHijab) return false;
+      if (item.forHijab == false && hasHijab) return false;
+
+      // Skip items that are uniform-specific if they don't match current uniform
+      if (item.uniformType.isNotEmpty &&
+          !item.uniformType.contains(currentUniformType))
+        return false;
+
+      return true;
+    }).toList();
+  }
+
+  // Group items by category and subcategory
+  Map<String, Map<String, List<ChecklistItem>>> _getGroupedItems() {
+    final filteredItems = _getFilteredChecklistItems();
+    final Map<String, Map<String, List<ChecklistItem>>> groupedItems = {};
+
+    for (var item in filteredItems) {
+      // Create category map if it doesn't exist
+      if (!groupedItems.containsKey(item.category)) {
+        groupedItems[item.category] = {};
+      }
+
+      // Create subcategory list if it doesn't exist
+      if (!groupedItems[item.category]!.containsKey(item.subcategory)) {
+        groupedItems[item.category]![item.subcategory] = [];
+      }
+
+      // Add item to its category and subcategory
+      groupedItems[item.category]![item.subcategory]!.add(item);
+    }
+
+    return groupedItems;
+  }
+
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy');
   List<ChecklistItem> _checklistItems = [];
+  Map<String, Map<String, List<ChecklistItem>>> _groupedChecklistItems = {};
   bool _isLoading = true;
-  int _currentIndex = 0;
-  final PageController _pageController = PageController();
-  final List<GlobalKey<FormState>> _formKeys = [];
+  int _currentCategoryIndex = 0;
+  int _currentSubcategoryIndex = 0;
+  int _currentItemIndex = 0;
 
-  // For overall progress
-  double get _progress => (_currentIndex + 1) / _checklistItems.length;
+  // For storing category and subcategory names in order
+  List<String> _categoryNames = [];
+  List<List<String>> _subcategoryNames = [];
+
+  // For tracking current item
+  ChecklistItem? _currentItem;
+
+  // For form validation
+  final _formKey = GlobalKey<FormState>();
+
+  // For overall progress calculation
+  int _totalItems = 0;
+  int _completedItems = 0;
 
   @override
   void initState() {
     super.initState();
+
+    // Inisialisasi animasi controller dengan durasi lebih cepat
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 250),
+    );
+
+    // Animasi slide dan fade - percepat timing
+    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuad),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Interval(0.3, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
     _loadChecklistItems();
   }
 
@@ -44,21 +148,166 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     await Future.delayed(const Duration(milliseconds: 500));
 
     setState(() {
+      // Get checklist items for the selected category
       _checklistItems = getChecklistForCategory(widget.selectedCategory);
 
-      // Generate form keys for each item
-      for (int i = 0; i < _checklistItems.length; i++) {
-        _formKeys.add(GlobalKey<FormState>());
+      // Filter and group items
+      _groupedChecklistItems = _getGroupedItems();
+
+      // Extract ordered category and subcategory names
+      _categoryNames = _groupedChecklistItems.keys.toList();
+
+      _subcategoryNames =
+          _categoryNames.map((category) {
+            return _groupedChecklistItems[category]!.keys.toList();
+          }).toList();
+
+      // Calculate total number of items for progress tracking
+      _totalItems = _getFilteredChecklistItems().length;
+
+      // Set initial current item if available
+      if (_categoryNames.isNotEmpty &&
+          _subcategoryNames.isNotEmpty &&
+          _subcategoryNames[0].isNotEmpty) {
+        _currentItem =
+            _groupedChecklistItems[_categoryNames[0]]![_subcategoryNames[0][0]]![0];
       }
 
       _isLoading = false;
+
+      // Play animasi di awal
+      _animationController.forward();
     });
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _animationController.dispose();
     super.dispose();
+  }
+
+  // Calculate progress based on completed items
+  double get _progress => _totalItems > 0 ? _completedItems / _totalItems : 0;
+
+  // Helper to get current subcategory items
+  List<ChecklistItem> _getCurrentSubcategoryItems() {
+    if (_currentCategoryIndex >= _categoryNames.length ||
+        _currentSubcategoryIndex >=
+            _subcategoryNames[_currentCategoryIndex].length) {
+      return [];
+    }
+
+    final category = _categoryNames[_currentCategoryIndex];
+    final subcategory =
+        _subcategoryNames[_currentCategoryIndex][_currentSubcategoryIndex];
+
+    return _groupedChecklistItems[category]![subcategory]!;
+  }
+
+  // Navigate to the next item, subcategory, or category
+  void _goToNextItem() {
+    final currentSubcategoryItems = _getCurrentSubcategoryItems();
+
+    // Set arah animasi ke forward (dari kanan ke kiri)
+    _isForward = true;
+
+    // Reset dan putar animasi untuk transisi
+    _animationController.reset();
+
+    if (_currentItemIndex < currentSubcategoryItems.length - 1) {
+      // More items in current subcategory
+      setState(() {
+        _currentItemIndex++;
+        _currentItem = currentSubcategoryItems[_currentItemIndex];
+      });
+
+      // Mulai animasi
+      _animationController.forward();
+    } else if (_currentSubcategoryIndex <
+        _subcategoryNames[_currentCategoryIndex].length - 1) {
+      // Move to next subcategory
+      setState(() {
+        _currentSubcategoryIndex++;
+        _currentItemIndex = 0;
+        _currentItem = _getCurrentSubcategoryItems()[0];
+      });
+
+      // Mulai animasi
+      _animationController.forward();
+    } else if (_currentCategoryIndex < _categoryNames.length - 1) {
+      // Move to next category
+      setState(() {
+        _currentCategoryIndex++;
+        _currentSubcategoryIndex = 0;
+        _currentItemIndex = 0;
+        _currentItem = _getCurrentSubcategoryItems()[0];
+      });
+
+      // Mulai animasi
+      _animationController.forward();
+    } else {
+      // At the end - show summary
+      _submitChecklist();
+    }
+  }
+
+  // Navigate to the previous item
+  void _goToPreviousItem() {
+    // Set arah animasi ke backward (dari kiri ke kanan)
+    _isForward = false;
+
+    // Reset dan putar animasi untuk transisi
+    _animationController.reset();
+
+    if (_currentItemIndex > 0) {
+      // Previous item in current subcategory
+      setState(() {
+        _currentItemIndex--;
+        _currentItem = _getCurrentSubcategoryItems()[_currentItemIndex];
+      });
+
+      // Mulai animasi
+      _animationController.forward();
+    } else if (_currentSubcategoryIndex > 0) {
+      // Move to previous subcategory
+      setState(() {
+        _currentSubcategoryIndex--;
+        final items = _getCurrentSubcategoryItems();
+        _currentItemIndex = items.length - 1;
+        _currentItem = items[_currentItemIndex];
+      });
+
+      // Mulai animasi
+      _animationController.forward();
+    } else if (_currentCategoryIndex > 0) {
+      // Move to previous category
+      setState(() {
+        _currentCategoryIndex--;
+        _currentSubcategoryIndex =
+            _subcategoryNames[_currentCategoryIndex].length - 1;
+        final items = _getCurrentSubcategoryItems();
+        _currentItemIndex = items.length - 1;
+        _currentItem = items[_currentItemIndex];
+      });
+
+      // Mulai animasi
+      _animationController.forward();
+    }
+  }
+
+  // Check if we're at the last item overall
+  bool get _isLastItem {
+    return _currentCategoryIndex == _categoryNames.length - 1 &&
+        _currentSubcategoryIndex ==
+            _subcategoryNames[_currentCategoryIndex].length - 1 &&
+        _currentItemIndex == _getCurrentSubcategoryItems().length - 1;
+  }
+
+  // Check if we're at the first item overall
+  bool get _isFirstItem {
+    return _currentCategoryIndex == 0 &&
+        _currentSubcategoryIndex == 0 &&
+        _currentItemIndex == 0;
   }
 
   @override
@@ -68,7 +317,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header with consistent styling
+            // Header section
             _buildHeader(),
 
             // Checklist Content
@@ -77,24 +326,74 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 : Expanded(
                   child: Column(
                     children: [
-                      // Progress indicator
-                      _buildProgressIndicator(),
+                      // Padding yang lebih efisien
+                      SizedBox(height: AppSize.heightPercent(0.5)),
 
-                      // Checklist questions
-                      Expanded(
-                        child: PageView.builder(
-                          controller: _pageController,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _checklistItems.length,
-                          onPageChanged: (index) {
-                            setState(() {
-                              _currentIndex = index;
-                            });
-                          },
-                          itemBuilder: (context, index) {
-                            return _buildQuestionPage(index);
-                          },
+                      // Progress indicator
+                      ProgressIndicatorWidget(progress: _progress),
+
+                      // Category indicators
+                      AnimatedBuilder(
+                        animation: _animationController,
+                        builder: (context, child) {
+                          return FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: child,
+                          );
+                        },
+                        child: CategoryIndicators(
+                          categoryNames: _categoryNames,
+                          subcategoryNames: _subcategoryNames,
+                          currentCategoryIndex: _currentCategoryIndex,
+                          currentSubcategoryIndex: _currentSubcategoryIndex,
                         ),
+                      ),
+
+                      // Question card
+                      Expanded(
+                        child:
+                            _currentItem != null
+                                ? AnimatedBuilder(
+                                  animation: _animationController,
+                                  builder: (context, child) {
+                                    // Slide dan fade animation
+                                    return SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin:
+                                            _isForward
+                                                ? Offset(
+                                                  0.3,
+                                                  0,
+                                                ) // Dari kanan ke kiri
+                                                : Offset(
+                                                  -0.3,
+                                                  0,
+                                                ), // Dari kiri ke kanan
+                                        end: Offset.zero,
+                                      ).animate(_animation),
+                                      child: FadeTransition(
+                                        opacity: _fadeAnimation,
+                                        child: child,
+                                      ),
+                                    );
+                                  },
+                                  child: QuestionCard(
+                                    item: _currentItem!,
+                                    questionNumber: _completedItems + 1,
+                                    formKey: _formKey,
+                                    onAnswerChanged: (value) {
+                                      setState(() {
+                                        _currentItem!.answerValue = value;
+                                      });
+                                    },
+                                    onNoteChanged: (value) {
+                                      setState(() {
+                                        _currentItem!.note = value;
+                                      });
+                                    },
+                                  ),
+                                )
+                                : Center(child: Text('No questions available')),
                       ),
 
                       // Navigation buttons
@@ -109,15 +408,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 
   Widget _buildHeader() {
-    // Dynamically adjust header height based on whether employee data exists
+    // Memperkecil ukuran header
     final double headerHeight =
         widget.employeeData != null
-            ? AppSize.heightPercent(
-              28,
-            ) // Lebih tinggi untuk header dengan info karyawan
-            : AppSize.heightPercent(
-              21,
-            ); // Tinggi standar untuk header kategori lain
+            ? AppSize.heightPercent(24) // Lebih kecil dari sebelumnya (28)
+            : AppSize.heightPercent(20); // Lebih kecil dari sebelumnya (21)
 
     return Container(
       width: double.infinity,
@@ -135,13 +430,13 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         children: [
           // Cloud decorations
           _buildCloudDecoration(
-            top: AppSize.heightPercent(10),
-            left: AppSize.widthPercent(20),
-            size: AppSize.widthPercent(13),
+            top: AppSize.heightPercent(17),
+            left: AppSize.widthPercent(70),
+            size: AppSize.widthPercent(10),
             opacity: 0.3,
           ),
           _buildCloudDecoration(
-            top: AppSize.heightPercent(3),
+            top: AppSize.heightPercent(5),
             left: AppSize.widthPercent(42),
             size: AppSize.widthPercent(12),
             opacity: 0.2,
@@ -153,22 +448,19 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             opacity: 0.2,
           ),
 
-          // Header content - wrapping in SingleChildScrollView for extra safety
+          // Header content
           SingleChildScrollView(
-            physics:
-                NeverScrollableScrollPhysics(), // Prevents actual scrolling
+            physics: NeverScrollableScrollPhysics(),
             child: Padding(
               padding: EdgeInsets.only(
                 left: AppSize.widthPercent(6),
                 top: AppSize.heightPercent(2),
                 right: AppSize.widthPercent(6),
-                bottom: AppSize.heightPercent(
-                  2,
-                ), // Add bottom padding for safety
+                bottom: AppSize.heightPercent(2),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min, // Important for proper sizing
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Bank info and date row
                   Row(
@@ -242,31 +534,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
                   SizedBox(height: AppSize.heightPercent(1.5)),
 
-                  // Category badge
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSize.widthPercent(3),
-                      vertical: AppSize.heightPercent(0.5),
+                  // Title
+                  Text(
+                    "Checklist",
+                    style: AppSize.getTextStyle(
+                      fontSize: AppSize.titleFontSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(
-                        AppSize.cardBorderRadius,
-                      ),
-                    ),
-                    child: Text(
-                      widget.selectedCategory,
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.smallFontSize,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
 
-                  // Employee info if available - using more compact layout
+                  // Employee info if available
                   if (widget.employeeData != null) ...[
-                    SizedBox(height: AppSize.heightPercent(1.5)),
                     Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: AppSize.widthPercent(3),
@@ -317,26 +598,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     ),
                   ],
 
-                  SizedBox(height: AppSize.heightPercent(1)),
-
-                  // Title - using more concise text for employee categories
-                  Text(
-                    widget.employeeData != null
-                        ? "Checklist ${widget.selectedCategory}"
-                        : "Checklist ${widget.selectedCategory}",
-                    style: AppSize.getTextStyle(
-                      fontSize: AppSize.titleFontSize,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
                   SizedBox(height: AppSize.heightPercent(0.5)),
                   Text(
                     _isLoading
                         ? "Memuat daftar pertanyaan..."
-                        : "Pertanyaan ${_currentIndex + 1} dari ${_checklistItems.length}",
+                        : "Pertanyaan ${_completedItems + 1} dari ${_totalItems}",
                     style: AppSize.getTextStyle(
                       fontSize: AppSize.bodyFontSize,
                       color: Colors.white.withOpacity(0.9),
@@ -389,255 +655,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
-  Widget _buildProgressIndicator() {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSize.paddingHorizontal,
-        vertical: AppSize.heightPercent(1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Progress',
-                style: AppSize.getTextStyle(
-                  fontSize: AppSize.bodyFontSize,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-              Text(
-                '${(_progress * 100).toInt()}%',
-                style: AppSize.getTextStyle(
-                  fontSize: AppSize.bodyFontSize,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.blue.shade700,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: AppSize.heightPercent(0.5)),
-          LinearProgressIndicator(
-            value: _progress,
-            backgroundColor: Colors.grey.shade200,
-            color: Colors.blue.shade700,
-            minHeight: AppSize.heightPercent(0.8),
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestionPage(int index) {
-    final item = _checklistItems[index];
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: AppSize.paddingHorizontal),
-      child: Form(
-        key: _formKeys[index],
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Question card
-              Container(
-                padding: EdgeInsets.all(AppSize.paddingHorizontal * 0.8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Question number
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppSize.widthPercent(2.5),
-                        vertical: AppSize.heightPercent(0.3),
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade100,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Text(
-                        'Pertanyaan ${index + 1}',
-                        style: AppSize.getTextStyle(
-                          fontSize: AppSize.smallFontSize,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.blue.shade700,
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: AppSize.heightPercent(1)),
-
-                    // Question text
-                    Text(
-                      item.question,
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.subtitleFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade800,
-                      ),
-                    ),
-
-                    SizedBox(height: AppSize.heightPercent(2)),
-
-                    // Options
-                    Column(
-                      children:
-                          item.options.map((option) {
-                            final isSelected =
-                                item.answerValue == (option == 'Ya');
-                            return Container(
-                              margin: EdgeInsets.only(
-                                bottom: AppSize.heightPercent(1),
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color:
-                                      isSelected
-                                          ? Colors.blue.shade400
-                                          : Colors.grey.shade300,
-                                  width: isSelected ? 2 : 1,
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  AppSize.cardBorderRadius,
-                                ),
-                                color:
-                                    isSelected
-                                        ? Colors.blue.shade50
-                                        : Colors.white,
-                              ),
-                              child: RadioListTile<bool>(
-                                title: Text(
-                                  option,
-                                  style: AppSize.getTextStyle(
-                                    fontSize: AppSize.bodyFontSize,
-                                    fontWeight:
-                                        isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                    color:
-                                        isSelected
-                                            ? Colors.blue.shade700
-                                            : Colors.grey.shade800,
-                                  ),
-                                ),
-                                value: option == 'Ya',
-                                groupValue: item.answerValue,
-                                activeColor: Colors.blue.shade700,
-                                onChanged: (value) {
-                                  setState(() {
-                                    item.answerValue = value;
-                                  });
-                                },
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: AppSize.widthPercent(3),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppSize.cardBorderRadius,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                    ),
-
-                    SizedBox(height: AppSize.heightPercent(1)),
-
-                    // Note field
-                    if (item.allowsNote) ...[
-                      Text(
-                        'Catatan (opsional):',
-                        style: AppSize.getTextStyle(
-                          fontSize: AppSize.bodyFontSize,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                      SizedBox(height: AppSize.heightPercent(0.5)),
-                      TextFormField(
-                        initialValue: item.note,
-                        onChanged: (value) {
-                          setState(() {
-                            item.note = value;
-                          });
-                        },
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          hintText: 'Tambahkan catatan jika perlu',
-                          hintStyle: AppSize.getTextStyle(
-                            fontSize: AppSize.smallFontSize,
-                            color: Colors.grey.shade400,
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppSize.cardBorderRadius,
-                            ),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppSize.cardBorderRadius,
-                            ),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppSize.cardBorderRadius,
-                            ),
-                            borderSide: BorderSide(color: Colors.blue.shade400),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildNavigationButtons() {
-    final isLastQuestion = _currentIndex == _checklistItems.length - 1;
-
     return Padding(
       padding: EdgeInsets.all(AppSize.paddingHorizontal),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Back button (visible if not first question)
-          _currentIndex > 0
+          !_isFirstItem
               ? Expanded(
                 flex: 2,
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () {
-                      _pageController.previousPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    },
+                    onTap: _goToPreviousItem,
                     borderRadius: BorderRadius.circular(
                       AppSize.cardBorderRadius,
                     ),
@@ -699,11 +730,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               child: InkWell(
                 onTap: () {
                   // Get current item
-                  final currentItem = _checklistItems[_currentIndex];
+                  if (_currentItem == null) return;
 
                   // If item is required and not answered, show validation message
-                  if (currentItem.isRequired &&
-                      currentItem.answerValue == null) {
+                  if (_currentItem!.isRequired &&
+                      _currentItem!.answerValue == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Silahkan pilih jawaban terlebih dahulu'),
@@ -719,15 +750,22 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     return;
                   }
 
+                  // Update completed items count if the current item has been answered
+                  if (_currentItem!.answerValue != null) {
+                    setState(() {
+                      _completedItems = Math.min(
+                        _completedItems + 1,
+                        _totalItems,
+                      );
+                    });
+                  }
+
                   // If last question, submit the form
-                  if (isLastQuestion) {
+                  if (_isLastItem) {
                     _submitChecklist();
                   } else {
                     // Else, go to next question
-                    _pageController.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
+                    _goToNextItem();
                   }
                 },
                 borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
@@ -735,10 +773,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        isLastQuestion
+                        _isLastItem
                             ? Colors.green.shade500
                             : Colors.blue.shade500,
-                        isLastQuestion
+                        _isLastItem
                             ? Colors.green.shade700
                             : Colors.blue.shade700,
                       ],
@@ -751,7 +789,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     boxShadow: [
                       BoxShadow(
                         color:
-                            isLastQuestion
+                            _isLastItem
                                 ? Colors.green.withOpacity(0.3)
                                 : Colors.blue.withOpacity(0.3),
                         offset: const Offset(0, 2),
@@ -767,7 +805,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          isLastQuestion ? 'Selesai' : 'Lanjutkan',
+                          _isLastItem ? 'Selesai' : 'Lanjutkan',
                           style: AppSize.getTextStyle(
                             fontSize: AppSize.bodyFontSize,
                             color: Colors.white,
@@ -776,7 +814,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                         ),
                         SizedBox(width: AppSize.widthPercent(1.5)),
                         Icon(
-                          isLastQuestion
+                          _isLastItem
                               ? Icons.check_circle
                               : Icons.arrow_forward_rounded,
                           size: AppSize.iconSize * 0.8,
@@ -799,7 +837,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     int totalAnswered = 0;
     int totalRequired = 0;
 
-    for (var item in _checklistItems) {
+    List<ChecklistItem> filteredItems = _getFilteredChecklistItems();
+
+    for (var item in filteredItems) {
       if (item.isRequired) totalRequired++;
       if (item.answerValue != null) totalAnswered++;
     }
@@ -822,11 +862,14 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
     // Calculate score - in real app, you might have a more complex calculation
     int positiveAnswers = 0;
-    for (var item in _checklistItems) {
+    for (var item in filteredItems) {
       if (item.answerValue == true) positiveAnswers++;
     }
 
-    final score = (positiveAnswers / _checklistItems.length) * 100;
+    final score =
+        filteredItems.isEmpty
+            ? 0
+            : (positiveAnswers / filteredItems.length) * 100;
 
     // In real app, you would save the results to database here
 
@@ -834,7 +877,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _buildCompletionDialog(score),
+      builder: (context) => _buildCompletionDialog(score.toDouble()),
     );
   }
 
@@ -848,10 +891,32 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       ),
       title: Column(
         children: [
-          Icon(
-            isPassing ? Icons.check_circle : Icons.warning,
-            color: isPassing ? Colors.green : Colors.amber,
-            size: AppSize.iconSize * 2,
+          // Animasi ikon dengan scaling tapi tanpa rotasi untuk warning icon
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: Duration(milliseconds: 500), // Dipercepat dari 800ms
+            curve: Curves.elasticOut,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: value,
+                child:
+                    isPassing
+                        ? Transform.rotate(
+                          // Rotasi hanya untuk ikon sukses, tidak untuk warning
+                          angle: value * 2 * 3.14 * 0.05,
+                          child: Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: AppSize.iconSize * 2,
+                          ),
+                        )
+                        : Icon(
+                          Icons.warning,
+                          color: Colors.amber,
+                          size: AppSize.iconSize * 2,
+                        ),
+              );
+            },
           ),
           SizedBox(height: AppSize.heightPercent(1)),
           Text(
@@ -868,55 +933,81 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Score display
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: AppSize.widthPercent(25),
-                height: AppSize.widthPercent(25),
-                child: CircularProgressIndicator(
-                  value: score / 100,
-                  backgroundColor: Colors.grey.shade200,
-                  color: isPassing ? Colors.green : Colors.amber,
-                  strokeWidth: 10,
-                ),
-              ),
-              Column(
+          // Score display dengan animasi (percepat)
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: score / 100),
+            duration: Duration(milliseconds: 800), // Dipercepat dari 1500ms
+            curve: Curves.easeOutQuart,
+            builder: (context, value, child) {
+              return Stack(
+                alignment: Alignment.center,
                 children: [
-                  Text(
-                    '$scoreInt%',
-                    style: AppSize.getTextStyle(
-                      fontSize: AppSize.titleFontSize,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    width: AppSize.widthPercent(25),
+                    height: AppSize.widthPercent(25),
+                    child: CircularProgressIndicator(
+                      value: value,
+                      backgroundColor: Colors.grey.shade200,
                       color: isPassing ? Colors.green : Colors.amber,
+                      strokeWidth: 10,
                     ),
                   ),
-                  Text(
-                    'Score',
-                    style: AppSize.getTextStyle(
-                      fontSize: AppSize.smallFontSize,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade600,
-                    ),
+                  Column(
+                    children: [
+                      // Animasi counter score (percepat)
+                      TweenAnimationBuilder<int>(
+                        tween: IntTween(begin: 0, end: scoreInt),
+                        duration: Duration(
+                          milliseconds: 600,
+                        ), // Dipercepat dari 1200ms
+                        builder: (context, value, child) {
+                          return Text(
+                            '$value%',
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.titleFontSize,
+                              fontWeight: FontWeight.bold,
+                              color: isPassing ? Colors.green : Colors.amber,
+                            ),
+                          );
+                        },
+                      ),
+                      Text(
+                        'Score',
+                        style: AppSize.getTextStyle(
+                          fontSize: AppSize.smallFontSize,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
 
           SizedBox(height: AppSize.heightPercent(2)),
 
-          // Results summary
-          Text(
-            isPassing
-                ? 'Checklist ${widget.selectedCategory} telah selesai dengan hasil yang baik.'
-                : 'Checklist ${widget.selectedCategory} memerlukan perhatian lebih lanjut.',
-            style: AppSize.getTextStyle(
-              fontSize: AppSize.bodyFontSize,
-              color: Colors.grey.shade700,
-            ),
-            textAlign: TextAlign.center,
+          // Results summary dengan animasi fade in (percepat)
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: Duration(milliseconds: 400), // Dipercepat dari 800ms
+            curve: Curves.easeOut,
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Text(
+                  isPassing
+                      ? 'Checklist ${widget.selectedCategory} telah selesai dengan hasil yang baik.'
+                      : 'Checklist ${widget.selectedCategory} memerlukan perhatian lebih lanjut.',
+                  style: AppSize.getTextStyle(
+                    fontSize: AppSize.bodyFontSize,
+                    color: Colors.grey.shade700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            },
           ),
         ],
       ),

@@ -65,37 +65,216 @@ List<ChecklistItem> _getSatpamChecklist() {
 // Daftar checklist untuk Teller
 List<ChecklistItem> _getTellerChecklist() {
   return [
+    // Grooming - Wajah & Badan
     ChecklistItem(
-      id: 'teller_1',
-      question: 'Teller menggunakan seragam rapi dan name tag',
+      id: 'teller_g_wb_1',
+      question: 'Wajah bersih dan wajah terlihat segar',
+      category: 'Grooming',
+      subcategory: 'Wajah & Badan',
     ),
     ChecklistItem(
-      id: 'teller_2',
+      id: 'teller_g_wb_2',
+      question:
+          'Wanita: Menggunakan make up natural (bedak, alis, eye liner, blush on, lipstick)',
+      category: 'Grooming',
+      subcategory: 'Wajah & Badan',
+      forHijab: true,
+    ),
+    ChecklistItem(
+      id: 'teller_g_wb_3',
+      question: 'Tidak berbau badan, mulut, dan parfum menyengat',
+      category: 'Grooming',
+      subcategory: 'Wajah & Badan',
+    ),
+
+    // Grooming - Rambut (Non-Hijab)
+    ChecklistItem(
+      id: 'teller_g_r_1',
+      question:
+          'Rambut tertata rapi, warna rambut terlihat alami (hitam/cokelat tua) dan tidak menggunakan warna highlight/ombre mencolok',
+      category: 'Grooming',
+      subcategory: 'Rambut',
+      forHijab: false,
+    ),
+    ChecklistItem(
+      id: 'teller_g_r_2',
+      question:
+          'Tidak menggunakan aksesoris rambut warna-warni/ikat rambut karet/jedai',
+      category: 'Grooming',
+      subcategory: 'Rambut',
+      forHijab: false,
+    ),
+
+    // Grooming - Rambut Seragam Korporat/Batik (Non-Hijab)
+    ChecklistItem(
+      id: 'teller_g_r_k_1',
+      question:
+          'Wanita: Rambut diikat/disanggul rapi dengan jaring rambut/hairnet warna hitam/sesuai warna rambut',
+      category: 'Grooming',
+      subcategory: 'Rambut',
+      uniformType: 'Korporat/Batik',
+      forHijab: false,
+    ),
+    ChecklistItem(
+      id: 'teller_g_r_k_2',
+      question:
+          'Pria: Rambut pendek rapi, tidak menyentuh kerah baju dan daun telinga',
+      category: 'Grooming',
+      subcategory: 'Rambut',
+      uniformType: 'Korporat/Batik',
+      forHijab: false,
+    ),
+
+    // Grooming - Rambut Seragam Pakaian Casual (Non-Hijab)
+    ChecklistItem(
+      id: 'teller_g_r_c_1',
+      question:
+          'Wanita: Rambut pendek/sedang/panjang diikat rapi panjang maksimal sebahu, tidak diwarnai mencolok',
+      category: 'Grooming',
+      subcategory: 'Rambut',
+      uniformType: 'Casual',
+      forHijab: false,
+    ),
+    ChecklistItem(
+      id: 'teller_g_r_c_2',
+      question:
+          'Pria: Rambut pendek rapi, tidak menyentuh kerah baju dan daun telinga',
+      category: 'Grooming',
+      subcategory: 'Rambut',
+      uniformType: 'Casual',
+      forHijab: false,
+    ),
+
+    // Grooming - Jilbab (Hijab)
+    ChecklistItem(
+      id: 'teller_g_j_1',
+      question:
+          'Jilbab dikenakan dengan rapi, tidak terlihat rambut atau leher',
+      category: 'Grooming',
+      subcategory: 'Jilbab',
+      forHijab: true,
+    ),
+    ChecklistItem(
+      id: 'teller_g_j_2',
+      question: 'Jilbab berwarna senada/sesuai dengan seragam',
+      category: 'Grooming',
+      subcategory: 'Jilbab',
+      forHijab: true,
+    ),
+
+    // Grooming - Pakaian Seragam Korporat
+    ChecklistItem(
+      id: 'teller_g_p_k_1',
+      question:
+          'Menggunakan seragam korporat sesuai ketentuan pada hari Senin-Rabu',
+      category: 'Grooming',
+      subcategory: 'Pakaian',
+      uniformType: 'Korporat',
+    ),
+    ChecklistItem(
+      id: 'teller_g_p_k_2',
+      question: 'Seragam bersih, rapi dan tidak kusut',
+      category: 'Grooming',
+      subcategory: 'Pakaian',
+      uniformType: 'Korporat',
+    ),
+
+    // Grooming - Pakaian Seragam Batik
+    ChecklistItem(
+      id: 'teller_g_p_b_1',
+      question: 'Menggunakan seragam batik sesuai ketentuan pada hari Kamis',
+      category: 'Grooming',
+      subcategory: 'Pakaian',
+      uniformType: 'Batik',
+    ),
+    ChecklistItem(
+      id: 'teller_g_p_b_2',
+      question: 'Batik bersih, rapi dan tidak kusut',
+      category: 'Grooming',
+      subcategory: 'Pakaian',
+      uniformType: 'Batik',
+    ),
+
+    // Grooming - Pakaian Casual
+    ChecklistItem(
+      id: 'teller_g_p_c_1',
+      question: 'Menggunakan pakaian casual sesuai ketentuan pada hari Jumat',
+      category: 'Grooming',
+      subcategory: 'Pakaian',
+      uniformType: 'Casual',
+    ),
+    ChecklistItem(
+      id: 'teller_g_p_c_2',
+      question: 'Pakaian casual bersih, rapi dan tidak kusut',
+      category: 'Grooming',
+      subcategory: 'Pakaian',
+      uniformType: 'Casual',
+    ),
+
+    // Grooming - Atribut & Aksesoris
+    ChecklistItem(
+      id: 'teller_g_a_1',
+      question: 'Menggunakan name tag secara benar dan terlihat jelas',
+      category: 'Grooming',
+      subcategory: 'Atribut & Aksesoris',
+    ),
+    ChecklistItem(
+      id: 'teller_g_a_2',
+      question:
+          'Wanita: Menggunakan aksesoris yang tidak berlebihan dan minimalis',
+      category: 'Grooming',
+      subcategory: 'Atribut & Aksesoris',
+    ),
+    ChecklistItem(
+      id: 'teller_g_a_3',
+      question:
+          'Pria: Tidak menggunakan aksesoris selain cincin kawin dan jam tangan',
+      category: 'Grooming',
+      subcategory: 'Atribut & Aksesoris',
+    ),
+
+    // Standar Layanan
+    ChecklistItem(
+      id: 'teller_s_1',
       question: 'Teller menyambut nasabah dengan senyum dan salam',
+      category: 'Standar Layanan',
+      subcategory: 'Sambutan',
     ),
     ChecklistItem(
-      id: 'teller_3',
+      id: 'teller_s_2',
       question: 'Teller berkomunikasi dengan jelas dan santun',
+      category: 'Standar Layanan',
+      subcategory: 'Komunikasi',
     ),
     ChecklistItem(
-      id: 'teller_4',
+      id: 'teller_s_3',
       question: 'Teller menghitung uang dengan tepat dan teliti',
+      category: 'Standar Layanan',
+      subcategory: 'Transaksi',
     ),
     ChecklistItem(
-      id: 'teller_5',
+      id: 'teller_s_4',
       question: 'Teller mengkonfirmasi jumlah transaksi kepada nasabah',
+      category: 'Standar Layanan',
+      subcategory: 'Transaksi',
     ),
     ChecklistItem(
-      id: 'teller_6',
+      id: 'teller_s_5',
       question: 'Teller memproses transaksi dengan cepat dan efisien',
+      category: 'Standar Layanan',
+      subcategory: 'Transaksi',
     ),
     ChecklistItem(
-      id: 'teller_7',
+      id: 'teller_s_6',
       question: 'Area kerja teller tertata rapi dan bersih',
+      category: 'Standar Layanan',
+      subcategory: 'Area Kerja',
     ),
     ChecklistItem(
-      id: 'teller_8',
+      id: 'teller_s_7',
       question: 'Teller mengucapkan terima kasih di akhir layanan',
+      category: 'Standar Layanan',
+      subcategory: 'Penutupan',
     ),
   ];
 }

@@ -29,6 +29,13 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
   String? _selectedGender;
   final List<String> _genderOptions = ['Pria', 'Wanita'];
 
+  // Add uniform type selection
+  String? _selectedUniformType;
+  final List<String> _uniformOptions = ['Korporat', 'Batik', 'Casual'];
+
+  // Add hijab option for female employees
+  bool? _hasHijab;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -287,6 +294,85 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                           onChanged: (value) {
                                             setState(() {
                                               _selectedGender = value;
+                                              // Reset hijab selection when gender changes
+                                              if (value != 'Wanita') {
+                                                _hasHijab = null;
+                                              }
+                                            });
+                                          },
+                                        );
+                                      }).toList(),
+                                ),
+                              ),
+
+                              SizedBox(height: AppSize.heightPercent(2)),
+
+                              // Show hijab option if selected gender is female
+                              if (_selectedGender == 'Wanita') ...[
+                                _buildFormLabel('Jilbab'),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(
+                                      AppSize.cardBorderRadius,
+                                    ),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      RadioListTile<bool>(
+                                        title: Text('Ya, Menggunakan Jilbab'),
+                                        value: true,
+                                        groupValue: _hasHijab,
+                                        activeColor: Colors.blue.shade700,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _hasHijab = value;
+                                          });
+                                        },
+                                      ),
+                                      RadioListTile<bool>(
+                                        title: Text('Tidak Menggunakan Jilbab'),
+                                        value: false,
+                                        groupValue: _hasHijab,
+                                        activeColor: Colors.blue.shade700,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _hasHijab = value;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: AppSize.heightPercent(2)),
+                              ],
+
+                              // Add uniform type selection
+                              _buildFormLabel('Jenis Seragam'),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(
+                                    AppSize.cardBorderRadius,
+                                  ),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Column(
+                                  children:
+                                      _uniformOptions.map((uniform) {
+                                        return RadioListTile<String>(
+                                          title: Text(uniform),
+                                          value: uniform,
+                                          groupValue: _selectedUniformType,
+                                          activeColor: Colors.blue.shade700,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _selectedUniformType = value;
                                             });
                                           },
                                         );
@@ -378,14 +464,20 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                               color: Colors.transparent,
                               child: InkWell(
                                 onTap: () {
+                                  // Add validation for new fields
                                   if (_formKey.currentState!.validate() &&
-                                      _selectedGender != null) {
-                                    // Create employee data map
+                                      _selectedGender != null &&
+                                      _selectedUniformType != null &&
+                                      (_selectedGender != 'Wanita' ||
+                                          _hasHijab != null)) {
+                                    // Create employee data map with new fields
                                     final employeeData = {
                                       'name': _nameController.text,
                                       'id': _idController.text,
                                       'gender': _selectedGender,
                                       'position': widget.selectedCategory,
+                                      'hasHijab': _hasHijab,
+                                      'uniformType': _selectedUniformType,
                                     };
 
                                     // Navigate to checklist screen with employee data
@@ -402,13 +494,25 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                             ),
                                       ),
                                     );
-                                  } else if (_selectedGender == null) {
-                                    // Show error for gender selection
+                                  } else {
+                                    // Show appropriate error message
+                                    String errorMessage = '';
+
+                                    if (_selectedGender == null) {
+                                      errorMessage =
+                                          'Silahkan pilih jenis kelamin';
+                                    } else if (_selectedGender == 'Wanita' &&
+                                        _hasHijab == null) {
+                                      errorMessage =
+                                          'Silahkan pilih status jilbab';
+                                    } else if (_selectedUniformType == null) {
+                                      errorMessage =
+                                          'Silahkan pilih jenis seragam';
+                                    }
+
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(
-                                          'Silahkan pilih jenis kelamin',
-                                        ),
+                                        content: Text(errorMessage),
                                         backgroundColor: Colors.red,
                                         behavior: SnackBarBehavior.floating,
                                         shape: RoundedRectangleBorder(
