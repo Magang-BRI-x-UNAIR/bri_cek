@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:bri_cek/screens/home_screen.dart';
+import 'package:bri_cek/screens/admin_dashboard_screen.dart'; // Import Admin Dashboard
+import 'package:bri_cek/screens/home_screen.dart'; // Import Home Screen
+import 'package:bri_cek/data/admin_data.dart'; // Import Admin Data
 import 'package:bri_cek/utils/app_size.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -24,11 +26,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _login() {
     if (_formKey.currentState!.validate()) {
-      // Navigate to HomeScreen after successful login
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      final email = _usernameController.text.trim();
+      final password = _passwordController.text.trim();
+
+      // Validasi data admin
+      if (email == AdminData.email && password == AdminData.password) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+        );
+      } else {
+        // Jika bukan admin, arahkan ke HomeScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
     }
   }
 
