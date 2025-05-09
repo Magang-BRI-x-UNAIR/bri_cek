@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
-import 'package:bri_cek/screens/checklist_screen.dart';
+import 'package:bri_cek/screens/checklist/checklist_screen.dart';
 import 'package:intl/intl.dart';
 
 class EmployeeInfoScreen extends StatefulWidget {

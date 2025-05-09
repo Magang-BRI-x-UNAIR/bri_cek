@@ -1,4 +1,4 @@
-import 'package:bri_cek/screens/checklist_screen.dart';
+import 'package:bri_cek/screens/checklist/checklist_screen.dart';
 import 'package:bri_cek/screens/employee_info_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
