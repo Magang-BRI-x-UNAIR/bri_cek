@@ -536,7 +536,7 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
                   // Title
                   Text(
-                    "Checklist",
+                    "Checklist ${widget.selectedCategory}",
                     style: AppSize.getTextStyle(
                       fontSize: AppSize.titleFontSize,
                       fontWeight: FontWeight.bold,
