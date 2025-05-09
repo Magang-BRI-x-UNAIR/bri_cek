@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:bri_cek/screens/login_screen.dart'; // Import Login Screen
+import 'package:bri_cek/screens/manage_questions_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -143,7 +144,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       SizedBox(height: 8),
                       ElevatedButton(
                         onPressed: () {
-                          // Navigasi ke halaman berikutnya
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -164,7 +164,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
-                            // Icon(Icons.arrow_forward, color: Colors.white),
+                            Icon(Icons.arrow_forward, color: Colors.white),
                             SizedBox(width: 8),
                             Text(
                               'Manage Questions',
@@ -264,27 +264,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Icons.cloud,
         color: Colors.white.withOpacity(opacity),
         size: size,
-      ),
-    );
-  }
-}
-
-// Halaman Manage Questions
-class ManageQuestionsScreen extends StatelessWidget {
-  const ManageQuestionsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Questions'),
-        backgroundColor: Colors.blue.shade700,
-      ),
-      body: Center(
-        child: Text(
-          'Halaman untuk mengelola pertanyaan',
-          style: TextStyle(fontSize: 18),
-        ),
       ),
     );
   }
