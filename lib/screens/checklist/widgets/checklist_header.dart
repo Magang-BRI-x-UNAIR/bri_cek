@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class ChecklistHeader extends StatelessWidget {
@@ -134,11 +134,10 @@ class ChecklistHeader extends StatelessWidget {
                                 ),
 
                                 // Category name
-                                SizedBox(height: AppSize.heightPercent(0.3)),
                                 Text(
                                   categoryName,
                                   style: AppSize.getTextStyle(
-                                    fontSize: AppSize.bodyFontSize,
+                                    fontSize: AppSize.smallFontSize,
                                     fontWeight: FontWeight.w500,
                                     color: Colors.white.withOpacity(0.9),
                                   ),
@@ -188,7 +187,7 @@ class ChecklistHeader extends StatelessWidget {
                   ],
                 ),
 
-                SizedBox(height: AppSize.heightPercent(2.5)),
+                SizedBox(height: AppSize.heightPercent(1.3)),
 
                 // Main header text
                 Text(

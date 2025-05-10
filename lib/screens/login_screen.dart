@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:bri_cek/data/admin_data.dart'; // Import Admin Data
 import 'package:bri_cek/screens/admin_dashboard_screen.dart'; // Import Admin Dashboard
 import 'package:bri_cek/screens/home_screen.dart'; // Import Home Screen
-import 'package:bri_cek/data/admin_data.dart'; // Import Admin Data
 import 'package:bri_cek/utils/app_size.dart';
+import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   // App Logo
                   Image.asset(
-                    'assets/images/Logo_baru_BRImo.svg.png', // Replace with your logo path
+                    'assets/images/Logo_BRI_Unair.png', // Replace with your logo path
                     width: AppSize.widthPercent(40),
                   ),
                   SizedBox(height: AppSize.heightPercent(4)),
