@@ -161,7 +161,7 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       }
     }
 
-    // Update completed items count
+    // Update completed items count - Include skipped items in progress calculation
     _completedItems =
         _checklistItems
             .where((item) => item.answerValue != null || item.skipped == true)
@@ -310,20 +310,26 @@ class _ChecklistScreenState extends State<ChecklistScreen>
   }
 
   void _handleSaveChecklist() {
+    // Ubah pengecekan untuk menerima pertanyaan yang di-skip
     final allAnswered = _checklistItems.every(
-      (item) => item.answerValue != null,
+      (item) => item.answerValue != null || item.skipped == true,
     );
 
     if (!allAnswered) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Harap jawab semua pertanyaan sebelum menyimpan.'),
+          content: Text(
+            'Harap jawab atau skip semua pertanyaan sebelum menyimpan.',
+          ),
           backgroundColor: Colors.red.shade700,
         ),
       );
       return;
     }
 
+    // Hitung jumlah pertanyaan yang di-skip
+    final skippedCount =
+        _checklistItems.where((item) => item.skipped == true).length;
     final score = _checklistService.calculateScore(_checklistItems);
 
     showDialog(
@@ -334,6 +340,7 @@ class _ChecklistScreenState extends State<ChecklistScreen>
             score: score,
             categoryName: widget.selectedCategory,
             hasEmployeeData: widget.employeeData != null,
+            skippedCount: skippedCount, // Kirimkan jumlah yang di-skip
             onBackToDetails: () {
               Navigator.pop(context); // Close dialog
               Navigator.pop(context); // Return to previous screen

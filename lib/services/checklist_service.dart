@@ -49,26 +49,20 @@ class ChecklistService {
   }
 
   double calculateScore(List<ChecklistItem> items) {
-    // Filter out skipped items
-    final nonSkippedItems =
-        items.where((item) => item.skipped != true).toList();
+    // Filter hanya item yang tidak di-skip dan memiliki jawaban
+    final answeredItems =
+        items
+            .where((item) => item.skipped != true && item.answerValue != null)
+            .toList();
 
-    // If all items are skipped
-    if (nonSkippedItems.isEmpty) return 0;
-
-    int totalPoints = 0;
-    int totalItems = 0;
-
-    for (var item in nonSkippedItems) {
-      if (item.answerValue != null) {
-        totalItems++;
-        if (item.answerValue == true) {
-          totalPoints++;
-        }
-      }
+    // Jika tidak ada item yang dijawab (semua di-skip), kembalikan 0
+    if (answeredItems.isEmpty) {
+      return 0.0;
     }
 
-    if (totalItems == 0) return 0;
-    return totalPoints / totalItems * 100;
+    // Hitung skor dari pertanyaan yang dijawab (bukan di-skip)
+    final correctItems =
+        answeredItems.where((item) => item.answerValue == true).length;
+    return (correctItems / answeredItems.length) * 100.0;
   }
 }

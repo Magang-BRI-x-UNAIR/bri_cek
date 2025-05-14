@@ -270,8 +270,18 @@ class SubcategoryQuestions extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            // Mark as skipped and clear any previous answers
-            item.skipped = true;
+            // Clear answer if item was answered before
+            if (item.answerValue != null) {
+              onAnswerChanged(item, null);
+            }
+
+            // Toggle skip status
+            bool newSkipStatus = !(item.skipped ?? false);
+            item.skipped = newSkipStatus;
+
+            // Trigger progress update through the callback
+            // We need to call this even though we're not changing the answer value
+            // to trigger the progress bar update
             onAnswerChanged(item, null);
           },
           borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),

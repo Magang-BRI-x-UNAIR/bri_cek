@@ -7,6 +7,7 @@ class CompletionDialog extends StatelessWidget {
   final VoidCallback onBackToDetails;
   final VoidCallback onFinish;
   final bool hasEmployeeData;
+  final int skippedCount;
 
   const CompletionDialog({
     Key? key,
@@ -15,6 +16,7 @@ class CompletionDialog extends StatelessWidget {
     required this.onBackToDetails,
     required this.onFinish,
     this.hasEmployeeData = false,
+    this.skippedCount = 0,
   }) : super(key: key);
 
   @override
@@ -159,15 +161,31 @@ class CompletionDialog extends StatelessWidget {
       builder: (context, value, child) {
         return Opacity(
           opacity: value,
-          child: Text(
-            isPassing
-                ? 'Checklist $categoryName telah selesai dengan hasil yang baik.'
-                : 'Checklist $categoryName memerlukan perhatian lebih lanjut.',
-            style: AppSize.getTextStyle(
-              fontSize: AppSize.bodyFontSize,
-              color: Colors.grey.shade700,
-            ),
-            textAlign: TextAlign.center,
+          child: Column(
+            children: [
+              Text(
+                isPassing
+                    ? 'Checklist $categoryName telah selesai dengan hasil yang baik.'
+                    : 'Checklist $categoryName memerlukan perhatian lebih lanjut.',
+                style: AppSize.getTextStyle(
+                  fontSize: AppSize.bodyFontSize,
+                  color: Colors.grey.shade700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (skippedCount > 0)
+                Padding(
+                  padding: EdgeInsets.only(top: AppSize.heightPercent(1)),
+                  child: Text(
+                    '$skippedCount pertanyaan di-skip dan tidak dihitung dalam skor.',
+                    style: AppSize.getTextStyle(
+                      fontSize: AppSize.smallFontSize,
+                      color: Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+            ],
           ),
         );
       },
