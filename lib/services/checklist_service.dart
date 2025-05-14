@@ -1,68 +1,74 @@
 import 'package:bri_cek/models/checklist_item.dart';
 
 class ChecklistService {
-  // Filter checklist items based on employee data
   List<ChecklistItem> getFilteredItems(
     List<ChecklistItem> items,
     Map<String, dynamic>? employeeData,
   ) {
-    if (employeeData == null) return items;
+    if (employeeData == null) {
+      return items;
+    }
 
-    final bool isWoman = employeeData['gender'] == 'Wanita';
-    final bool hasHijab = employeeData['hasHijab'] == true;
-    final String uniformType = employeeData['uniformType'] ?? 'Korporat';
+    final bool isHijabi = employeeData['isHijabi'] ?? false;
 
     return items.where((item) {
-      // Skip items that are gender-specific and don't match
-      if (item.question.startsWith('Wanita:') && !isWoman) return false;
-      if (item.question.startsWith('Pria:') && isWoman) return false;
+      // If forHijab is null, show to all
+      if (item.forHijab == null) return true;
 
-      // Skip items based on hijab
-      if (item.forHijab == true && !hasHijab) return false;
-      if (item.forHijab == false && hasHijab) return false;
+      // Show hijab-specific items only to hijabi employees
+      if (item.forHijab == true) return isHijabi;
 
-      // Skip items that are uniform-specific if they don't match current uniform
-      if (item.uniformType.isNotEmpty &&
-          !item.uniformType.contains(uniformType))
-        return false;
+      // Show non-hijab items only to non-hijabi employees
+      if (item.forHijab == false) return !isHijabi;
 
       return true;
     }).toList();
   }
 
-  // Group items by category and subcategory
   Map<String, Map<String, List<ChecklistItem>>> groupItems(
-    List<ChecklistItem> filteredItems,
+    List<ChecklistItem> items,
   ) {
-    final Map<String, Map<String, List<ChecklistItem>>> groupedItems = {};
+    final Map<String, Map<String, List<ChecklistItem>>> result = {};
 
-    for (var item in filteredItems) {
-      // Create category map if it doesn't exist
-      if (!groupedItems.containsKey(item.category)) {
-        groupedItems[item.category] = {};
+    for (var item in items) {
+      final category = item.category.isEmpty ? 'Uncategorized' : item.category;
+      final subcategory = item.subcategory;
+
+      if (!result.containsKey(category)) {
+        result[category] = {};
       }
 
-      // Create subcategory list if it doesn't exist
-      if (!groupedItems[item.category]!.containsKey(item.subcategory)) {
-        groupedItems[item.category]![item.subcategory] = [];
+      if (!result[category]!.containsKey(subcategory)) {
+        result[category]![subcategory] = [];
       }
 
-      // Add item to its category and subcategory
-      groupedItems[item.category]![item.subcategory]!.add(item);
+      result[category]![subcategory]!.add(item);
     }
 
-    return groupedItems;
+    return result;
   }
 
-  // Calculate score from checklist results
   double calculateScore(List<ChecklistItem> items) {
-    if (items.isEmpty) return 0;
+    // Filter out skipped items
+    final nonSkippedItems =
+        items.where((item) => item.skipped != true).toList();
 
-    int positiveAnswers = 0;
-    for (var item in items) {
-      if (item.answerValue == true) positiveAnswers++;
+    // If all items are skipped
+    if (nonSkippedItems.isEmpty) return 0;
+
+    int totalPoints = 0;
+    int totalItems = 0;
+
+    for (var item in nonSkippedItems) {
+      if (item.answerValue != null) {
+        totalItems++;
+        if (item.answerValue == true) {
+          totalPoints++;
+        }
+      }
     }
 
-    return (positiveAnswers / items.length) * 100;
+    if (totalItems == 0) return 0;
+    return totalPoints / totalItems * 100;
   }
 }

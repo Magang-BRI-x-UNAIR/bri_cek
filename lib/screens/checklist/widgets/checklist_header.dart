@@ -24,6 +24,7 @@ class ChecklistHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final DateFormat _dateFormat = DateFormat('dd MMMM yyyy');
     final String employeeName = employeeData?['name'] ?? '';
+    final String employeeId = employeeData?['id'] ?? '';
 
     return Container(
       width: double.infinity,
@@ -223,7 +224,7 @@ class ChecklistHeader extends StatelessWidget {
                         ),
                         SizedBox(width: AppSize.widthPercent(1)),
                         Text(
-                          employeeName,
+                          "$employeeName ($employeeId)",
                           style: AppSize.getTextStyle(
                             fontSize: AppSize.smallFontSize,
                             color: Colors.white,

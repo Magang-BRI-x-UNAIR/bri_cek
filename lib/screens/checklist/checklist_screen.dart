@@ -138,9 +138,9 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         final subcategory = _subcategoryNames[catIndex][subIndex];
         final items = _groupedChecklistItems[category]![subcategory]!;
 
-        // A subcategory is complete if all its items have an answer
+        // A subcategory is complete if all its items have an answer or are skipped
         final isSubcategoryComplete = items.every(
-          (item) => item.answerValue != null,
+          (item) => item.answerValue != null || item.skipped == true,
         );
 
         // Update subcategory status
@@ -163,7 +163,9 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
     // Update completed items count
     _completedItems =
-        _checklistItems.where((item) => item.answerValue != null).length;
+        _checklistItems
+            .where((item) => item.answerValue != null || item.skipped == true)
+            .length;
   }
 
   void _navigateToSubcategory(int categoryIndex, int subcategoryIndex) {
@@ -172,6 +174,24 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     final category = _categoryNames[categoryIndex];
     final subcategories = _subcategoryNames[categoryIndex];
 
+    // Handle categories that don't have subcategories
+    if (subcategories.isEmpty) {
+      // For categories without subcategories, show all items in that category
+      setState(() {
+        _currentCategoryIndex = categoryIndex;
+        _currentSubcategoryIndex = 0;
+        _currentSubcategoryItems =
+            _checklistItems.where((item) => item.category == category).toList();
+        _currentCategory = category;
+        _currentSubcategory = '';
+      });
+
+      _animationController.reset();
+      _animationController.forward();
+      return;
+    }
+
+    // Normal case: category has subcategories
     if (subcategoryIndex >= subcategories.length) return;
 
     final subcategory = subcategories[subcategoryIndex];
@@ -207,42 +227,56 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       );
     } else if (_currentCategoryIndex > 0) {
       // Last subcategory of previous category
-      _navigateToSubcategory(
-        _currentCategoryIndex - 1,
-        _subcategoryNames[_currentCategoryIndex - 1].length - 1,
-      );
+      final prevCategorySubcategories =
+          _subcategoryNames[_currentCategoryIndex - 1];
+      // If the previous category has subcategories, navigate to the last one
+      // Otherwise just navigate to the category itself (with subcategoryIndex 0)
+      final prevSubcatIndex =
+          prevCategorySubcategories.isEmpty
+              ? 0
+              : prevCategorySubcategories.length - 1;
+
+      _navigateToSubcategory(_currentCategoryIndex - 1, prevSubcatIndex);
     }
   }
 
   void _handleNext() {
-    // Check if all questions in current subcategory are answered
-    final allCurrentAnswered = _currentSubcategoryItems.every(
-      (item) => item.answerValue != null,
+    // Check if all questions in current subcategory are answered or skipped
+    final allCurrentAnsweredOrSkipped = _currentSubcategoryItems.every(
+      (item) => item.answerValue != null || item.skipped == true,
     );
 
-    if (!allCurrentAnswered) {
+    if (!allCurrentAnsweredOrSkipped) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Harap jawab semua pertanyaan pada subkategori ini.'),
+          content: Text(
+            'Harap jawab atau skip semua pertanyaan terlebih dahulu.',
+          ),
           backgroundColor: Colors.red.shade700,
         ),
       );
       return;
     }
 
-    if (_currentSubcategoryIndex <
-        _subcategoryNames[_currentCategoryIndex].length - 1) {
+    final currentCategorySubcategories =
+        _subcategoryNames[_currentCategoryIndex];
+
+    if (currentCategorySubcategories.isEmpty ||
+        _currentSubcategoryIndex >= currentCategorySubcategories.length - 1) {
+      // We're at the end of current category's subcategories (or it has none)
+      if (_currentCategoryIndex < _categoryNames.length - 1) {
+        // Move to the first subcategory of the next category
+        _navigateToSubcategory(_currentCategoryIndex + 1, 0);
+      } else {
+        // End of checklist
+        _handleSaveChecklist();
+      }
+    } else {
       // Next subcategory in same category
       _navigateToSubcategory(
         _currentCategoryIndex,
         _currentSubcategoryIndex + 1,
       );
-    } else if (_currentCategoryIndex < _categoryNames.length - 1) {
-      // First subcategory of next category
-      _navigateToSubcategory(_currentCategoryIndex + 1, 0);
-    } else {
-      // End of checklist
-      _handleSaveChecklist();
     }
   }
 
@@ -335,9 +369,9 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         _currentSubcategoryIndex ==
             _subcategoryNames[_currentCategoryIndex].length - 1;
 
-    // All questions in current subcategory are answered
+    // All questions in current subcategory are answered or skipped
     final isValid = _currentSubcategoryItems.every(
-      (item) => item.answerValue != null,
+      (item) => item.answerValue != null || item.skipped == true,
     );
 
     return Scaffold(

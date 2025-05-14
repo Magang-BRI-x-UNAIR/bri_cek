@@ -53,6 +53,7 @@ class NavigationControls extends StatelessWidget {
                 style: AppSize.getTextStyle(
                   fontSize: AppSize.bodyFontSize,
                   fontWeight: FontWeight.w500,
+                  color: isFirstItem ? Colors.grey : Colors.blue.shade700,
                 ),
               ),
               style: ElevatedButton.styleFrom(
@@ -91,6 +92,10 @@ class NavigationControls extends StatelessWidget {
                 style: AppSize.getTextStyle(
                   fontSize: AppSize.bodyFontSize,
                   fontWeight: FontWeight.w500,
+                  color:
+                      isLastItem
+                          ? Colors.white
+                          : (isAnimating ? Colors.grey : Colors.white),
                 ),
               ),
               style: FilledButton.styleFrom(

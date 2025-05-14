@@ -233,48 +233,90 @@ List<ChecklistItem> _getTellerChecklist() {
       subcategory: 'Atribut & Aksesoris',
     ),
 
-    // Standar Layanan
+    // Sigap
     ChecklistItem(
-      id: 'teller_s_1',
-      question: 'Teller menyambut nasabah dengan senyum dan salam',
-      category: 'Standar Layanan',
-      subcategory: 'Sambutan',
+      id: 'teller_sigap_1',
+      question: 'Teller segera menyambut nasabah saat tiba di counter',
+      category: 'Sigap',
     ),
     ChecklistItem(
-      id: 'teller_s_2',
-      question: 'Teller berkomunikasi dengan jelas dan santun',
-      category: 'Standar Layanan',
-      subcategory: 'Komunikasi',
+      id: 'teller_sigap_2',
+      question: 'Teller responsif terhadap kebutuhan nasabah',
+      category: 'Sigap',
     ),
     ChecklistItem(
-      id: 'teller_s_3',
+      id: 'teller_sigap_3',
+      question: 'Teller menangani transaksi dengan cepat tanpa menunda',
+      category: 'Sigap',
+    ),
+
+    // Mudah
+    ChecklistItem(
+      id: 'teller_mudah_1',
+      question: 'Teller memberikan informasi dengan bahasa yang mudah dipahami',
+      category: 'Mudah',
+    ),
+    ChecklistItem(
+      id: 'teller_mudah_2',
+      question: 'Teller menjelaskan langkah-langkah transaksi dengan jelas',
+      category: 'Mudah',
+    ),
+    ChecklistItem(
+      id: 'teller_mudah_3',
+      question: 'Teller menyederhanakan proses yang rumit bagi nasabah',
+      category: 'Mudah',
+    ),
+
+    // Akurat
+    ChecklistItem(
+      id: 'teller_akurat_1',
       question: 'Teller menghitung uang dengan tepat dan teliti',
-      category: 'Standar Layanan',
-      subcategory: 'Transaksi',
+      category: 'Akurat',
     ),
     ChecklistItem(
-      id: 'teller_s_4',
+      id: 'teller_akurat_2',
       question: 'Teller mengkonfirmasi jumlah transaksi kepada nasabah',
-      category: 'Standar Layanan',
-      subcategory: 'Transaksi',
+      category: 'Akurat',
     ),
     ChecklistItem(
-      id: 'teller_s_5',
-      question: 'Teller memproses transaksi dengan cepat dan efisien',
-      category: 'Standar Layanan',
-      subcategory: 'Transaksi',
+      id: 'teller_akurat_3',
+      question:
+          'Teller memastikan data transaksi sesuai dengan permintaan nasabah',
+      category: 'Akurat',
+    ),
+
+    // Ramah
+    ChecklistItem(
+      id: 'teller_ramah_1',
+      question: 'Teller menyambut nasabah dengan senyum dan salam',
+      category: 'Ramah',
     ),
     ChecklistItem(
-      id: 'teller_s_6',
-      question: 'Area kerja teller tertata rapi dan bersih',
-      category: 'Standar Layanan',
-      subcategory: 'Area Kerja',
+      id: 'teller_ramah_2',
+      question: 'Teller berkomunikasi dengan nada suara yang ramah dan santun',
+      category: 'Ramah',
     ),
     ChecklistItem(
-      id: 'teller_s_7',
+      id: 'teller_ramah_3',
       question: 'Teller mengucapkan terima kasih di akhir layanan',
-      category: 'Standar Layanan',
-      subcategory: 'Penutupan',
+      category: 'Ramah',
+    ),
+
+    // Terampil
+    ChecklistItem(
+      id: 'teller_terampil_1',
+      question: 'Teller menguasai penggunaan sistem dengan baik',
+      category: 'Terampil',
+    ),
+    ChecklistItem(
+      id: 'teller_terampil_2',
+      question: 'Teller mampu menangani masalah transaksi dengan tepat',
+      category: 'Terampil',
+    ),
+    ChecklistItem(
+      id: 'teller_terampil_3',
+      question: 'Area kerja teller tertata rapi dan bersih',
+      category: 'Terampil',
     ),
   ];
 }

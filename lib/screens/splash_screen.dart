@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bri_cek/screens/home_screen.dart';
 import 'package:bri_cek/utils/app_size.dart';
+import 'package:bri_cek/screens/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -58,7 +59,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
       }
     }

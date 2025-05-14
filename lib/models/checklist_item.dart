@@ -14,6 +14,7 @@ class ChecklistItem {
   // User answers
   bool? answerValue;
   String? note;
+  bool? skipped; // New field to mark skipped questions
 
   ChecklistItem({
     required this.id,
@@ -27,6 +28,7 @@ class ChecklistItem {
     this.forHijab,
     this.answerValue,
     this.note,
+    this.skipped = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -42,6 +44,7 @@ class ChecklistItem {
       'forHijab': forHijab,
       'answerValue': answerValue,
       'note': note,
+      'skipped': skipped,
     };
   }
 
@@ -58,6 +61,7 @@ class ChecklistItem {
       forHijab: map['forHijab'],
       answerValue: map['answerValue'],
       note: map['note'],
+      skipped: map['skipped'],
     );
   }
 }

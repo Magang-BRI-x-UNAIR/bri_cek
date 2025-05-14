@@ -64,7 +64,7 @@ class SubcategoryQuestions extends StatelessWidget {
               SizedBox(width: AppSize.widthPercent(2)),
               Expanded(
                 child: Text(
-                  subcategoryName,
+                  subcategoryName.isEmpty ? "Pertanyaan" : subcategoryName,
                   style: AppSize.getTextStyle(
                     fontSize: AppSize.subtitleFontSize,
                     fontWeight: FontWeight.bold,
@@ -82,7 +82,8 @@ class SubcategoryQuestions extends StatelessWidget {
   }
 
   Widget _buildQuestionCard(ChecklistItem item, int index) {
-    final bool isAnswered = item.answerValue != null;
+    final bool isAnswered = item.answerValue != null || item.skipped == true;
+    final bool isSkipped = item.skipped == true;
 
     return Card(
       margin: EdgeInsets.only(
@@ -95,7 +96,7 @@ class SubcategoryQuestions extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
         side:
-            isAnswered
+            isAnswered && !isSkipped
                 ? BorderSide(
                   color:
                       item.answerValue!
@@ -103,6 +104,8 @@ class SubcategoryQuestions extends StatelessWidget {
                           : Colors.red.withOpacity(0.3),
                   width: 1,
                 )
+                : isSkipped
+                ? BorderSide(color: Colors.grey.withOpacity(0.3), width: 1)
                 : BorderSide.none,
       ),
       child: Padding(
@@ -119,7 +122,9 @@ class SubcategoryQuestions extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color:
-                        isAnswered
+                        isSkipped
+                            ? Colors.grey.shade100
+                            : isAnswered
                             ? (item.answerValue!
                                 ? Colors.green.shade100
                                 : Colors.red.shade100)
@@ -132,7 +137,9 @@ class SubcategoryQuestions extends StatelessWidget {
                         fontSize: AppSize.smallFontSize,
                         fontWeight: FontWeight.w600,
                         color:
-                            isAnswered
+                            isSkipped
+                                ? Colors.grey.shade600
+                                : isAnswered
                                 ? (item.answerValue!
                                     ? Colors.green.shade700
                                     : Colors.red.shade700)
@@ -148,6 +155,7 @@ class SubcategoryQuestions extends StatelessWidget {
                     style: AppSize.getTextStyle(
                       fontSize: AppSize.bodyFontSize,
                       fontWeight: FontWeight.w600,
+                      color: isSkipped ? Colors.grey.shade500 : Colors.black87,
                     ),
                   ),
                 ),
@@ -155,7 +163,7 @@ class SubcategoryQuestions extends StatelessWidget {
             ),
             SizedBox(height: AppSize.heightPercent(2)),
             _buildAnswerOptions(item),
-            if (item.answerValue != null) _buildNoteField(item),
+            if (item.answerValue != null && !isSkipped) _buildNoteField(item),
           ],
         ),
       ),
@@ -166,14 +174,16 @@ class SubcategoryQuestions extends StatelessWidget {
     return Row(
       children: [
         _buildAnswerButton(item, true),
-        SizedBox(width: AppSize.widthPercent(3)),
+        SizedBox(width: AppSize.widthPercent(1.5)),
         _buildAnswerButton(item, false),
+        SizedBox(width: AppSize.widthPercent(1.5)),
+        _buildSkipButton(item),
       ],
     );
   }
 
   Widget _buildAnswerButton(ChecklistItem item, bool value) {
-    final bool isSelected = item.answerValue == value;
+    final bool isSelected = item.answerValue == value && item.skipped != true;
     final String label = value ? 'Ya' : 'Tidak';
     final Color backgroundColor =
         isSelected
@@ -190,10 +200,17 @@ class SubcategoryQuestions extends StatelessWidget {
     final IconData icon = value ? Icons.check_circle : Icons.cancel;
 
     return Expanded(
+      flex: 3,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => onAnswerChanged(item, value),
+          onTap: () {
+            onAnswerChanged(item, value);
+            // Reset skipped status when giving a regular answer
+            if (item.skipped == true) {
+              item.skipped = false;
+            }
+          },
           borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
           child: Container(
             padding: EdgeInsets.symmetric(vertical: AppSize.heightPercent(1.2)),
@@ -221,6 +238,70 @@ class SubcategoryQuestions extends StatelessWidget {
               children: [
                 Icon(icon, color: textColor, size: AppSize.iconSize * 0.8),
                 SizedBox(width: AppSize.widthPercent(1)),
+                Text(
+                  label,
+                  style: AppSize.getTextStyle(
+                    fontSize: AppSize.bodyFontSize,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkipButton(ChecklistItem item) {
+    final bool isSelected = item.skipped == true;
+    final String label = 'Skip';
+    final Color backgroundColor =
+        isSelected ? Colors.grey.shade200 : Colors.grey.shade50;
+    final Color borderColor =
+        isSelected ? Colors.grey.shade500 : Colors.grey.shade300;
+    final Color textColor =
+        isSelected ? Colors.grey.shade800 : Colors.grey.shade600;
+
+    return Expanded(
+      flex: 2,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // Mark as skipped and clear any previous answers
+            item.skipped = true;
+            onAnswerChanged(item, null);
+          },
+          borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: AppSize.heightPercent(1.2)),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              border: Border.all(color: borderColor, width: 1.5),
+              borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+              boxShadow:
+                  isSelected
+                      ? [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 4,
+                          spreadRadius: 0,
+                          offset: Offset(0, 1),
+                        ),
+                      ]
+                      : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.skip_next,
+                  color: textColor,
+                  size: AppSize.iconSize * 0.8,
+                ),
+                SizedBox(width: AppSize.widthPercent(0.5)),
                 Text(
                   label,
                   style: AppSize.getTextStyle(
