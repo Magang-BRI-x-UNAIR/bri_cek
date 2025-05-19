@@ -4,7 +4,9 @@ import 'package:bri_cek/models/bank_branch.dart';
 import 'package:bri_cek/models/bank_check_history.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:intl/intl.dart';
+import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
 
 class CheckHistoryDetailScreen extends StatefulWidget {
   final BankCheckHistory history;
@@ -934,8 +936,8 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
     );
 
     try {
-      // Try using the share approach
-      final success = await _excelExportService.exportAndShareExcel(
+      // First generate the Excel file
+      final filePath = await _excelExportService.generateExcelFile(
         widget.history,
         widget.branch,
         _categories,
@@ -944,10 +946,13 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
       // Close the loading dialog
       Navigator.of(context, rootNavigator: true).pop();
 
-      if (!success) {
+      if (filePath == null) {
         _showExportErrorDialog(
           'Failed to create Excel file. Please try again.',
         );
+      } else {
+        // Show options dialog
+        _showExportOptionsDialog(filePath);
       }
     } catch (e) {
       // Close the loading dialog
@@ -958,8 +963,8 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
     }
   }
 
-  // Enhanced success dialog
-  void _showExportSuccessDialog(String filePath) {
+  // Show options dialog for the exported file
+  void _showExportOptionsDialog(String filePath) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -986,7 +991,121 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
                 ),
                 SizedBox(height: 16),
                 Text(
-                  'Export Successful',
+                  'Excel File Ready',
+                  style: TextStyle(
+                    fontSize: AppSize.subtitleFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                SizedBox(height: 24),
+
+                // Share button
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Share.shareXFiles([
+                      XFile(filePath),
+                    ], text: 'BRI Check Report for ${widget.branch.name}');
+                  },
+                  icon: Icon(Icons.share),
+                  label: Text('Share Excel File'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(double.infinity, 45),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 12),
+
+                // Save to device button
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    // Save the file to downloads or another location
+                    String?
+                    savedPath = await _excelExportService.saveToDownloads(
+                      filePath,
+                      'BRI_Check_${widget.branch.name.replaceAll(' ', '_')}_${DateFormat('yyyy-MM-dd').format(widget.history.checkDate)}.xlsx',
+                    );
+
+                    if (savedPath != null) {
+                      _showSaveSuccessDialog(savedPath);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to save file to device'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  icon: Icon(Icons.save_alt),
+                  label: Text('Save to Device'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(double.infinity, 45),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 12),
+
+                // Cancel button
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancel'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Show success dialog for saved file
+  // Show success dialog for saved file with an option to open it
+  void _showSaveSuccessDialog(String filePath) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: AppSize.iconSize * 1.5,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'File Saved',
                   style: TextStyle(
                     fontSize: AppSize.subtitleFontSize,
                     fontWeight: FontWeight.bold,
@@ -997,6 +1116,7 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
                 Text(
                   'Excel file successfully saved at:',
                   style: TextStyle(color: Colors.grey.shade600),
+                  textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 8),
                 Container(
@@ -1015,22 +1135,52 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
                   ),
                 ),
                 SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    minimumSize: Size(double.infinity, 45),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                Row(
+                  children: [
+                    // Open File Button
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _openFile(filePath);
+                        },
+                        icon: Icon(Icons.open_in_new),
+                        label: Text('Open File'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          foregroundColor: Colors.white,
+                          minimumSize: Size(double.infinity, 45),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    'Done',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                    SizedBox(width: 12),
+                    // Done button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          minimumSize: Size(double.infinity, 45),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Done',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1038,6 +1188,51 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
         );
       },
     );
+  }
+
+  // Method to open the Excel file
+  Future<void> _openFile(String filePath) async {
+    try {
+      // Add this import to the top of the file if not already there:
+      // import 'package:open_file/open_file.dart';
+
+      final result = await OpenFile.open(filePath);
+      if (result.type != ResultType.done) {
+        // If there was an error opening the file
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open the file: ${result.message}'),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: AppSize.heightPercent(8),
+              left: AppSize.widthPercent(4),
+              right: AppSize.widthPercent(4),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle any other errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error opening file: $e'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            bottom: AppSize.heightPercent(8),
+            left: AppSize.widthPercent(4),
+            right: AppSize.widthPercent(4),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
   }
 
   // Enhanced error dialog

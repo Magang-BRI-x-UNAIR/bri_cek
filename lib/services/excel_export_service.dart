@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:excel/excel.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -87,8 +88,8 @@ class ExcelExportService {
       final tempDir = await getTemporaryDirectory();
       final fileName =
           'BRI_Check_${branch.name.replaceAll(' ', '_')}_${fileNameDateFormat.format(history.checkDate)}.xlsx';
-      final filePath = '${tempDir.path}/$fileName';
-      final file = File(filePath);
+      final tempFilePath = '${tempDir.path}/$fileName';
+      final tempFile = File(tempFilePath);
 
       final bytes = excel.encode();
       if (bytes == null) {
@@ -96,18 +97,73 @@ class ExcelExportService {
         return false;
       }
 
-      await file.writeAsBytes(bytes);
+      await tempFile.writeAsBytes(bytes);
 
-      // Share the file
-      await Share.shareXFiles([
-        XFile(filePath),
-      ], text: 'BRI Check Report for ${branch.name}');
+      // Save a copy to a more permanent location if possible
+      String? savedFilePath;
+      try {
+        final externalDir = await _getExcelDirectory();
+        final externalFilePath = '$externalDir/$fileName';
+        final externalFile = File(externalFilePath);
 
-      return true;
+        // Ensure parent directory exists
+        if (!(await externalFile.parent.exists())) {
+          await externalFile.parent.create(recursive: true);
+        }
+
+        // Copy the file
+        await tempFile.copy(externalFilePath);
+        savedFilePath = externalFilePath;
+        print('File also saved to: $externalFilePath');
+      } catch (e) {
+        print('Could not save to external directory: $e');
+      }
+
+      // Show custom dialog with options
+      return await _showSharingOptions(
+        tempFilePath,
+        savedFilePath,
+        branch.name,
+      );
     } catch (e) {
       print('Error in Excel export and share: $e');
       return false;
     }
+  }
+
+  // New method to show sharing options
+  Future<bool> _showSharingOptions(
+    String tempFilePath,
+    String? savedFilePath,
+    String branchName,
+  ) async {
+    Completer<bool> completer = Completer<bool>();
+
+    // Use a platform message channel to show the dialog
+    // This is necessary since we need to return a value from this function
+    // and can't easily do that with a regular showDialog approach
+
+    try {
+      // Share the file using the share_plus package
+      await Share.shareXFiles(
+        [XFile(tempFilePath)],
+        text: 'BRI Check Report for $branchName',
+        subject: 'BRI Check Report',
+      );
+
+      // If we successfully saved the file locally as well, we'll count this as success
+      if (savedFilePath != null) {
+        completer.complete(true);
+      } else {
+        // We only did the share, but no local save, still count as success
+        completer.complete(true);
+      }
+    } catch (e) {
+      print('Error sharing file: $e');
+      completer.complete(false);
+    }
+
+    return completer.future;
   }
 
   // Export check history to Excel file
@@ -500,5 +556,143 @@ class ExcelExportService {
       print('Error getting Android SDK version: $e');
     }
     return 0; // Default to 0 if we can't get the version
+  }
+
+  // Generate Excel file and return path
+  Future<String?> generateExcelFile(
+    BankCheckHistory history,
+    BankBranch branch,
+    List<Map<String, dynamic>> categories,
+  ) async {
+    try {
+      // Create an Excel document
+      final excel = Excel.createExcel();
+
+      // Get default sheet name
+      final defaultSheetName = excel.getDefaultSheet();
+
+      // Create sheets for each category
+      int sheetCount = 0;
+      for (final category in categories) {
+        final categoryName = category['name'];
+        final sheetName = categoryToSheetName[categoryName] ?? categoryName;
+
+        try {
+          // Create a new sheet
+          if (sheetCount == 0 && defaultSheetName != null) {
+            // Rename the default sheet for the first category
+            excel.rename(defaultSheetName, sheetName);
+          } else {
+            // Create a new sheet
+            excel.copy(defaultSheetName ?? 'Sheet1', sheetName);
+          }
+
+          final Sheet sheet = excel[sheetName];
+
+          // Style the sheet
+          _applyHeaderFormatting(sheet, branch, history);
+
+          // Add category-specific checklist data
+          _addChecklistData(sheet, categoryName, history);
+
+          sheetCount++;
+        } catch (e) {
+          print('Error creating sheet for $categoryName: $e');
+        }
+      }
+
+      // Remove default sheet if we created at least one other sheet
+      if (sheetCount > 0 &&
+          defaultSheetName != null &&
+          excel.sheets.containsKey(defaultSheetName)) {
+        try {
+          excel.delete(defaultSheetName);
+        } catch (e) {
+          print('Error deleting default sheet: $e');
+        }
+      }
+
+      // Save to temporary file
+      final tempDir = await getTemporaryDirectory();
+      final fileName =
+          'BRI_Check_${branch.name.replaceAll(' ', '_')}_${fileNameDateFormat.format(history.checkDate)}.xlsx';
+      final tempFilePath = '${tempDir.path}/$fileName';
+      final tempFile = File(tempFilePath);
+
+      final bytes = excel.encode();
+      if (bytes == null) {
+        print('Failed to encode Excel file');
+        return null;
+      }
+
+      await tempFile.writeAsBytes(bytes);
+      return tempFilePath;
+    } catch (e) {
+      print('Error generating Excel file: $e');
+      return null;
+    }
+  }
+
+  // Save file to downloads folder
+  Future<String?> saveToDownloads(String sourcePath, String fileName) async {
+    try {
+      if (Platform.isAndroid) {
+        // Request permission
+        if (!await _requestPermission()) {
+          print('Permission denied');
+          return null;
+        }
+
+        // Try to get the downloads directory
+        Directory? downloadsDir;
+
+        try {
+          // Try the standard Downloads directory first
+          downloadsDir = Directory('/storage/emulated/0/Download');
+          if (!await downloadsDir.exists()) {
+            await downloadsDir.create(recursive: true);
+          }
+        } catch (e) {
+          print('Error accessing Downloads directory: $e');
+
+          // Fallback to app's own directory
+          final externalDir = await getExternalStorageDirectory();
+          if (externalDir != null) {
+            downloadsDir = Directory('${externalDir.path}/Excel');
+            if (!await downloadsDir.exists()) {
+              await downloadsDir.create(recursive: true);
+            }
+          } else {
+            return null;
+          }
+        }
+
+        if (downloadsDir == null) return null;
+
+        // Create destination file path
+        final destPath = '${downloadsDir.path}/$fileName';
+
+        // Copy the file
+        final sourceFile = File(sourcePath);
+        final destFile = await sourceFile.copy(destPath);
+
+        return destFile.path;
+      } else if (Platform.isIOS) {
+        // For iOS, we'll use the app's documents directory
+        final directory = await getApplicationDocumentsDirectory();
+        final destPath = '${directory.path}/$fileName';
+
+        // Copy the file
+        final sourceFile = File(sourcePath);
+        final destFile = await sourceFile.copy(destPath);
+
+        return destFile.path;
+      }
+
+      return null;
+    } catch (e) {
+      print('Error saving file to downloads: $e');
+      return null;
+    }
   }
 }
