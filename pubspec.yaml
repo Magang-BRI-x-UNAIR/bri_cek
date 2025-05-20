@@ -55,6 +55,12 @@ dependencies:
   cupertino_icons: ^1.0.8
   intl: ^0.20.2
   firebase_core: ^3.13.0
+  image_picker: ^1.1.2
+  excel: ^4.0.6
+  path_provider: ^2.1.5
+  permission_handler: ^12.0.0+1
+  share_plus: ^11.0.0
+  open_file: ^3.5.10
 
 dev_dependencies:
   flutter_test:

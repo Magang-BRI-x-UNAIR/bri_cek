@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:bri_cek/theme/app_theme.dart';
 import 'package:bri_cek/utils/app_size.dart';
-import 'package:bri_cek/screens/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +30,7 @@ class BRICek extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'BRICek',
       theme: AppTheme.theme,
-      home: const LoginScreen(), // Set LoginScreen as the initial screen
+      home: const SplashScreen(), // Set LoginScreen as the initial screen
       builder: (context, child) {
         AppSize().init(context);
         return MediaQuery(
