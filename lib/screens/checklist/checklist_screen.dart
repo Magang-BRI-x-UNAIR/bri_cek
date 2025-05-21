@@ -80,6 +80,18 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         items,
         widget.employeeData,
       );
+
+      if (filteredItems.isEmpty) {
+        setState(() {
+          _checklistItems = [];
+          _groupedChecklistItems = {};
+          _categoryNames = [];
+          _subcategoryNames = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
       final groupedItems = _checklistService.groupItems(filteredItems);
 
       setState(() {
@@ -362,7 +374,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -374,12 +385,19 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     final isLastItem =
         _currentCategoryIndex == _categoryNames.length - 1 &&
         _currentSubcategoryIndex ==
-            _subcategoryNames[_currentCategoryIndex].length - 1;
+            (_categoryNames.isEmpty
+                ? 0
+                : _subcategoryNames[_currentCategoryIndex].length - 1);
 
     // All questions in current subcategory are answered or skipped
     final isValid = _currentSubcategoryItems.every(
       (item) => item.answerValue != null || item.skipped == true,
     );
+
+    // Check if we should show the category navigator
+    final bool showCategoryNavigator =
+        _categoryNames.length > 1 ||
+        (_categoryNames.length == 1 && _categoryNames[0] != 'Uncategorized');
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -398,67 +416,122 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                 onBackPressed: () => Navigator.pop(context),
               ),
 
-              // Category and subcategory navigation
-              CategoryNavigator(
-                categories: _categoryNames,
-                subcategories: _subcategoryNames,
-                currentCategoryIndex: _currentCategoryIndex,
-                currentSubcategoryIndex: _currentSubcategoryIndex,
-                onCategorySelected: _handleCategorySelected,
-                onSubcategorySelected: _handleSubcategorySelected,
-                categoryCompletionStatus: _categoryCompletionStatus,
-                subcategoryCompletionStatus: _subcategoryCompletionStatus,
-              ),
+              // Show empty state if no checklist items
+              if (_checklistItems.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.assessment_outlined,
+                          size: AppSize.iconSize * 2,
+                          color: Colors.grey.shade400,
+                        ),
+                        SizedBox(height: AppSize.heightPercent(2)),
+                        Text(
+                          'Tidak ada checklist untuk kategori ini',
+                          style: AppSize.getTextStyle(
+                            fontSize: AppSize.subtitleFontSize,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: AppSize.heightPercent(1)),
+                        Text(
+                          'Silahkan pilih kategori lain atau hubungi administrator',
+                          style: AppSize.getTextStyle(
+                            fontSize: AppSize.bodyFontSize,
+                            color: Colors.grey.shade500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: AppSize.heightPercent(4)),
+                        ElevatedButton.icon(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.arrow_back),
+                          label: Text('Kembali'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade700,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSize.widthPercent(5),
+                              vertical: AppSize.heightPercent(1.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else ...[
+                // Only show Category navigator if we have multiple categories or one non-uncategorized category
+                if (showCategoryNavigator)
+                  CategoryNavigator(
+                    categories: _categoryNames,
+                    subcategories: _subcategoryNames,
+                    currentCategoryIndex: _currentCategoryIndex,
+                    currentSubcategoryIndex: _currentSubcategoryIndex,
+                    onCategorySelected: _handleCategorySelected,
+                    onSubcategorySelected: _handleSubcategorySelected,
+                    categoryCompletionStatus: _categoryCompletionStatus,
+                    subcategoryCompletionStatus: _subcategoryCompletionStatus,
+                  ),
 
-              // Questions list
-              Expanded(
-                child: AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _fadeAnimation.value,
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        child:
-                            _currentSubcategoryItems.isNotEmpty
-                                ? SubcategoryQuestions(
-                                  categoryName: _currentCategory,
-                                  subcategoryName: _currentSubcategory,
-                                  questions: _currentSubcategoryItems,
-                                  onAnswerChanged: _handleAnswerChanged,
-                                  onNoteChanged: _handleNoteChanged,
-                                )
-                                : Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(
-                                      AppSize.widthPercent(8),
-                                    ),
-                                    child: Text(
-                                      'Tidak ada pertanyaan untuk subkategori ini.',
-                                      style: AppSize.getTextStyle(
-                                        fontSize: AppSize.bodyFontSize,
-                                        color: Colors.grey.shade600,
+                // Questions list
+                Expanded(
+                  child: AnimatedBuilder(
+                    animation: _animationController,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: _fadeAnimation.value,
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          child:
+                              _currentSubcategoryItems.isNotEmpty
+                                  ? SubcategoryQuestions(
+                                    categoryName:
+                                        showCategoryNavigator
+                                            ? _currentCategory
+                                            : '',
+                                    subcategoryName: _currentSubcategory,
+                                    questions: _currentSubcategoryItems,
+                                    onAnswerChanged: _handleAnswerChanged,
+                                    onNoteChanged: _handleNoteChanged,
+                                  )
+                                  : Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(
+                                        AppSize.widthPercent(8),
                                       ),
-                                      textAlign: TextAlign.center,
+                                      child: Text(
+                                        'Tidak ada pertanyaan untuk subkategori ini.',
+                                        style: AppSize.getTextStyle(
+                                          fontSize: AppSize.bodyFontSize,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ),
                                   ),
-                                ),
-                      ),
-                    );
-                  },
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
 
-              // Navigation controls
-              NavigationControls(
-                isFirstItem: isFirstItem,
-                isLastItem: isLastItem,
-                isValid: isValid,
-                isAnimating: _animationController.isAnimating,
-                onPrevious: _handlePrevious,
-                onNext: _handleNext,
-                onSave: _handleSaveChecklist,
-              ),
+                // Navigation controls
+                NavigationControls(
+                  isFirstItem: isFirstItem,
+                  isLastItem: isLastItem,
+                  isValid: isValid,
+                  isAnimating: _animationController.isAnimating,
+                  onPrevious: _handlePrevious,
+                  onNext: _handleNext,
+                  onSave: _handleSaveChecklist,
+                ),
+              ],
             ],
           ),
         ),
