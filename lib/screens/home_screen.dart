@@ -471,7 +471,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _selectedMonth = 'Semua Bulan';
   final List<String> _banks = [
     'Semua Bank',
-    'KK Bulak',
+    'KK Bulog',
     'KK Gubeng',
     'KK Kadam',
     'KK Genteng',
@@ -593,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildChartLegend('KK Bulak', Colors.blue),
+                  _buildChartLegend('KK Bulog', Colors.blue),
                   _buildChartLegend('KK Gubeng', Colors.orange),
                   _buildChartLegend('KK Kadam', Colors.green),
                   _buildChartLegend('KK Genteng', Colors.purple),
@@ -623,7 +623,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildChartLegend('KK Bulak', Colors.blue),
+                  _buildChartLegend('KK Bulog', Colors.blue),
                   _buildChartLegend('KK Gubeng', Colors.orange),
                   _buildChartLegend('KK Kadam', Colors.green),
                   _buildChartLegend('KK Genteng', Colors.purple),
@@ -671,7 +671,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Get color based on selected bank
       Color bankColor;
       switch (_selectedBank) {
-        case 'KK Bulak':
+        case 'KK Bulog':
           bankColor = Colors.blue;
           break;
         case 'KK Gubeng':
@@ -869,9 +869,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           minY: 0,
           maxY: 100,
           lineBarsData: [
-            // KK Bulak
+            // KK Bulog
             LineChartBarData(
-              spots: _getWeeklyData('KK Bulak', monthIndex),
+              spots: _getWeeklyData('KK Bulog', monthIndex),
               isCurved: true,
               color: Colors.blue,
               barWidth: 2.5,
@@ -961,7 +961,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Base value depending on the bank (matches the monthly trend somewhat)
     double baseValue; // Change from int to double
     switch (bank) {
-      case 'KK Bulak':
+      case 'KK Bulog':
         baseValue = 60.0; // Add .0 to make it a double
         break;
       case 'KK Gubeng':
@@ -1003,7 +1003,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Data for all banks
     final List<LineChartBarData> allBanksData = [
-      // KK Bulak (Blue)
+      // KK Bulog (Blue)
       LineChartBarData(
         spots: [
           FlSpot(0, 20),
@@ -1021,18 +1021,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
         isCurved: true,
         color:
-            showSingleBank && _selectedBank != 'KK Bulak'
+            showSingleBank && _selectedBank != 'KK Bulog'
                 ? Colors.blue.withOpacity(0.3)
                 : Colors.blue,
-        barWidth: showSingleBank && _selectedBank == 'KK Bulak' ? 3.5 : 2.5,
+        barWidth: showSingleBank && _selectedBank == 'KK Bulog' ? 3.5 : 2.5,
         isStrokeCapRound: true,
         dotData: FlDotData(
           show: true,
           getDotPainter: (spot, percent, barData, index) {
             return FlDotCirclePainter(
-              radius: showSingleBank && _selectedBank == 'KK Bulak' ? 4 : 3,
+              radius: showSingleBank && _selectedBank == 'KK Bulog' ? 4 : 3,
               color:
-                  showSingleBank && _selectedBank != 'KK Bulak'
+                  showSingleBank && _selectedBank != 'KK Bulog'
                       ? Colors.blue.withOpacity(0.3)
                       : Colors.blue,
               strokeWidth: 1,
@@ -1041,7 +1041,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
         ),
         belowBarData: BarAreaData(
-          show: showSingleBank && _selectedBank == 'KK Bulak',
+          show: showSingleBank && _selectedBank == 'KK Bulog',
           color: Colors.blue.withOpacity(0.2),
         ),
       ),
