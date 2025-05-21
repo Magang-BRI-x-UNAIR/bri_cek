@@ -5,7 +5,7 @@ final List<BankCheckHistory> checkHistories = [
   BankCheckHistory(
     id: '1',
     bankBranchId: '1', // KK Genteng Kali Surabaya
-    checkDate: DateTime(2025, 4, 9),
+    checkDate: DateTime(2025, 5, 18),
     isSuccessful: true,
     score: 85.0,
     aspectScores: {
