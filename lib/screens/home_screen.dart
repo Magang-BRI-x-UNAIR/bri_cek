@@ -1,9 +1,10 @@
 import 'dart:math';
-
 import 'package:bri_cek/screens/choose_bank_screen.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:bri_cek/models/user_model.dart';
+import 'package:bri_cek/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +18,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _contentAnimationController;
   late Animation<double> _headerAnimation;
   late Animation<double> _contentAnimation;
+
+  final AuthService _authService = AuthService();
+  UserModel? _currentUser;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -44,8 +49,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeInOut,
     );
 
-    // Start animations sequentially
-    _startAnimationsSequentially();
+    // Fetch user data and then start animations
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final user = await _authService.getUserData();
+      setState(() {
+        _currentUser = user;
+        _isLoading = false;
+      });
+      // Start animations after user data is loaded
+      _startAnimationsSequentially();
+    } catch (e) {
+      print('Error loading user data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      // Start animations even if there's an error
+      _startAnimationsSequentially();
+    }
   }
 
   void _startAnimationsSequentially() async {
@@ -370,7 +394,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                   Text(
-                    'Admin',
+                    _isLoading ? 'User' : (_currentUser?.nickname ?? 'User'),
                     style: AppSize.getTextStyle(
                       fontSize: AppSize.titleFontSize,
                       fontWeight: FontWeight.bold,

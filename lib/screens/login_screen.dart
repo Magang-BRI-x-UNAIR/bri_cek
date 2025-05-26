@@ -1,7 +1,9 @@
-import 'package:bri_cek/data/admin_data.dart'; // Import Admin Data
-import 'package:bri_cek/screens/admin_dashboard_screen.dart'; // Import Admin Dashboard
-import 'package:bri_cek/screens/home_screen.dart'; // Import Home Screen
+import 'package:bri_cek/data/admin_data.dart';
+import 'package:bri_cek/screens/admin_dashboard_screen.dart';
+import 'package:bri_cek/screens/home_screen.dart';
+import 'package:bri_cek/services/auth_service.dart';
 import 'package:bri_cek/utils/app_size.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,6 +18,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -24,24 +30,65 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
-      final email = _usernameController.text.trim();
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final username = _usernameController.text.trim();
       final password = _passwordController.text.trim();
 
-      // Validasi data admin
-      if (email == AdminData.email && password == AdminData.password) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-        );
-      } else {
-        // Jika bukan admin, arahkan ke HomeScreen
+      try {
+        // Check if admin login
+        if (username == AdminData.username && password == AdminData.password) {
+          // Admin login logic
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AdminDashboardScreen(),
+            ),
+          );
+          return;
+        }
+
+        // Regular user login with Firebase
+        await _authService.signInWithUsernameAndPassword(username, password);
+
+        // Navigate to Home Screen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
+      } on FirebaseAuthException catch (e) {
+        setState(() {
+          _errorMessage = _getAuthErrorMessage(e.code);
+        });
+      } catch (e) {
+        setState(() {
+          _errorMessage = 'Login gagal. Periksa username dan password Anda.';
+        });
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
       }
+    }
+  }
+
+  String _getAuthErrorMessage(String code) {
+    switch (code) {
+      case 'user-not-found':
+        return 'Username tidak ditemukan.';
+      case 'username-exists': // Add this case
+        return 'Username sudah digunakan.';
+      case 'wrong-password':
+        return 'Password salah.';
+      case 'user-disabled':
+        return 'Akun telah dinonaktifkan.';
+      default:
+        return 'Error: $code';
     }
   }
 
@@ -74,124 +121,153 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
 
             // Login Content
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSize.paddingHorizontal,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // App Logo
-                  Image.asset(
-                    'assets/images/Logo_BRI_Unair.png', // Replace with your logo path
-                    width: AppSize.widthPercent(40),
-                  ),
-                  SizedBox(height: AppSize.heightPercent(4)),
+            SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSize.paddingHorizontal,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(height: AppSize.heightPercent(10)),
 
-                  // Login Form
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Username Field
-                        Text(
-                          'Username',
-                          style: AppSize.getTextStyle(
-                            fontSize: AppSize.bodyFontSize,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: AppSize.heightPercent(1)),
-                        TextFormField(
-                          controller: _usernameController,
-                          decoration: InputDecoration(
-                            hintText: 'Enter your username',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppSize.cardBorderRadius,
-                              ),
+                    // App Logo
+                    Image.asset(
+                      'assets/images/Logo_BRI_Unair.png',
+                      width: AppSize.widthPercent(40),
+                    ),
+                    SizedBox(height: AppSize.heightPercent(4)),
+
+                    // Login Form
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Username Field (changed from Email)
+                          Text(
+                            'Username',
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.bodyFontSize,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Username is required';
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: AppSize.heightPercent(2)),
-
-                        // Password Field
-                        Text(
-                          'Password',
-                          style: AppSize.getTextStyle(
-                            fontSize: AppSize.bodyFontSize,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: AppSize.heightPercent(1)),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: !_isPasswordVisible,
-                          decoration: InputDecoration(
-                            hintText: 'Enter your password',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppSize.cardBorderRadius,
-                              ),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isPasswordVisible
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isPasswordVisible = !_isPasswordVisible;
-                                });
-                              },
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Password is required';
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: AppSize.heightPercent(4)),
-
-                        // Login Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _login,
-                            style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(
-                                vertical: AppSize.heightPercent(2),
-                              ),
-                              shape: RoundedRectangleBorder(
+                          SizedBox(height: AppSize.heightPercent(1)),
+                          TextFormField(
+                            controller: _usernameController,
+                            decoration: InputDecoration(
+                              hintText: 'Masukkan username Anda',
+                              border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(
                                   AppSize.cardBorderRadius,
                                 ),
                               ),
                             ),
-                            child: Text(
-                              'Login',
-                              style: AppSize.getTextStyle(
-                                fontSize: AppSize.bodyFontSize,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Username harus diisi';
+                              }
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: AppSize.heightPercent(2)),
+
+                          // Password Field
+                          Text(
+                            'Password',
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.bodyFontSize,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        ),
-                      ],
+                          SizedBox(height: AppSize.heightPercent(1)),
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: !_isPasswordVisible,
+                            decoration: InputDecoration(
+                              hintText: 'Masukkan password Anda',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppSize.cardBorderRadius,
+                                ),
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _isPasswordVisible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isPasswordVisible = !_isPasswordVisible;
+                                  });
+                                },
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Password harus diisi';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          if (_errorMessage != null)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                top: AppSize.heightPercent(1),
+                              ),
+                              child: Text(
+                                _errorMessage!,
+                                style: AppSize.getTextStyle(
+                                  fontSize: AppSize.bodyFontSize,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ),
+
+                          SizedBox(height: AppSize.heightPercent(4)),
+
+                          // Login Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _login,
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: AppSize.heightPercent(2),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppSize.cardBorderRadius,
+                                  ),
+                                ),
+                              ),
+                              child:
+                                  _isLoading
+                                      ? SizedBox(
+                                        height: AppSize.heightPercent(2.5),
+                                        width: AppSize.heightPercent(2.5),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : Text(
+                                        'Login',
+                                        style: AppSize.getTextStyle(
+                                          fontSize: AppSize.bodyFontSize,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

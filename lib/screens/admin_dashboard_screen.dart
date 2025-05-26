@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
-import 'package:bri_cek/screens/login_screen.dart'; // Import Login Screen
+import 'package:bri_cek/screens/login_screen.dart';
 import 'package:bri_cek/screens/manage_questions_screen.dart';
+import 'package:bri_cek/services/auth_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -11,33 +12,79 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  // Form controllers
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _nicknameController = TextEditingController();
+  final TextEditingController _employeeIdController = TextEditingController();
+
+  final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
+
+  bool _isAddingUser = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _fullNameController.dispose();
+    _nicknameController.dispose();
+    _employeeIdController.dispose();
     super.dispose();
   }
 
-  void _addUser() {
-    if (_usernameController.text.isNotEmpty &&
-        _passwordController.text.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'User ${_usernameController.text} berhasil ditambahkan!',
+  void _clearForm() {
+    _usernameController.clear();
+    _passwordController.clear();
+    _fullNameController.clear();
+    _nicknameController.clear();
+    _employeeIdController.clear();
+    setState(() {
+      _errorMessage = null;
+    });
+  }
+
+  Future<void> _addUser() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isAddingUser = true;
+        _errorMessage = null;
+      });
+
+      try {
+        final user = await _authService.createUser(
+          username: _usernameController.text.trim(),
+          password: _passwordController.text.trim(),
+          fullName: _fullNameController.text.trim(),
+          nickname: _nicknameController.text.trim(),
+          employeeId: _employeeIdController.text.trim(),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'User ${user?.fullName ?? _usernameController.text} berhasil ditambahkan!', // Changed reference
+            ),
+            backgroundColor: Colors.green,
           ),
-          backgroundColor: Colors.green,
-        ),
-      );
-      _usernameController.clear();
-      _passwordController.clear();
+        );
+        _clearForm();
+      } catch (e) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      } finally {
+        setState(() {
+          _isAddingUser = false;
+        });
+      }
     }
   }
 
-  void _logout() {
+  void _logout() async {
+    await _authService.signOut();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -187,29 +234,128 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                       SizedBox(height: 8),
-                      TextField(
-                        controller: _usernameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Username',
-                          border: OutlineInputBorder(),
+
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _usernameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Username',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Username harus diisi';
+                                }
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: 8),
+
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Password',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Password is required';
+                                }
+                                if (value.length < 6) {
+                                  return 'Password must be at least 6 characters';
+                                }
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: 8),
+
+                            TextFormField(
+                              controller: _fullNameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Full Name',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Full name is required';
+                                }
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: 8),
+
+                            TextFormField(
+                              controller: _nicknameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Nickname',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Nickname is required';
+                                }
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: 8),
+
+                            TextFormField(
+                              controller: _employeeIdController,
+                              decoration: const InputDecoration(
+                                labelText: 'Employee ID',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Employee ID is required';
+                                }
+                                return null;
+                              },
+                            ),
+
+                            if (_errorMessage != null)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                ),
+                                child: Text(
+                                  _errorMessage!,
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+
+                            SizedBox(height: 16),
+
+                            ElevatedButton(
+                              onPressed: _isAddingUser ? null : _addUser,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade700,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: AppSize.heightPercent(2),
+                                  horizontal: AppSize.widthPercent(8),
+                                ),
+                              ),
+                              child:
+                                  _isAddingUser
+                                      ? SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : Text(
+                                        'Add User',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                            ),
+                          ],
                         ),
-                      ),
-                      SizedBox(height: 8),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _addUser,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade700,
-                        ),
-                        child: const Text('Add User'),
                       ),
                       SizedBox(height: 32),
 

@@ -1,4 +1,4 @@
-import 'package:bri_cek/firebase_options.dart';
+import 'package:bri_cek/services/firebase_options.dart';
 import 'package:bri_cek/screens/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
