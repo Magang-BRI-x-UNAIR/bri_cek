@@ -1,6 +1,6 @@
 class UserModel {
   final String uid;
-  final String email;
+  final String username; // Changed from email to username
   final String fullName;
   final String nickname;
   final String employeeId;
@@ -8,7 +8,7 @@ class UserModel {
 
   UserModel({
     required this.uid,
-    required this.email,
+    required this.username, // Changed parameter name
     required this.fullName,
     required this.nickname,
     required this.employeeId,
@@ -18,7 +18,7 @@ class UserModel {
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
-      'email': email,
+      'username': username, // Changed key
       'fullName': fullName,
       'nickname': nickname,
       'employeeId': employeeId,
@@ -29,7 +29,7 @@ class UserModel {
   factory UserModel.fromMap(Map<String, dynamic> map, String uid) {
     return UserModel(
       uid: uid,
-      email: map['email'] ?? '',
+      username: map['username'] ?? '', // Changed key
       fullName: map['fullName'] ?? '',
       nickname: map['nickname'] ?? '',
       employeeId: map['employeeId'] ?? '',
