@@ -394,7 +394,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                   Text(
-                    _isLoading ? 'User' : (_currentUser?.nickname ?? 'User'),
+                    _isLoading ? 'User' : _getFirstName(_currentUser?.fullName),
                     style: AppSize.getTextStyle(
                       fontSize: AppSize.titleFontSize,
                       fontWeight: FontWeight.bold,
@@ -1725,4 +1725,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
+}
+
+// Add this helper method to extract the first name
+String _getFirstName(String? fullName) {
+  if (fullName == null || fullName.isEmpty) {
+    return 'User';
+  }
+
+  // Split the full name by spaces and get the first word
+  final nameParts = fullName.trim().split(' ');
+  if (nameParts.isEmpty) {
+    return 'User';
+  }
+
+  // Return the first word of the full name
+  return nameParts[0];
 }

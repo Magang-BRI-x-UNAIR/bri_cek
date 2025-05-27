@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:bri_cek/screens/login_screen.dart';
@@ -16,7 +17,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _employeeIdController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
@@ -30,7 +30,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     _fullNameController.dispose();
-    _nicknameController.dispose();
     _employeeIdController.dispose();
     super.dispose();
   }
@@ -39,7 +38,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     _usernameController.clear();
     _passwordController.clear();
     _fullNameController.clear();
-    _nicknameController.clear();
     _employeeIdController.clear();
     setState(() {
       _errorMessage = null;
@@ -58,22 +56,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           username: _usernameController.text.trim(),
           password: _passwordController.text.trim(),
           fullName: _fullNameController.text.trim(),
-          nickname: _nicknameController.text.trim(),
+          nickname: _fullNameController.text.trim(),
           employeeId: _employeeIdController.text.trim(),
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'User ${user?.fullName ?? _usernameController.text} berhasil ditambahkan!', // Changed reference
+              'User ${user?.fullName ?? _usernameController.text} berhasil ditambahkan!',
             ),
             backgroundColor: Colors.green,
           ),
         );
         _clearForm();
+      } on FirebaseAuthException catch (e) {
+        setState(() {
+          if (e.code == 'username-exists') {
+            _errorMessage = 'Username sudah digunakan oleh akun lain';
+          } else {
+            _errorMessage = e.message ?? 'Terjadi kesalahan saat membuat akun';
+          }
+        });
       } catch (e) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = 'Error: ${e.toString()}';
         });
       } finally {
         setState(() {
@@ -249,6 +255,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 if (value == null || value.isEmpty) {
                                   return 'Username harus diisi';
                                 }
+                                // Prevent creating another admin
+                                if (value.toLowerCase() == 'adminbri') {
+                                  return 'Username tidak tersedia';
+                                }
                                 return null;
                               },
                             ),
@@ -263,10 +273,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Password is required';
+                                  return 'Password harus diisi';
                                 }
                                 if (value.length < 6) {
-                                  return 'Password must be at least 6 characters';
+                                  return 'Password minimal 6 karakter';
                                 }
                                 return null;
                               },
@@ -276,42 +286,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             TextFormField(
                               controller: _fullNameController,
                               decoration: const InputDecoration(
-                                labelText: 'Full Name',
+                                labelText: 'Nama Lengkap',
                                 border: OutlineInputBorder(),
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Full name is required';
+                                  return 'Nama lengkap harus diisi';
                                 }
                                 return null;
                               },
                             ),
                             SizedBox(height: 8),
-
-                            TextFormField(
-                              controller: _nicknameController,
-                              decoration: const InputDecoration(
-                                labelText: 'Nickname',
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Nickname is required';
-                                }
-                                return null;
-                              },
-                            ),
-                            SizedBox(height: 8),
-
                             TextFormField(
                               controller: _employeeIdController,
                               decoration: const InputDecoration(
-                                labelText: 'Employee ID',
+                                labelText: 'ID Karyawan',
                                 border: OutlineInputBorder(),
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Employee ID is required';
+                                  return 'ID karyawan harus diisi';
                                 }
                                 return null;
                               },
@@ -350,7 +344,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                         ),
                                       )
                                       : Text(
-                                        'Add User',
+                                        'Tambah User',
                                         style: TextStyle(color: Colors.white),
                                       ),
                             ),

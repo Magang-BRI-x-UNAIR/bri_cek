@@ -127,12 +127,19 @@ class AuthService {
       // Save user data to Firestore
       await _firestore.collection('users').doc(user.uid).set({
         ...user.toMap(),
-        'email': dummyEmail, // Store the dummy email for auth purposes
+        'email': dummyEmail,
       });
 
       return user;
     } on FirebaseAuthException catch (e) {
       print('Create user error: $e');
+      // Map the error code to your custom error code
+      if (e.code == 'email-already-in-use') {
+        throw FirebaseAuthException(
+          code: 'username-exists',
+          message: 'Username sudah digunakan oleh akun lain',
+        );
+      }
       rethrow;
     }
   }
