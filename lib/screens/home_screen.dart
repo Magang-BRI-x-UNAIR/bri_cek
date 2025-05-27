@@ -137,14 +137,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           child: Column(
             children: [
-              // Handle indicator
-              Container(
-                margin: EdgeInsets.symmetric(vertical: 12),
-                width: AppSize.widthPercent(10),
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade500,
-                  borderRadius: BorderRadius.circular(10),
+              // Handle indicator with swipe text
+              GestureDetector(
+                onVerticalDragUpdate: (details) {
+                  // Calculate new sheet size based on drag
+                  double delta =
+                      details.primaryDelta! /
+                      MediaQuery.of(context).size.height;
+                  double newSize =
+                      (scrollController.hasClients
+                          ? scrollController.position.viewportDimension /
+                              MediaQuery.of(context).size.height
+                          : 0) -
+                      delta;
+
+                  // Update sheet position
+                  if (newSize >= 0.05 && newSize <= 0.25) {
+                    scrollController.jumpTo(0); // Reset scroll position
+                    DraggableScrollableActuator.reset(context);
+                  }
+                },
+                child: Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 6),
+                      child: Center(
+                        child: Container(
+                          margin: EdgeInsets.symmetric(vertical: 6),
+                          width: AppSize.widthPercent(10),
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade500,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Add swipe instruction text
+                    Text(
+                      "Swipe untuk melakukan penilaian",
+                      style: AppSize.getTextStyle(
+                        fontSize: AppSize.smallFontSize,
+                        color: Colors.blue.shade800,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                  ],
                 ),
               ),
               // Content
