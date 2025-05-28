@@ -98,6 +98,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
@@ -144,6 +145,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     opacity: 0.2,
                   ),
 
+                  // Back button
+                  Positioned(
+                    top: AppSize.heightPercent(2),
+                    left: AppSize.widthPercent(6),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: IconButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        icon: Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: AppSize.widthPercent(6),
+                        ),
+                        tooltip: 'Kembali ke Home',
+                      ),
+                    ),
+                  ),
+
                   // Header content
                   Padding(
                     padding: EdgeInsets.only(
@@ -152,8 +180,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       right: AppSize.widthPercent(6),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        SizedBox(height: AppSize.heightPercent(1)),
                         // Title
                         Text(
                           "Admin Dashboard",
@@ -163,7 +192,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             color: Colors.white,
                           ),
                         ),
-                        SizedBox(height: AppSize.heightPercent(1)),
+                        SizedBox(height: AppSize.heightPercent(0.5)),
                         Text(
                           "Kelola pertanyaan dan pengguna",
                           style: AppSize.getTextStyle(
@@ -217,7 +246,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
-                            Icon(Icons.arrow_forward, color: Colors.white),
+                            Icon(Icons.quiz, color: Colors.white),
                             SizedBox(width: 8),
                             Text(
                               'Manage Questions',
@@ -327,7 +356,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ElevatedButton(
                               onPressed: _isAddingUser ? null : _addUser,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue.shade700,
+                                backgroundColor: Colors.green.shade700,
                                 padding: EdgeInsets.symmetric(
                                   vertical: AppSize.heightPercent(2),
                                   horizontal: AppSize.widthPercent(8),
@@ -343,9 +372,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                           color: Colors.white,
                                         ),
                                       )
-                                      : Text(
-                                        'Tambah User',
-                                        style: TextStyle(color: Colors.white),
+                                      : Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.person_add,
+                                            color: Colors.white,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Tambah User',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                             ),
                           ],

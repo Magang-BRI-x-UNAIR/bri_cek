@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:bri_cek/screens/admin_dashboard_screen.dart';
 import 'package:bri_cek/screens/choose_bank_screen.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -7,7 +8,9 @@ import 'package:bri_cek/models/user_model.dart';
 import 'package:bri_cek/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool isAdmin; // Add admin flag
+
+  const HomeScreen({super.key, this.isAdmin = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -295,6 +298,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  // Admin configuration button
   Widget _buildHeader() {
     return AnimatedBuilder(
       animation: _headerAnimation,
@@ -349,6 +353,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 size: AppSize.widthPercent(15),
               ),
             ),
+
+            // Admin configuration button (only show if admin)
+            if (widget.isAdmin == true) // Explicit comparison with true
+              Positioned(
+                top: AppSize.heightPercent(2),
+                right: AppSize.widthPercent(6),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminDashboardScreen(),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      Icons.settings,
+                      color: Colors.white,
+                      size: AppSize.widthPercent(6),
+                    ),
+                    tooltip: 'Admin Configuration',
+                  ),
+                ),
+              ),
 
             // Bank icon
             Positioned(
@@ -416,7 +453,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                   Text(
-                    _isLoading ? 'User' : _getFirstName(_currentUser?.fullName),
+                    _isLoading
+                        ? (widget.isAdmin == true ? 'Admin' : 'User')
+                        : (widget.isAdmin == true
+                            ? 'Admin BRI'
+                            : _getFirstName(_currentUser?.fullName)),
                     style: AppSize.getTextStyle(
                       fontSize: AppSize.titleFontSize,
                       fontWeight: FontWeight.bold,

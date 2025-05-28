@@ -43,11 +43,13 @@ class _LoginScreenState extends State<LoginScreen> {
       try {
         // Check if admin login
         if (username == AdminData.username && password == AdminData.password) {
-          // Admin login logic
+          // Admin login logic - go to Home Screen first
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => const AdminDashboardScreen(),
+              builder:
+                  (context) =>
+                      const HomeScreen(isAdmin: true), // Pass admin flag
             ),
           );
           return;
@@ -59,7 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
         // Navigate to Home Screen
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(isAdmin: false),
+          ),
         );
       } on FirebaseAuthException catch (e) {
         setState(() {
