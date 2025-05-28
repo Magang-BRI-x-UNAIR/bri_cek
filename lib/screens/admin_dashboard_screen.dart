@@ -98,16 +98,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            // Header Section
+            // Header Section - Perbesar tinggi dan atur layout
             Container(
               width: double.infinity,
-              height: AppSize.heightPercent(15),
+              height: AppSize.heightPercent(
+                18,
+              ), // Increase height from 15 to 18
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.bottomLeft,
@@ -127,28 +128,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   // Cloud decorations
                   _buildCloudDecoration(
-                    top: AppSize.heightPercent(10),
+                    top: AppSize.heightPercent(12),
                     left: AppSize.widthPercent(20),
                     size: AppSize.widthPercent(13),
                     opacity: 0.3,
                   ),
                   _buildCloudDecoration(
-                    top: AppSize.heightPercent(3),
+                    top: AppSize.heightPercent(4),
                     left: AppSize.widthPercent(42),
                     size: AppSize.widthPercent(12),
                     opacity: 0.2,
                   ),
                   _buildCloudDecoration(
-                    top: AppSize.heightPercent(8),
+                    top: AppSize.heightPercent(10),
                     left: AppSize.widthPercent(90),
                     size: AppSize.widthPercent(15),
                     opacity: 0.2,
                   ),
 
-                  // Back button
+                  // Back button - posisi diperbaiki
                   Positioned(
                     top: AppSize.heightPercent(2),
-                    left: AppSize.widthPercent(6),
+                    left: AppSize.widthPercent(4),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
@@ -172,42 +173,71 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                   ),
 
-                  // Header content
-                  Padding(
-                    padding: EdgeInsets.only(
-                      left: AppSize.widthPercent(6),
-                      top: AppSize.heightPercent(2),
-                      right: AppSize.widthPercent(6),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(height: AppSize.heightPercent(1)),
-                        // Title
-                        Text(
-                          "Admin Dashboard",
-                          style: AppSize.getTextStyle(
-                            fontSize: AppSize.titleFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                  // Header content - posisi diperbaiki untuk tidak bertabrak dengan back button
+                  Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        top: AppSize.heightPercent(3), // Increase top padding
+                        left: AppSize.widthPercent(
+                          15,
+                        ), // Add left padding to avoid back button
+                        right: AppSize.widthPercent(
+                          15,
+                        ), // Add right padding for symmetry
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Admin icon
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.admin_panel_settings,
+                              color: Colors.white,
+                              size: 28,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: AppSize.heightPercent(0.5)),
-                        Text(
-                          "Kelola pertanyaan dan pengguna",
-                          style: AppSize.getTextStyle(
-                            fontSize: AppSize.bodyFontSize,
-                            color: Colors.white.withOpacity(0.9),
+                          SizedBox(height: AppSize.heightPercent(1)),
+
+                          // Title
+                          Text(
+                            "Admin Dashboard",
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.titleFontSize,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                      ],
+                          SizedBox(height: AppSize.heightPercent(0.5)),
+
+                          // Subtitle
+                          Text(
+                            "Kelola pertanyaan dan pengguna",
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.bodyFontSize,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-            // Content Section
+            // Content Section - sama seperti sebelumnya
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -216,16 +246,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Section: Manage Questions
-                      Text(
-                        'Manage Questions',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      _buildSectionHeader(
+                        'Kelola Pertanyaan',
+                        Icons.quiz,
+                        Colors.blue.shade700,
                       ),
-                      SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () {
+                      SizedBox(height: 12),
+                      _buildActionButton(
+                        'Manage Questions',
+                        'Kelola semua pertanyaan penilaian',
+                        Icons.quiz,
+                        Colors.blue.shade700,
+                        () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -234,197 +266,286 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade700,
-                          padding: EdgeInsets.symmetric(
-                            vertical: AppSize.heightPercent(2),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.quiz, color: Colors.white),
-                            SizedBox(width: 8),
-                            Text(
-                              'Manage Questions',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                      SizedBox(height: 32),
+                      SizedBox(height: 24),
 
                       // Section: Add Users
-                      Text(
-                        'Add Users',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      _buildSectionHeader(
+                        'Tambah Pengguna',
+                        Icons.person_add,
+                        Colors.green.shade700,
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: 12),
 
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            TextFormField(
-                              controller: _usernameController,
-                              decoration: const InputDecoration(
-                                labelText: 'Username',
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Username harus diisi';
-                                }
-                                // Prevent creating another admin
-                                if (value.toLowerCase() == 'adminbri') {
-                                  return 'Username tidak tersedia';
-                                }
-                                return null;
-                              },
-                            ),
-                            SizedBox(height: 8),
-
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Password',
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Password harus diisi';
-                                }
-                                if (value.length < 6) {
-                                  return 'Password minimal 6 karakter';
-                                }
-                                return null;
-                              },
-                            ),
-                            SizedBox(height: 8),
-
-                            TextFormField(
-                              controller: _fullNameController,
-                              decoration: const InputDecoration(
-                                labelText: 'Nama Lengkap',
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Nama lengkap harus diisi';
-                                }
-                                return null;
-                              },
-                            ),
-                            SizedBox(height: 8),
-                            TextFormField(
-                              controller: _employeeIdController,
-                              decoration: const InputDecoration(
-                                labelText: 'ID Karyawan',
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'ID karyawan harus diisi';
-                                }
-                                return null;
-                              },
-                            ),
-
-                            if (_errorMessage != null)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8.0,
+                      // Form
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              TextFormField(
+                                controller: _usernameController,
+                                decoration: InputDecoration(
+                                  labelText: 'Username',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  prefixIcon: Icon(Icons.person),
                                 ),
-                                child: Text(
-                                  _errorMessage!,
-                                  style: TextStyle(color: Colors.red),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Username harus diisi';
+                                  }
+                                  if (value.toLowerCase() == 'adminbri') {
+                                    return 'Username tidak tersedia';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: 12),
+
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  prefixIcon: Icon(Icons.lock),
                                 ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Password harus diisi';
+                                  }
+                                  if (value.length < 6) {
+                                    return 'Password minimal 6 karakter';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: 12),
+
+                              TextFormField(
+                                controller: _fullNameController,
+                                decoration: InputDecoration(
+                                  labelText: 'Nama Lengkap',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  prefixIcon: Icon(Icons.badge),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Nama lengkap harus diisi';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: 12),
+
+                              TextFormField(
+                                controller: _employeeIdController,
+                                decoration: InputDecoration(
+                                  labelText: 'ID Karyawan',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  prefixIcon: Icon(Icons.numbers),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'ID karyawan harus diisi';
+                                  }
+                                  return null;
+                                },
                               ),
 
-                            SizedBox(height: 16),
-
-                            ElevatedButton(
-                              onPressed: _isAddingUser ? null : _addUser,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green.shade700,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: AppSize.heightPercent(2),
-                                  horizontal: AppSize.widthPercent(8),
-                                ),
-                              ),
-                              child:
-                                  _isAddingUser
-                                      ? SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
+                              if (_errorMessage != null)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                  ),
+                                  child: Container(
+                                    padding: EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.red.shade200,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.error,
+                                          color: Colors.red,
+                                          size: 20,
                                         ),
-                                      )
-                                      : Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.person_add,
-                                            color: Colors.white,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Tambah User',
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            _errorMessage!,
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: Colors.red.shade700,
                                             ),
                                           ),
-                                        ],
-                                      ),
-                            ),
-                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                              SizedBox(height: 16),
+
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _isAddingUser ? null : _addUser,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green.shade700,
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child:
+                                      _isAddingUser
+                                          ? SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                          : Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.person_add,
+                                                color: Colors.white,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Tambah User',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      SizedBox(height: 32),
+                      SizedBox(height: 24),
 
-                      // Logout Button
-                      ElevatedButton(
-                        onPressed: _logout,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade700,
-                          padding: EdgeInsets.symmetric(
-                            vertical: AppSize.heightPercent(2),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.logout, color: Colors.white),
-                            SizedBox(width: 8),
-                            Text(
-                              'Logout',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                      // Logout Section
+                      _buildSectionHeader(
+                        'Keluar',
+                        Icons.logout,
+                        Colors.red.shade700,
+                      ),
+                      SizedBox(height: 12),
+                      _buildActionButton(
+                        'Logout',
+                        'Keluar dari dashboard admin',
+                        Icons.logout,
+                        Colors.red.shade700,
+                        _logout,
                       ),
                     ],
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper methods untuk UI yang lebih rapi
+  Widget _buildSectionHeader(String title, IconData icon, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        SizedBox(width: 12),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          padding: EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: 24),
+                SizedBox(width: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

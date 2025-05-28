@@ -355,34 +355,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
 
             // Admin configuration button (only show if admin)
-            if (widget.isAdmin == true) // Explicit comparison with true
+            if (widget.isAdmin == true)
               Positioned(
-                top: AppSize.heightPercent(2),
+                top: AppSize.heightPercent(1.5),
                 right: AppSize.widthPercent(6),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminDashboardScreen(),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminDashboardScreen(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.orange.shade400,
+                          Colors.orange.shade600,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
-                      );
-                    },
-                    icon: Icon(
-                      Icons.settings,
-                      color: Colors.white,
-                      size: AppSize.widthPercent(6),
+                      ],
                     ),
-                    tooltip: 'Admin Configuration',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.shield, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text(
+                          'ADMIN',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
