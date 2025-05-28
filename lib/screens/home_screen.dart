@@ -519,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'Semua Bank',
     'KK Bulog',
     'KK Gubeng',
-    'KK Kadam',
+    'KK Kodam',
     'KK Genteng',
   ];
   final List<String> _months = [
@@ -641,7 +641,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   _buildChartLegend('KK Bulog', Colors.blue),
                   _buildChartLegend('KK Gubeng', Colors.orange),
-                  _buildChartLegend('KK Kadam', Colors.green),
+                  _buildChartLegend('KK Kodam', Colors.green),
                   _buildChartLegend('KK Genteng', Colors.purple),
                 ],
               ),
@@ -671,7 +671,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   _buildChartLegend('KK Bulog', Colors.blue),
                   _buildChartLegend('KK Gubeng', Colors.orange),
-                  _buildChartLegend('KK Kadam', Colors.green),
+                  _buildChartLegend('KK Kodam', Colors.green),
                   _buildChartLegend('KK Genteng', Colors.purple),
                 ],
               ),
@@ -723,7 +723,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         case 'KK Gubeng':
           bankColor = Colors.orange;
           break;
-        case 'KK Kadam':
+        case 'KK Kodam':
           bankColor = Colors.green;
           break;
         case 'KK Genteng':
@@ -953,9 +953,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 },
               ),
             ),
-            // KK Kadam
+            // KK Kodam
             LineChartBarData(
-              spots: _getWeeklyData('KK Kadam', monthIndex),
+              spots: _getWeeklyData('KK Kodam', monthIndex),
               isCurved: true,
               color: Colors.green,
               barWidth: 2.5,
@@ -1013,7 +1013,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       case 'KK Gubeng':
         baseValue = 50.0;
         break;
-      case 'KK Kadam':
+      case 'KK Kodam':
         baseValue = 75.0;
         break;
       case 'KK Genteng':
@@ -1133,7 +1133,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           color: Colors.orange.withOpacity(0.2),
         ),
       ),
-      // KK Kadam (Green)
+      // KK Kodam (Green)
       LineChartBarData(
         spots: [
           FlSpot(0, 50),
@@ -1151,18 +1151,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
         isCurved: true,
         color:
-            showSingleBank && _selectedBank != 'KK Kadam'
+            showSingleBank && _selectedBank != 'KK Kodam'
                 ? Colors.green.withOpacity(0.3)
                 : Colors.green,
-        barWidth: showSingleBank && _selectedBank == 'KK Kadam' ? 3.5 : 2.5,
+        barWidth: showSingleBank && _selectedBank == 'KK Kodam' ? 3.5 : 2.5,
         isStrokeCapRound: true,
         dotData: FlDotData(
           show: true,
           getDotPainter: (spot, percent, barData, index) {
             return FlDotCirclePainter(
-              radius: showSingleBank && _selectedBank == 'KK Kadam' ? 4 : 3,
+              radius: showSingleBank && _selectedBank == 'KK Kodam' ? 4 : 3,
               color:
-                  showSingleBank && _selectedBank != 'KK Kadam'
+                  showSingleBank && _selectedBank != 'KK Kodam'
                       ? Colors.green.withOpacity(0.3)
                       : Colors.green,
               strokeWidth: 1,
@@ -1171,7 +1171,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
         ),
         belowBarData: BarAreaData(
-          show: showSingleBank && _selectedBank == 'KK Kadam',
+          show: showSingleBank && _selectedBank == 'KK Kodam',
           color: Colors.green.withOpacity(0.2),
         ),
       ),
