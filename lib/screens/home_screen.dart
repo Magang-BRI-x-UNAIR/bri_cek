@@ -117,197 +117,195 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildSwipeableBottomSheet() {
     return DraggableScrollableSheet(
-      initialChildSize: 0.05, // Starting size (just the handle showing)
-      minChildSize: 0.05, // Minimum size when collapsed
-      maxChildSize: 0.25, // Maximum size when expanded (25% of screen)
+      initialChildSize: 0.05,
+      minChildSize: 0.05,
+      maxChildSize: 0.25,
       builder: (BuildContext context, ScrollController scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(color: Colors.blue.shade200),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: const Offset(0, -3),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // Handle indicator with swipe text
-              GestureDetector(
-                onVerticalDragUpdate: (details) {
-                  // Calculate new sheet size based on drag
-                  double delta =
-                      details.primaryDelta! /
-                      MediaQuery.of(context).size.height;
-                  double newSize =
-                      (scrollController.hasClients
-                          ? scrollController.position.viewportDimension /
-                              MediaQuery.of(context).size.height
-                          : 0) -
-                      delta;
+        return AnimatedBuilder(
+          animation: scrollController,
+          builder: (context, child) {
+            // Calculate current sheet size percentage
+            double currentSize = 0.05; // default
+            if (scrollController.hasClients) {
+              final maxHeight = MediaQuery.of(context).size.height;
+              final currentHeight = scrollController.position.viewportDimension;
+              currentSize = currentHeight / maxHeight;
+            }
 
-                  // Update sheet position
-                  if (newSize >= 0.05 && newSize <= 0.25) {
-                    scrollController.jumpTo(0); // Reset scroll position
-                    DraggableScrollableActuator.reset(context);
-                  }
-                },
-                child: Column(
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(vertical: 6),
-                      child: Center(
-                        child: Container(
-                          margin: EdgeInsets.symmetric(vertical: 6),
+            // Show text only when sheet is expanded enough
+            bool showSwipeText = currentSize <= 0.06;
+
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+                border: Border.all(color: Colors.blue.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, -3),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Fixed header with handle (no overflow)
+                  Container(
+                    height: 35, // Fixed height to prevent overflow
+                    width: double.infinity,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Handle bar
+                        Container(
+                          margin: const EdgeInsets.only(top: 8, bottom: 4),
                           width: AppSize.widthPercent(10),
-                          height: 5,
+                          height: 4,
                           decoration: BoxDecoration(
                             color: Colors.grey.shade500,
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                      ),
-                    ),
-                    // Add swipe instruction text
-                    Text(
-                      "Swipe untuk melakukan penilaian",
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.smallFontSize,
-                        color: Colors.blue.shade800,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                  ],
-                ),
-              ),
-              // Content
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSize.paddingHorizontal,
-                  ),
-                  children: [
-                    // Row with image and text
-                    Row(
-                      children: [
-                        // Image
-                        Container(
-                          width: AppSize.widthPercent(32),
-                          height: AppSize.heightPercent(20),
-                          decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage(
-                                'assets/images/assess_bank_person.png',
+                        // Conditional swipe instruction text (only when minimized)
+                        if (showSwipeText)
+                          Flexible(
+                            child: Text(
+                              "Swipe untuk melakukan penilaian",
+                              style: AppSize.getTextStyle(
+                                fontSize: AppSize.smallFontSize,
+                                color: Colors.blue.shade800,
+                                fontWeight: FontWeight.w500,
                               ),
-                              fit: BoxFit.contain,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                        SizedBox(width: AppSize.widthPercent(3)),
-                        // Penilaian text
-                        Column(
+                      ],
+                    ),
+                  ),
+                  // Expanded content area
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppSize.paddingHorizontal,
+                        vertical: 8,
+                      ),
+                      children: [
+                        // Row with image and text
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Beri Penilaian Kantor Kas',
-                              style: AppSize.getTextStyle(
-                                fontSize: AppSize.bodyFontSize,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black87,
+                            // Image
+                            Container(
+                              width: AppSize.widthPercent(32),
+                              height: AppSize.heightPercent(15),
+                              decoration: const BoxDecoration(
+                                image: DecorationImage(
+                                  image: AssetImage(
+                                    'assets/images/assess_bank_person.png',
+                                  ),
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                             ),
-
-                            SizedBox(height: AppSize.widthPercent(3)),
-
-                            ElevatedButton(
-                              onPressed: () {
-                                // Navigate to ChooseBankScreen
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => const ChooseBankScreen(),
+                            SizedBox(width: AppSize.widthPercent(3)),
+                            // Penilaian text and button
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Beri Penilaian Kantor Kas',
+                                    style: AppSize.getTextStyle(
+                                      fontSize: AppSize.bodyFontSize,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
                                   ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.symmetric(),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                backgroundColor:
-                                    Colors
-                                        .transparent, // Make transparent to show gradient
-                                elevation: 0, // Remove shadow
-                              ).copyWith(
-                                backgroundColor: MaterialStateProperty.all(
-                                  Colors.transparent,
-                                ),
-                                overlayColor: MaterialStateProperty.all(
-                                  Colors.transparent,
-                                ),
-                                foregroundColor: MaterialStateProperty.all(
-                                  Colors.white,
-                                ),
-                              ),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF00529C),
-                                      Color(0xFF0086FF),
-                                    ],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: AppSize.widthPercent(5),
-                                    vertical: AppSize.heightPercent(1.2),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Mulai',
-                                        style: AppSize.getTextStyle(
-                                          fontSize: AppSize.bodyFontSize,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
+                                  SizedBox(height: AppSize.heightPercent(1)),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) =>
+                                                  const ChooseBankScreen(),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: AppSize.widthPercent(4),
+                                        vertical: AppSize.heightPercent(1),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      backgroundColor: Colors.transparent,
+                                      elevation: 0,
+                                      shadowColor: Colors.transparent,
+                                    ),
+                                    child: Ink(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFF00529C),
+                                            Color(0xFF0086FF),
+                                          ],
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: AppSize.widthPercent(3),
+                                          vertical: AppSize.heightPercent(0.8),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              'Mulai',
+                                              style: AppSize.getTextStyle(
+                                                fontSize: AppSize.bodyFontSize,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              width: AppSize.widthPercent(2),
+                                            ),
+                                            Icon(
+                                              Icons.arrow_forward,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      SizedBox(width: AppSize.widthPercent(25)),
-                                      Icon(
-                                        Icons.arrow_forward,
-                                        color: Colors.white,
-                                        size: AppSize.iconSize,
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
