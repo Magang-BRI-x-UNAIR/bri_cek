@@ -22,7 +22,9 @@ class _BurgerMenuState extends State<BurgerMenu> {
   void _showBurgerMenu() {
     final RenderBox? renderBox =
         _menuButtonKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
+    if (renderBox == null) {
+      return;
+    }
 
     final position = renderBox.localToGlobal(Offset.zero);
     final size = renderBox.size;
@@ -47,11 +49,9 @@ class _BurgerMenuState extends State<BurgerMenu> {
         child: Stack(
           children: [
             Positioned(
+              // Posisi menu di bawah tombol burger dan sejajar dengan sisi kiri
               top: position.dy + buttonSize.height + AppSize.heightPercent(1),
-              right:
-                  MediaQuery.of(context).size.width -
-                  position.dx -
-                  buttonSize.width,
+              left: position.dx, // Sejajar dengan sisi kiri tombol burger
               child: Material(
                 elevation: 8,
                 borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
@@ -230,7 +230,9 @@ class _BurgerMenuState extends State<BurgerMenu> {
               Icon(
                 Icons.logout,
                 color: Colors.red.shade600,
-                size: AppSize.largeIconSize,
+                size:
+                    AppSize.iconSize *
+                    1.2, // Use iconSize instead of largeIconSize
               ),
               SizedBox(width: AppSize.widthPercent(2)),
               Expanded(
@@ -324,34 +326,27 @@ class _BurgerMenuState extends State<BurgerMenu> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: _menuButtonKey,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: AppSize.heightPercent(0.5),
-            offset: Offset(0, AppSize.heightPercent(0.25)),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _showBurgerMenu,
-          borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
-          child: Container(
-            padding: EdgeInsets.all(AppSize.paddingVertical * 0.8),
-            child: Icon(
-              Icons.menu,
-              color: Colors.white,
-              size: AppSize.iconSize,
+    return GestureDetector(
+      onTap: () {
+        _showBurgerMenu();
+      },
+      child: Container(
+        key: _menuButtonKey,
+        width: 48, // Set explicit width
+        height: 48, // Set explicit height
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: Offset(0, 2),
             ),
-          ),
+          ],
         ),
+        child: Icon(Icons.menu, color: Colors.white, size: 24),
       ),
     );
   }

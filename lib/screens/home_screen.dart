@@ -2,13 +2,14 @@ import 'dart:math';
 import 'package:bri_cek/screens/admin_dashboard_screen.dart';
 import 'package:bri_cek/screens/choose_bank_screen.dart';
 import 'package:bri_cek/utils/app_size.dart';
+import 'package:bri_cek/widgets/burger_menu.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/models/user_model.dart';
 import 'package:bri_cek/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  final bool isAdmin; // Add admin flag
+  final bool isAdmin;
 
   const HomeScreen({super.key, this.isAdmin = false});
 
@@ -298,7 +299,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Admin configuration button
   Widget _buildHeader() {
     return AnimatedBuilder(
       animation: _headerAnimation,
@@ -354,112 +354,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
 
-            // Admin configuration button (only show if admin)
-            if (widget.isAdmin == true)
-              Positioned(
-                top: AppSize.heightPercent(1.5),
-                right: AppSize.widthPercent(6),
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AdminDashboardScreen(),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.orange.shade400,
-                          Colors.orange.shade600,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.shield, color: Colors.white, size: 16),
-                        SizedBox(width: 4),
-                        Text(
-                          'ADMIN',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-            // Bank icon
+            // Burger menu button
             Positioned(
-              right: AppSize.widthPercent(8),
-              top: AppSize.heightPercent(3),
+              top: AppSize.heightPercent(2),
+              left: AppSize.widthPercent(4),
               child: Container(
-                width: AppSize.widthPercent(45),
-                height: AppSize.heightPercent(20),
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/bank_transparent.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-
-            // Female character
-            Positioned(
-              right: AppSize.widthPercent(2),
-              top: AppSize.heightPercent(7),
-              child: Container(
-                width: AppSize.widthPercent(35),
-                height: AppSize.heightPercent(15),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/female_character.png'),
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ),
-
-            // Male Characters
-            Positioned(
-              right: AppSize.widthPercent(23),
-              top: AppSize.heightPercent(4),
-              child: Container(
-                width: AppSize.widthPercent(35),
-                height: AppSize.heightPercent(18),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/male_character.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
+                width: 50,
+                height: 50,
+                child: BurgerMenu(isAdmin: widget.isAdmin),
               ),
             ),
 
             // Greeting text
             Positioned(
-              top: AppSize.heightPercent(7),
-              left: AppSize.widthPercent(6),
+              top: AppSize.heightPercent(9),
+              left: AppSize.widthPercent(4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -484,6 +393,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            // Bank icon - adjust position untuk memberikan ruang lebih
+            Positioned(
+              right: AppSize.widthPercent(4),
+              top: AppSize.heightPercent(2), // Naikkan sedikit
+              child: Container(
+                width: AppSize.widthPercent(50), // Perbesar width
+                height: AppSize.heightPercent(20), // Perbesar height
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/bank_transparent.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+
+            // Female character
+            Positioned(
+              right: AppSize.widthPercent(1),
+              top: AppSize.heightPercent(6),
+              child: Container(
+                width: AppSize.widthPercent(35), // Perbesar dari 27% ke 40%
+                height: AppSize.heightPercent(18), // Perbesar dari 15% ke 18%
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/female_character.png'),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+
+            // Male Characters - PERBESAR UKURAN
+            Positioned(
+              right: AppSize.widthPercent(21), // Adjust position
+              top: AppSize.heightPercent(4),
+              child: Container(
+                width: AppSize.widthPercent(37), // Perbesar dari 25% ke 35%
+                height: AppSize.heightPercent(19), // Perbesar dari 15% ke 18%
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/male_character.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
             ),
           ],
