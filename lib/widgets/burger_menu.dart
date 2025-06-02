@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:bri_cek/screens/admin_dashboard_screen.dart';
+import 'package:bri_cek/screens/manage_users_screen.dart';
 import 'package:bri_cek/screens/manage_questions_screen.dart';
 import 'package:bri_cek/screens/login_screen.dart';
 import 'package:bri_cek/services/auth_service.dart';
@@ -119,8 +119,7 @@ class _BurgerMenuState extends State<BurgerMenu> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder:
-                                    (context) => const AdminDashboardScreen(),
+                                builder: (context) => const ManageUsersScreen(),
                               ),
                             );
                           },

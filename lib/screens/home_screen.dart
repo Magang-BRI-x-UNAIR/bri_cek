@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'package:bri_cek/screens/admin_dashboard_screen.dart';
+import 'package:bri_cek/screens/manage_users_screen.dart';
 import 'package:bri_cek/screens/choose_bank_screen.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:bri_cek/widgets/burger_menu.dart';
