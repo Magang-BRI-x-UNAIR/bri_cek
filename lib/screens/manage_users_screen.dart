@@ -1,8 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
-import 'package:bri_cek/screens/login_screen.dart';
-import 'package:bri_cek/screens/manage_questions_screen.dart';
 import 'package:bri_cek/services/auth_service.dart';
 import 'package:bri_cek/models/user_model.dart';
 
@@ -19,14 +17,17 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _employeeIdController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
   final AuthService _authService = AuthService();
 
   bool _isAddingUser = false;
   bool _isLoadingUsers = true;
+  bool _isPasswordVisible = false;
   String? _errorMessage;
   List<UserModel> _users = [];
+  List<UserModel> _filteredUsers = [];
   bool _showAddUserForm = false;
 
   @override
@@ -41,6 +42,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     _passwordController.dispose();
     _fullNameController.dispose();
     _employeeIdController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -53,6 +55,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       final users = await _authService.getAllUsers();
       setState(() {
         _users = users;
+        _filteredUsers = users;
         _isLoadingUsers = false;
       });
     } catch (e) {
@@ -66,6 +69,23 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         ),
       );
     }
+  }
+
+  void _filterUsers(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredUsers = _users;
+      } else {
+        _filteredUsers =
+            _users.where((user) {
+              return user.fullName.toLowerCase().contains(
+                    query.toLowerCase(),
+                  ) ||
+                  user.username.toLowerCase().contains(query.toLowerCase()) ||
+                  user.employeeId.toLowerCase().contains(query.toLowerCase());
+            }).toList();
+      }
+    });
   }
 
   void _clearForm() {
@@ -190,7 +210,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             // Header Section
             Container(
               width: double.infinity,
-              height: AppSize.heightPercent(15),
+              height: AppSize.heightPercent(17),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.bottomLeft,
@@ -252,6 +272,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        SizedBox(height: AppSize.heightPercent(2)),
                         Container(
                           padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -294,58 +315,113 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             // Action Buttons
             Container(
               padding: EdgeInsets.all(16),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _showAddUserForm = !_showAddUserForm;
-                          if (!_showAddUserForm) _clearForm();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            _showAddUserForm
-                                ? Colors.grey
-                                : Colors.blue.shade600,
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _showAddUserForm = !_showAddUserForm;
+                              if (!_showAddUserForm) _clearForm();
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                _showAddUserForm
+                                    ? Colors.grey
+                                    : Colors.blue.shade600,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: Icon(
+                            _showAddUserForm ? Icons.close : Icons.person_add,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            _showAddUserForm ? 'Cancel' : 'Add User',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                      icon: Icon(
-                        _showAddUserForm ? Icons.close : Icons.person_add,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        _showAddUserForm ? 'Cancel' : 'Add User',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                      SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: _loadUsers,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          padding: EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: Icon(Icons.refresh, color: Colors.white),
+                        label: Text(
+                          'Refresh',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: _loadUsers,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      padding: EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+
+                  // Search Bar
+                  SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    icon: Icon(Icons.refresh, color: Colors.white),
-                    label: Text(
-                      'Refresh',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _filterUsers,
+                      decoration: InputDecoration(
+                        hintText: 'Search users by name, username, or ID...',
+                        hintStyle: TextStyle(color: Colors.grey.shade500),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Colors.grey.shade600,
+                        ),
+                        suffixIcon:
+                            _searchController.text.isNotEmpty
+                                ? IconButton(
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _filterUsers('');
+                                  },
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                )
+                                : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -381,7 +457,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                           Icon(Icons.people, color: Colors.blue.shade700),
                           SizedBox(width: 8),
                           Text(
-                            'Registered Users (${_users.length})',
+                            'Registered Users (${_filteredUsers.length}${_searchController.text.isNotEmpty ? ' of ${_users.length}' : ''})',
                             style: AppSize.getTextStyle(
                               fontSize: AppSize.subtitleFontSize,
                               fontWeight: FontWeight.bold,
@@ -402,12 +478,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                   color: Colors.blue.shade600,
                                 ),
                               )
-                              : _users.isEmpty
+                              : _filteredUsers.isEmpty
                               ? _buildEmptyState()
                               : ListView.builder(
-                                itemCount: _users.length,
+                                itemCount: _filteredUsers.length,
                                 itemBuilder: (context, index) {
-                                  return _buildUserCard(_users[index]);
+                                  return _buildUserCard(_filteredUsers[index]);
                                 },
                               ),
                     ),
@@ -429,8 +505,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
             offset: Offset(0, 5),
           ),
         ],
@@ -442,19 +518,30 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.person_add, color: Colors.blue.shade700),
-                SizedBox(width: 8),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF2680C5).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.person_add,
+                    color: Color(0xFF2680C5),
+                    size: 20,
+                  ),
+                ),
+                SizedBox(width: 12),
                 Text(
                   'Add New User',
                   style: AppSize.getTextStyle(
                     fontSize: AppSize.subtitleFontSize,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade700,
+                    color: Color(0xFF2680C5),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 16),
+            SizedBox(height: 20),
 
             // Username Field
             TextFormField(
@@ -481,12 +568,28 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             SizedBox(height: 12),
 
             // Password Field
+            // Password Field
             TextFormField(
               controller: _passwordController,
-              obscureText: true,
+              obscureText: !_isPasswordVisible, // Toggle berdasarkan state
               decoration: InputDecoration(
                 labelText: 'Password',
                 prefixIcon: Icon(Icons.lock),
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordVisible = !_isPasswordVisible;
+                    });
+                  },
+                  icon: Icon(
+                    _isPasswordVisible
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    color: Colors.grey.shade600,
+                  ),
+                  tooltip:
+                      _isPasswordVisible ? 'Hide password' : 'Show password',
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -578,33 +681,41 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               child: ElevatedButton(
                 onPressed: _isAddingUser ? null : _addUser,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade600,
+                  backgroundColor: Color(0xFF28A745), // Success green
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  elevation: 3,
+                  shadowColor: Color(0xFF28A745).withOpacity(0.3),
                 ),
                 child:
                     _isAddingUser
                         ? SizedBox(
-                          height: 20,
-                          width: 20,
+                          height: 22,
+                          width: 22,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2,
+                            strokeWidth: 2.5,
                             color: Colors.white,
                           ),
                         )
                         : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.person_add, color: Colors.white),
-                            SizedBox(width: 8),
+                            Icon(
+                              Icons.person_add,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            SizedBox(width: 10),
                             Text(
                               'Add User',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
