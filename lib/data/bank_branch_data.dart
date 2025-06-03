@@ -11,6 +11,8 @@ final List<BankBranch> branches = [
     city: 'Surabaya',
     phoneNumber: '(031) 5345678',
     operationalHours: 'Senin-Jumat: 08.00-15.00',
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
   ),
   BankBranch(
     id: '2',
@@ -21,6 +23,8 @@ final List<BankBranch> branches = [
     city: 'Surabaya',
     phoneNumber: '(031) 5033214',
     operationalHours: 'Senin-Jumat: 08.00-15.00, Sabtu: 08.00-12.00',
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
   ),
   BankBranch(
     id: '3',
@@ -32,6 +36,8 @@ final List<BankBranch> branches = [
     city: 'Surabaya',
     phoneNumber: '(031) 8290123',
     operationalHours: 'Senin-Jumat: 08.00-15.00',
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
   ),
   BankBranch(
     id: '4',
@@ -42,5 +48,7 @@ final List<BankBranch> branches = [
     city: 'Surabaya',
     phoneNumber: '(031) 8432678',
     operationalHours: 'Senin-Jumat: 08.00-15.00',
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
   ),
 ];
