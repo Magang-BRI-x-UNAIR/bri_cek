@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:bri_cek/data/bank_branch_data.dart';
 import 'package:bri_cek/models/bank_branch.dart';
+import 'package:bri_cek/services/bank_branch_service.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:bri_cek/widgets/bank_branch_card.dart';
 
@@ -14,24 +14,30 @@ class ChooseBankScreen extends StatefulWidget {
 class _ChooseBankScreenState extends State<ChooseBankScreen>
     with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  final BankBranchService _bankBranchService = BankBranchService();
+
+  List<BankBranch> _allBranches = [];
   List<BankBranch> _filteredBranches = [];
+  bool _isLoading = true;
   bool _isSearching = false;
 
-  // Animation controllers
+  // Animation controllers (keep existing animation code)
   late AnimationController _headerAnimationController;
   late AnimationController _searchBarAnimationController;
   late AnimationController _listAnimationController;
-
   late Animation<double> _headerAnimation;
   late Animation<double> _searchBarAnimation;
 
   @override
   void initState() {
     super.initState();
-    _filteredBranches = branches;
     _searchController.addListener(_filterBranches);
+    _initializeAnimations();
+    _loadBranches();
+  }
 
-    // Initialize animation controllers
+  void _initializeAnimations() {
+    // Keep existing animation initialization code
     _headerAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -47,7 +53,6 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
       vsync: this,
     );
 
-    // Configure animations
     _headerAnimation = CurvedAnimation(
       parent: _headerAnimationController,
       curve: Curves.easeOut,
@@ -58,7 +63,6 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
       curve: Curves.easeInOut,
     );
 
-    // Start animations sequentially
     _startAnimationsSequentially();
   }
 
@@ -73,14 +77,36 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
     _listAnimationController.forward();
   }
 
+  Future<void> _loadBranches() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final branches = await _bankBranchService.getActiveBranches();
+
+      setState(() {
+        _allBranches = branches;
+        _filteredBranches = branches;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading branches: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _filterBranches() {
     final query = _searchController.text.toLowerCase();
     setState(() {
       if (query.isEmpty) {
-        _filteredBranches = branches;
+        _filteredBranches = _allBranches;
       } else {
         _filteredBranches =
-            branches
+            _allBranches
                 .where(
                   (branch) =>
                       branch.name.toLowerCase().contains(query) ||
@@ -334,6 +360,16 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
   }
 
   Widget _buildBankBranchList() {
+    if (_isLoading) {
+      return Expanded(
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+          ),
+        ),
+      );
+    }
+
     return Expanded(
       child:
           _filteredBranches.isEmpty
@@ -353,7 +389,6 @@ class _ChooseBankScreenState extends State<ChooseBankScreen>
                   itemCount: _filteredBranches.length,
                   itemBuilder: (context, index) {
                     final branch = _filteredBranches[index];
-                    // Apply staggered animation for each item
                     return AnimatedOpacity(
                       opacity: 1.0,
                       duration: Duration(milliseconds: 300 + (index * 50)),
