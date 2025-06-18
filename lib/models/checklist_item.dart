@@ -1,6 +1,7 @@
 class ChecklistItem {
   final String id;
   final String question;
+  final String standard;
   final List<String> options;
   final bool isRequired;
   final bool allowsNote;
@@ -19,6 +20,7 @@ class ChecklistItem {
   ChecklistItem({
     required this.id,
     required this.question,
+    this.standard = 'Standar sesuai ketentuan yang berlaku',
     this.options = const ['Ya', 'Tidak'],
     this.isRequired = true,
     this.allowsNote = true,

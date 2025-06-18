@@ -25,6 +25,60 @@ class CheckHistoryDetailScreen extends StatefulWidget {
 
 class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
     with SingleTickerProviderStateMixin {
+        // ... kode Anda yg ada
+  final ExcelExportService _excelExportService = ExcelExportService();
+  
+  // Tambahkan fungsi untuk tombol ekspor
+  void _handleExportHistory() async {
+    // Tampilkan loading indicator
+    
+    // 1. Ambil List<ChecklistItem> dari Firestore untuk riwayat ini.
+    // ANDA HARUS MEMBUAT FUNGSI INI. Ini hanya contoh.
+    final List<ChecklistItem> answeredItems = await fetchChecklistItemsForHistory(widget.history.id);
+    
+    if (answeredItems.isEmpty) {
+      // Tampilkan pesan error jika data tidak ditemukan
+      return;
+    }
+    
+    // 2. Panggil service ekspor dengan data yang ada
+    await _excelExportService.exportAndShareExcel(
+      bankCheckHistory: widget.history, // Sudah ada dari widget
+      bankBranch: widget.branch,       // Sudah ada dari widget
+      allChecklistItems: answeredItems,  // Hasil fetch dari Firestore
+    );
+    
+    // Hilangkan loading indicator
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Detail Riwayat'),
+        actions: [
+          // Tambahkan Tombol/Icon untuk ekspor
+          IconButton(
+            icon: Icon(Icons.share),
+            onPressed: _handleExportHistory, // Panggil fungsi ekspor
+            tooltip: 'Ekspor ke Excel',
+          ),
+        ],
+      ),
+      // ... sisa widget build Anda
+    );
+  }
+}
+
+// CONTOH FUNGSI FETCH DATA (letakkan di service/repository Anda)
+// Future<List<ChecklistItem>> fetchChecklistItemsForHistory(String historyId) async {
+//   final snapshot = await FirebaseFirestore.instance
+//       .collection('histories')
+//       .doc(historyId)
+//       .collection('checklistItems')
+//       .get();
+//   return snapshot.docs.map((doc) => ChecklistItem.fromMap(doc.data())).toList();
+// }
   late TabController _tabController;
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy');
   final ExcelExportService _excelExportService = ExcelExportService();

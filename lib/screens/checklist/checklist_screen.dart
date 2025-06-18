@@ -8,6 +8,9 @@ import 'package:bri_cek/services/checklist_service.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/data/checklist_item_data.dart';
+import 'package:bri_cek/services/excel_export_service.dart';
+import 'package:bri_cek/models/bank_check_history.dart';
+import 'package:bri_cek/models/bank_branch.dart';
 
 class ChecklistScreen extends StatefulWidget {
   final String selectedBank;
@@ -351,6 +354,40 @@ class _ChecklistScreenState extends State<ChecklistScreen>
               Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
+      // 1. Dapatkan semua data yang diperlukan
+    final List<ChecklistItem> answeredItems = _checklistService.items;
+    );
+    // ASUMSI: Anda perlu fungsi untuk mendapatkan objek BankBranch dan nama user
+    // Ini HANYA CONTOH, sesuaikan dengan cara Anda mengambil data
+    final BankBranch currentBranch = await getBankBranchByName(widget.selectedBank);
+    final String currentUserName = await getCurrentUserName(); // Nama pemeriksa yg login
+    
+    // 2. Buat objek BankCheckHistory yang LENGKAP
+    final history = BankCheckHistory(
+      id: 'some-unique-id-from-firestore', // ID unik
+      bankBranchId: currentBranch.id,
+      checkDate: widget.selectedDate,
+      checkedBy: currentUserName,
+      
+      // Mengambil data dari employeeData dan kategori
+      employeeName: widget.employeeData?['name'], // Ambil nama dari map
+      employeePosition: widget.selectedCategory, // Jabatan = Kategori yg dipilih
+      
+      // Kalkulasi skor dan data lainnya
+      score: _checklistService.calculateScore(),
+      aspectScores: {}, // Isi jika ada
+      isSuccessful: _checklistService.calculateScore() >= 70, // Contoh
+    );
+    
+    // 3. (Opsional) Simpan ke Firestore
+    // await saveToFirestore(history, answeredItems);
+
+    // 4. Panggil service ekspor
+    final excelService = ExcelExportService();
+    await excelService.exportAndShareExcel(
+      bankCheckHistory: history,
+      bankBranch: currentBranch,
+      allChecklistItems: answeredItems,
     );
   }
 
@@ -361,7 +398,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     super.dispose();
   }
 
-  @override
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {

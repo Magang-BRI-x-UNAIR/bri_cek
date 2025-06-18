@@ -7,6 +7,8 @@ class BankCheckHistory {
   final Map<String, double> aspectScores;
   final String? notes;
   final String checkedBy;
+  final String? employeeName;
+  final String? employeePosition;
 
   BankCheckHistory({
     required this.id,
@@ -17,6 +19,8 @@ class BankCheckHistory {
     required this.aspectScores,
     this.notes,
     required this.checkedBy,
+    this.employeeName,
+    this.employeePosition,
   });
 
   // Format the date as a string
