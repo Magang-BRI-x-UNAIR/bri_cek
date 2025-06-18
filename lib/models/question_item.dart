@@ -47,13 +47,14 @@ class Question {
       questionSubcategoryId:
           item.subcategory.isEmpty ? null : item.subcategory.toLowerCase(),
       conditions: QuestionConditions(
-        gender: null, // You'll need to map this
-        uniformType: item.uniformType.isEmpty ? null : item.uniformType,
+        gender: item.gender, // No change needed here as it's already nullable
+        uniformType:
+            item.uniformType?.isEmpty == true ? null : item.uniformType,
         forHijab: item.forHijab,
       ),
       isRequired: item.isRequired,
       allowsNote: item.allowsNote,
-      order: 0, // You'll need to set this
+      order: item.order, // Use item.order instead of hardcoded 0
       answerValue: item.answerValue,
       note: item.note,
       skipped: item.skipped,
