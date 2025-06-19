@@ -7,15 +7,15 @@ import 'package:intl/intl.dart';
 class ChooseCategoryScreen extends StatefulWidget {
   final String selectedBank;
   final DateTime selectedDate;
-  final String bankBranchId; // Tambahkan parameter ini
-  final String sessionId; // Tambahkan parameter ini
+  final String bankBranchId; // Pastikan parameter ini ada
+  final String sessionId;
 
   const ChooseCategoryScreen({
     super.key,
     required this.selectedBank,
     required this.selectedDate,
-    required this.bankBranchId, // Tambahkan parameter ini
-    required this.sessionId, // Tambahkan parameter ini
+    required this.bankBranchId,
+    required this.sessionId,
   });
 
   @override
@@ -331,6 +331,10 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                                                     widget.selectedDate,
                                                 selectedCategory:
                                                     _selectedCategory!,
+                                                bankBranchId:
+                                                    widget
+                                                        .bankBranchId, // Teruskan dari widget
+                                                sessionId: widget.sessionId,
                                               ),
                                         ),
                                       );
@@ -347,8 +351,15 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                                                     widget.selectedDate,
                                                 selectedCategory:
                                                     _selectedCategory!,
+                                                bankBranchId:
+                                                    widget
+                                                        .bankBranchId, // Tambahkan ini
+                                                sessionId:
+                                                    widget
+                                                        .sessionId, // Tambahkan ini
                                                 // Employee data is null for non-people categories
                                                 employeeData: null,
+                                                fetchFromDatabase: true,
                                               ),
                                         ),
                                       );

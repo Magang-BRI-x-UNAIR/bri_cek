@@ -5,14 +5,11 @@ import 'package:bri_cek/screens/choose_date.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/models/bank_branch.dart';
 import 'package:bri_cek/utils/app_size.dart';
-import 'package:bri_cek/services/assessment_session_service.dart';
 
 class BankDetailScreen extends StatelessWidget {
   final BankBranch branch;
-  final AssessmentSessionService _assessmentSessionService =
-      AssessmentSessionService();
 
-  BankDetailScreen({Key? key, required this.branch}) : super(key: key);
+  const BankDetailScreen({Key? key, required this.branch}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -102,46 +99,19 @@ class BankDetailScreen extends StatelessWidget {
               );
 
           return FloatingActionButton.extended(
-            onPressed: () async {
+            onPressed: () {
               if (canCheck) {
-                try {
-                  // Show loading indicator
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          CircularProgressIndicator(color: Colors.white),
-                          SizedBox(width: 20),
-                          Text('Mempersiapkan survey...'),
-                        ],
-                      ),
-                      duration: Duration(seconds: 2),
-                      backgroundColor: Colors.blue.shade700,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-
-                  // Navigate to ChooseDateScreen passing the current branch
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => ChooseDateScreen(
-                            selectedBank: branch.name,
-                            bankBranchId: branch.id,
-                          ),
-                    ),
-                  );
-                } catch (e) {
-                  // Show error message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error: $e'),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
+                // Navigate to ChooseDateScreen passing the current branch
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => ChooseDateScreen(
+                          selectedBank: branch.name,
+                          bankBranchId: branch.id,
+                        ),
+                  ),
+                );
               } else {
                 // Show snackbar indicating check already done this week
                 ScaffoldMessenger.of(context).showSnackBar(
