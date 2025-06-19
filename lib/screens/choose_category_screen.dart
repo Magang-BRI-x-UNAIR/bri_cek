@@ -7,11 +7,15 @@ import 'package:intl/intl.dart';
 class ChooseCategoryScreen extends StatefulWidget {
   final String selectedBank;
   final DateTime selectedDate;
+  final String bankBranchId; // Tambahkan parameter ini
+  final String sessionId; // Tambahkan parameter ini
 
   const ChooseCategoryScreen({
     super.key,
     required this.selectedBank,
     required this.selectedDate,
+    required this.bankBranchId, // Tambahkan parameter ini
+    required this.sessionId, // Tambahkan parameter ini
   });
 
   @override

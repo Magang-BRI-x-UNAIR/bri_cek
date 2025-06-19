@@ -51,23 +51,55 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     _loadMainCategories();
   }
 
-  // Inisialisasi database
+  // Method untuk inisialisasi data
+  // Method untuk inisialisasi data
   Future<void> _initializeDatabase() async {
     setState(() {
       _isLoading = true;
     });
 
-    try {
-      await _questionService.initializeDatabase();
-      _showSuccessSnackbar('Database berhasil diinisialisasi');
-      _loadMainCategories(); // Reload data
-    } catch (e) {
-      _showErrorSnackbar('Gagal menginisialisasi database: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Pilih Kategori'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.apartment),
+                title: Text('Fasad Gedung'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  try {
+                    await _questionService
+                        .initializeSatpamPakaianWanitaQuestions();
+                    _showSuccessSnackbar(
+                      'Data Fasad Gedung berhasil diinisialisasi',
+                    );
+                    _loadMainCategories();
+                  } catch (e) {
+                    _showErrorSnackbar(
+                      'Gagal menginisialisasi Fasad Gedung: $e',
+                    );
+                  }
+                  setState(() => _isLoading = false);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() => _isLoading = false);
+              },
+              child: Text('Batal'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Load kategori utama
@@ -731,7 +763,36 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         title: const Text('Kelola Pertanyaan'),
         backgroundColor: Colors.blue.shade700,
         elevation: 0,
-        actions: [],
+        actions: [
+          // Tombol reset & fix database
+          IconButton(
+            icon: Icon(Icons.refresh),
+            tooltip: 'Reset Database',
+            onPressed: () async {
+              try {
+                setState(() {
+                  _isLoading = true;
+                });
+                await _questionService.resetAndFixDatabase();
+                _showSuccessSnackbar(
+                  'Database berhasil direset dan diperbarui',
+                );
+                await _loadMainCategories();
+              } catch (e) {
+                _showErrorSnackbar('Gagal mereset database: $e');
+              } finally {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.settings_applications),
+            tooltip: 'Inisialisasi Database',
+            onPressed: _initializeDatabase,
+          ),
+        ],
       ),
       body: Column(
         children: [

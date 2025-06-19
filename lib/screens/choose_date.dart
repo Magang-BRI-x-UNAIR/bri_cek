@@ -1,21 +1,50 @@
-import 'package:bri_cek/screens/choose_category_screen.dart';
+import 'package:bri_cek/services/assessment_session_service.dart';
 import 'package:flutter/material.dart';
+import 'package:bri_cek/screens/choose_category_screen.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:intl/intl.dart';
 
 class ChooseDateScreen extends StatefulWidget {
   final String selectedBank;
+  final String bankBranchId; // Parameter untuk menyimpan ID cabang bank
 
-  const ChooseDateScreen({super.key, required this.selectedBank});
+  const ChooseDateScreen({
+    super.key,
+    required this.selectedBank,
+    required this.bankBranchId, // Tambahkan parameter ini
+  });
 
   @override
   State<ChooseDateScreen> createState() => _ChooseDateScreenState();
 }
 
-class _ChooseDateScreenState extends State<ChooseDateScreen>
-    with TickerProviderStateMixin {
+class _ChooseDateScreenState extends State<ChooseDateScreen> {
   DateTime _selectedDate = DateTime.now();
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy');
+  final AssessmentSessionService _assessmentSessionService =
+      AssessmentSessionService();
+  bool _isLoading = false;
+
+  // Metode untuk membangun dekorasi awan (cloud decoration)
+  Widget _buildCloudDecoration({
+    required double top,
+    required double left,
+    required double size,
+    required double opacity,
+  }) {
+    return Positioned(
+      top: top,
+      left: left,
+      child: Container(
+        width: size,
+        height: size / 2,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(opacity),
+          borderRadius: BorderRadius.circular(size / 4),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -221,176 +250,8 @@ class _ChooseDateScreenState extends State<ChooseDateScreen>
 
                     SizedBox(height: AppSize.heightPercent(3)),
 
-                    // Buttons with improved styling
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Back Button with improved styling
-                        Expanded(
-                          flex: 2,
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.pop(context);
-                              },
-                              borderRadius: BorderRadius.circular(
-                                AppSize.cardBorderRadius,
-                              ),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.grey.shade700,
-                                      Colors.grey.shade600,
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppSize.cardBorderRadius,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.grey.withOpacity(0.3),
-                                      offset: const Offset(0, 2),
-                                      blurRadius: 4,
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: AppSize.heightPercent(2),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.arrow_back_rounded,
-                                        size: AppSize.iconSize * 0.8,
-                                        color: Colors.white,
-                                      ),
-                                      SizedBox(
-                                        width: AppSize.widthPercent(1.5),
-                                      ),
-                                      Text(
-                                        'Kembali',
-                                        style: AppSize.getTextStyle(
-                                          fontSize: AppSize.bodyFontSize,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        SizedBox(width: AppSize.widthPercent(4)),
-
-                        // Next Button with improved styling
-                        Expanded(
-                          flex: 3,
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                // Show selection feedback
-                                ScaffoldMessenger.of(
-                                  context,
-                                ).removeCurrentSnackBar();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Tanggal dipilih: ${_dateFormat.format(_selectedDate)}',
-                                    ),
-                                    backgroundColor: Colors.blue.shade700,
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppSize.cardBorderRadius,
-                                      ),
-                                    ),
-                                    duration: const Duration(seconds: 1),
-                                  ),
-                                );
-
-                                // Navigate to category selection screen with animation
-                                Future.delayed(
-                                  const Duration(milliseconds: 300),
-                                  () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder:
-                                            (context) => ChooseCategoryScreen(
-                                              selectedBank: widget.selectedBank,
-                                              selectedDate: _selectedDate,
-                                            ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(
-                                AppSize.cardBorderRadius,
-                              ),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.blue.shade500,
-                                      Colors.blue.shade700,
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppSize.cardBorderRadius,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.blue.withOpacity(0.3),
-                                      offset: const Offset(0, 2),
-                                      blurRadius: 4,
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: AppSize.heightPercent(2),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Lanjutkan',
-                                        style: AppSize.getTextStyle(
-                                          fontSize: AppSize.bodyFontSize,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: AppSize.widthPercent(1.5),
-                                      ),
-                                      Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: AppSize.iconSize * 0.8,
-                                        color: Colors.white,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    // Action buttons
+                    _buildActionButtons(),
                   ],
                 ),
               ),
@@ -400,21 +261,169 @@ class _ChooseDateScreenState extends State<ChooseDateScreen>
       ),
     );
   }
-}
 
-Widget _buildCloudDecoration({
-  required double top,
-  required double left,
-  required double size,
-  required double opacity,
-}) {
-  return Positioned(
-    top: top,
-    left: left,
-    child: Icon(
-      Icons.cloud,
-      color: Colors.white.withOpacity(opacity),
-      size: size,
-    ),
-  );
+  // Tombol aksi dengan logika yang diperbarui untuk menyimpan data ke database
+  Widget _buildActionButtons() {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSize.paddingHorizontal,
+        vertical: AppSize.heightPercent(2),
+      ),
+      child: Row(
+        children: [
+          // Cancel Button
+          Expanded(
+            flex: 2,
+            child: Material(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+              child: InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                },
+                borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    vertical: AppSize.heightPercent(2),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Batal',
+                    style: AppSize.getTextStyle(
+                      fontSize: AppSize.bodyFontSize,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          SizedBox(width: AppSize.widthPercent(4)),
+
+          // Next Button dengan logika yang diperbarui
+          Expanded(
+            flex: 3,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap:
+                    _isLoading
+                        ? null
+                        : () async {
+                          setState(() {
+                            _isLoading = true;
+                          });
+
+                          try {
+                            // Simpan data session ke Firestore
+                            final sessionId = await _assessmentSessionService
+                                .createAssessmentSession(
+                                  bankBranchId: widget.bankBranchId,
+                                  sessionDate: _selectedDate,
+                                );
+
+                            setState(() {
+                              _isLoading = false;
+                            });
+
+                            // Tampilkan feedback pemilihan tanggal
+                            ScaffoldMessenger.of(
+                              context,
+                            ).removeCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Tanggal dipilih: ${_dateFormat.format(_selectedDate)}',
+                                ),
+                                backgroundColor: Colors.blue.shade700,
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+
+                            // Navigasi ke layar pemilihan kategori dengan data yang disimpan
+                            Future.delayed(const Duration(milliseconds: 300), () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => ChooseCategoryScreen(
+                                        selectedBank: widget.selectedBank,
+                                        selectedDate: _selectedDate,
+                                        bankBranchId:
+                                            widget
+                                                .bankBranchId, // Teruskan ID cabang bank
+                                        sessionId:
+                                            sessionId, // Teruskan ID session
+                                      ),
+                                ),
+                              );
+                            });
+                          } catch (e) {
+                            setState(() {
+                              _isLoading = false;
+                            });
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error: $e'),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade500, Colors.blue.shade700],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(
+                      AppSize.cardBorderRadius,
+                    ),
+                  ),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      vertical: AppSize.heightPercent(2),
+                    ),
+                    alignment: Alignment.center,
+                    child:
+                        _isLoading
+                            ? CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            )
+                            : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Lanjutkan',
+                                  style: AppSize.getTextStyle(
+                                    fontSize: AppSize.bodyFontSize,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(width: AppSize.widthPercent(2)),
+                                Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: AppSize.iconSize * 0.8,
+                                  color: Colors.white,
+                                ),
+                              ],
+                            ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

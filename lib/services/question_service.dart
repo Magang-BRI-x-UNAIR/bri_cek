@@ -241,29 +241,1006 @@ class QuestionService {
   }
 
   // Inisialisasi database dengan struktur hierarkis
-  Future<void> initializeDatabase() async {
+  // Method untuk menambahkan pertanyaan Pakaian Wanita untuk Satpam
+  Future<void> initializeSatpamPakaianWanitaQuestions() async {
     try {
-      print("Initializing database structure...");
+      print("Initializing Satpam Pakaian Wanita questions...");
 
-      // Check if database already has categories
-      final snapshot = await _firestore.collection('categories').get();
-      if (snapshot.docs.isNotEmpty) {
-        print(
-          "Database already initialized. Found ${snapshot.docs.length} categories.",
-        );
-        return;
-      }
+      final categoryId = 'satpam';
+      final subcategoryId = 'grooming';
+      final genderCategoryId = 'wanita';
+      final sectionId = 'pakaian';
+      final Timestamp now = Timestamp.now();
 
-      // Main categories
-      await _initSatpamCategory();
-      await _initTellerCategory();
-      await _initCustomerServiceCategory();
+      // Pastikan section Pakaian ada
+      await _firestore
+          .collection('assessment_categories')
+          .doc(categoryId)
+          .collection('subcategories')
+          .doc(subcategoryId)
+          .collection('gender_categories')
+          .doc(genderCategoryId)
+          .collection('sections')
+          .doc(sectionId)
+          .set({
+            'name': 'Pakaian',
+            'order':
+                7, // Asumsi order 7 (setelah wajah_badan, rambut, jilbab, atribut, aksesoris, sepatu)
+            'isActive': true,
+            'createdAt': now,
+            'updatedAt': now,
+          }, SetOptions(merge: true));
 
-      print("Database initialization complete!");
+      // Tambahkan pertanyaan untuk uniform type PDH (Pakaian Dinas Harian)
+      await _addSatpamPakaianWanitaQuestionsForType(
+        categoryId: categoryId,
+        subcategoryId: subcategoryId,
+        genderCategoryId: genderCategoryId,
+        sectionId: sectionId,
+        uniformType: 'pdh',
+        uniformTypeName: 'PDH (Pakaian Dinas Harian)',
+        questions: [
+          {
+            'text':
+                'Pakaian harus terlihat bersih, rapi, tidak kusam dan lusuh',
+            'order': 1,
+          },
+          {
+            'text':
+                'Atasan kemeja lengan pendek (untuk yang berjiilbab menggunakan lengan panjang) warna krem dengan lap pundak dimasukan ke dalam celana',
+            'order': 2,
+          },
+          {
+            'text':
+                'Bawahan celana panjang kain cokelat tua pada saat dinas di banking hall pada jam layanan operasional',
+            'order': 3,
+          },
+        ],
+        now: now,
+      );
+
+      // Tambahkan pertanyaan untuk uniform type PDL (Pakaian Dinas Lapangan)
+      await _addSatpamPakaianWanitaQuestionsForType(
+        categoryId: categoryId,
+        subcategoryId: subcategoryId,
+        genderCategoryId: genderCategoryId,
+        sectionId: sectionId,
+        uniformType: 'pdl',
+        uniformTypeName: 'PDL (Pakaian Dinas Lapangan)',
+        questions: [
+          {
+            'text':
+                'Pakaian harus terlihat bersih, rapi, tidak kusam dan lusuh',
+            'order': 1,
+          },
+          {
+            'text':
+                'Satpam luar wajib menggunakan topi PDL selama bertugas di luar',
+            'order': 2,
+          },
+          {
+            'text':
+                'Atasan kemeja lengan panjang warna krem dengan lap pundak dimasukkan ke dalam celana',
+            'order': 3,
+          },
+          {
+            'text':
+                'Bawahan celana panjang cargo cokelat tua pada saat dinas di luar banking hall',
+            'order': 4,
+          },
+        ],
+        now: now,
+      );
+
+      print("Added all Satpam Pakaian Wanita questions successfully!");
     } catch (e) {
-      print("Error initializing database: $e");
+      print("Error initializing Satpam Pakaian Wanita questions: $e");
       throw e;
     }
+  }
+
+  // Helper method untuk menambahkan pertanyaan pakaian wanita berdasarkan uniform type
+  Future<void> _addSatpamPakaianWanitaQuestionsForType({
+    required String categoryId,
+    required String subcategoryId,
+    required String genderCategoryId,
+    required String sectionId,
+    required String uniformType,
+    required String uniformTypeName,
+    required List<Map<String, dynamic>> questions,
+    required Timestamp now,
+  }) async {
+    // Pastikan uniform type ada
+    await _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('gender_categories')
+        .doc(genderCategoryId)
+        .collection('sections')
+        .doc(sectionId)
+        .collection('uniform_types')
+        .doc(uniformType)
+        .set({
+          'name': uniformTypeName,
+          'isActive': true,
+          'createdAt': now,
+          'updatedAt': now,
+        }, SetOptions(merge: true));
+
+    // Path ke collection questions untuk uniform type ini
+    final questionsCollection = _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('gender_categories')
+        .doc(genderCategoryId)
+        .collection('sections')
+        .doc(sectionId)
+        .collection('uniform_types')
+        .doc(uniformType)
+        .collection('questions');
+
+    // Hapus pertanyaan yang mungkin sudah ada sebelumnya
+    final existingQuestions = await questionsCollection.get();
+    final batch = _firestore.batch();
+
+    for (var doc in existingQuestions.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+
+    // Tambahkan pertanyaan baru
+    for (var question in questions) {
+      await questionsCollection.add({
+        'text': question['text'],
+        'order': question['order'],
+        'isActive': true,
+        'createdAt': now,
+        'updatedAt': now,
+      });
+    }
+
+    print(
+      "Added ${questions.length} Pakaian ${uniformTypeName} questions for Satpam successfully!",
+    );
+  }
+
+  // Method untuk inisialisasi struktur Grooming
+  Future<void> _initializeGroomingStructure(String categoryId) async {
+    try {
+      // Tambahkan gender categories (pria & wanita)
+      await _addGenderCategory(categoryId, 'grooming', 'pria', 'Pria', 1);
+      await _addGenderCategory(categoryId, 'grooming', 'wanita', 'Wanita', 2);
+
+      // Untuk PRIA
+      await _initializeMaleSections(categoryId, 'grooming', 'pria');
+
+      // Untuk WANITA
+      await _initializeFemaleSections(categoryId, 'grooming', 'wanita');
+
+      print("Grooming structure initialized successfully!");
+    } catch (e) {
+      print("Error initializing grooming structure: $e");
+      throw e;
+    }
+  }
+
+  // Method untuk menambahkan gender category
+  Future<void> _addGenderCategory(
+    String categoryId,
+    String subcategoryId,
+    String genderId,
+    String genderName,
+    int order,
+  ) async {
+    await _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('gender_categories')
+        .doc(genderId)
+        .set({
+          'name': genderName,
+          'order': order,
+          'isActive': true,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+  }
+
+  // Method untuk inisialisasi sections khusus PRIA
+  Future<void> _initializeMaleSections(
+    String categoryId,
+    String subcategoryId,
+    String genderId,
+  ) async {
+    // 1. Wajah & Badan Section
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'wajah_badan',
+      'Wajah & Badan',
+      1,
+    );
+    await _addQuestionToSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'wajah_badan',
+      'Wajah bersih dari bekas jerawat',
+      1,
+    );
+    await _addQuestionToSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'wajah_badan',
+      'Tidak berbau badan, mulut, dan parfum menyengat',
+      2,
+    );
+
+    // 2. Rambut Section dengan uniform types
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'Rambut',
+      2,
+    );
+
+    // 2.1 Rambut - Korporat/Batik
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'korporat_batik',
+      'Seragam Korporat/Batik',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'korporat_batik',
+      'Rambut pendek rapi, tidak menyentuh kerah baju dan daun telinga',
+      1,
+    );
+
+    // 2.2 Rambut - Kasual
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'kasual',
+      'Pakaian Kasual',
+      2,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'kasual',
+      'Rambut pendek rapi, tidak menyentuh kerah baju dan daun telinga',
+      1,
+    );
+
+    // 3. Pakaian Section dengan uniform types
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'Pakaian',
+      3,
+    );
+
+    // 3.1 Pakaian - Korporat
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'korporat',
+      'Seragam Korporat',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'korporat',
+      'Menggunakan seragam korporat sesuai ketentuan pada hari Senin-Rabu',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'korporat',
+      'Seragam bersih, rapi dan tidak kusut',
+      2,
+    );
+
+    // 3.2 Pakaian - Batik
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'batik',
+      'Seragam Batik',
+      2,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'batik',
+      'Menggunakan seragam batik sesuai ketentuan pada hari Kamis',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'batik',
+      'Batik bersih, rapi dan tidak kusut',
+      2,
+    );
+
+    // 3.3 Pakaian - Kasual
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'kasual',
+      'Pakaian Kasual',
+      3,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'kasual',
+      'Menggunakan pakaian casual sesuai ketentuan pada hari Jumat',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'kasual',
+      'Pakaian casual bersih, rapi dan tidak kusut',
+      2,
+    );
+
+    // 4. Atribut & Aksesoris
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'atribut_aksesoris',
+      'Atribut & Aksesoris',
+      4,
+    );
+    await _addQuestionToSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'atribut_aksesoris',
+      'Menggunakan name tag secara benar dan terlihat jelas',
+      1,
+    );
+    await _addQuestionToSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'atribut_aksesoris',
+      'Tidak menggunakan aksesoris selain cincin kawin dan jam tangan',
+      2,
+    );
+
+    // 5. Sepatu
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'Sepatu',
+      5,
+    );
+
+    // 5.1 Sepatu - Korporat
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'korporat',
+      'Seragam Korporat',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'korporat',
+      'Sepatu pantofel warna hitam tertutup',
+      1,
+    );
+
+    // 5.2 Sepatu - Batik
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'batik',
+      'Seragam Batik',
+      2,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'batik',
+      'Sepatu pantofel warna hitam tertutup',
+      1,
+    );
+
+    // 5.3 Sepatu - Kasual
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'kasual',
+      'Pakaian Kasual',
+      3,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'kasual',
+      'Sepatu tertutup yang sopan',
+      1,
+    );
+  }
+
+  // Method untuk inisialisasi sections khusus WANITA
+  Future<void> _initializeFemaleSections(
+    String categoryId,
+    String subcategoryId,
+    String genderId,
+  ) async {
+    // 1. Wajah & Badan Section
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'wajah_badan',
+      'Wajah & Badan',
+      1,
+    );
+    await _addQuestionToSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'wajah_badan',
+      'Wajah bersih dari bekas jerawat',
+      1,
+    );
+    await _addQuestionToSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'wajah_badan',
+      'Menggunakan make up natural (bedak, alis, eye liner, blush on, lipstick)',
+      2,
+    );
+    await _addQuestionToSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'wajah_badan',
+      'Tidak berbau badan, mulut, dan parfum menyengat',
+      3,
+    );
+
+    // 2. Rambut Section (khusus non-hijab)
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'Rambut',
+      2,
+    );
+
+    // 2.1 Rambut - Korporat/Batik
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'korporat_batik',
+      'Seragam Korporat/Batik',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'korporat_batik',
+      'Rambut diikat/disanggul rapi dengan jaring rambut/hairnet warna hitam/sesuai warna rambut',
+      1,
+    );
+
+    // 2.2 Rambut - Kasual
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'kasual',
+      'Pakaian Kasual',
+      2,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'rambut',
+      'kasual',
+      'Rambut pendek/sedang/panjang diikat rapi panjang maksimal sebahu, tidak diwarnai mencolok',
+      1,
+    );
+
+    // 3. Jilbab Section
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'Jilbab',
+      3,
+    );
+
+    // 3.1 Jilbab - Korporat
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'korporat',
+      'Seragam Korporat',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'korporat',
+      'Jilbab dikenakan dengan rapi, tidak terlihat rambut atau leher',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'korporat',
+      'Jilbab berwarna senada/sesuai dengan seragam',
+      2,
+    );
+
+    // 3.2 Jilbab - Batik
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'batik',
+      'Seragam Batik',
+      2,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'batik',
+      'Jilbab dikenakan dengan rapi, tidak terlihat rambut atau leher',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'batik',
+      'Jilbab berwarna senada/sesuai dengan seragam batik',
+      2,
+    );
+
+    // 3.3 Jilbab - Kasual
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'kasual',
+      'Pakaian Kasual',
+      3,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'kasual',
+      'Jilbab dikenakan dengan rapi, tidak terlihat rambut atau leher',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'jilbab',
+      'kasual',
+      'Jilbab berwarna senada/sesuai dengan pakaian kasual',
+      2,
+    );
+
+    // 4. Pakaian Section dengan uniform types (sama seperti pria)
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'Pakaian',
+      4,
+    );
+
+    // 4.1 Pakaian - Korporat
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'korporat',
+      'Seragam Korporat',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'korporat',
+      'Menggunakan seragam korporat sesuai ketentuan pada hari Senin-Rabu',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'korporat',
+      'Seragam bersih, rapi dan tidak kusut',
+      2,
+    );
+
+    // 4.2 Pakaian - Batik
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'batik',
+      'Seragam Batik',
+      2,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'batik',
+      'Menggunakan seragam batik sesuai ketentuan pada hari Kamis',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'batik',
+      'Batik bersih, rapi dan tidak kusut',
+      2,
+    );
+
+    // 4.3 Pakaian - Kasual
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'kasual',
+      'Pakaian Kasual',
+      3,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'kasual',
+      'Menggunakan pakaian casual sesuai ketentuan pada hari Jumat',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'pakaian',
+      'kasual',
+      'Pakaian casual bersih, rapi dan tidak kusut',
+      2,
+    );
+
+    // 5. Atribut & Aksesoris
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'atribut_aksesoris',
+      'Atribut & Aksesoris',
+      5,
+    );
+    await _addQuestionToSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'atribut_aksesoris',
+      'Menggunakan name tag secara benar dan terlihat jelas',
+      1,
+    );
+    await _addQuestionToSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'atribut_aksesoris',
+      'Menggunakan aksesoris yang tidak berlebihan dan minimalis',
+      2,
+    );
+
+    // 6. Sepatu (sama seperti pria)
+    await _addSection(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'Sepatu',
+      6,
+    );
+
+    // 6.1 Sepatu - Korporat
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'korporat',
+      'Seragam Korporat',
+      1,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'korporat',
+      'Sepatu pantofel warna hitam tertutup dengan hak 3-7cm',
+      1,
+    );
+
+    // 6.2 Sepatu - Batik
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'batik',
+      'Seragam Batik',
+      2,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'batik',
+      'Sepatu pantofel warna hitam tertutup dengan hak 3-7cm',
+      1,
+    );
+
+    // 6.3 Sepatu - Kasual
+    await _addUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'kasual',
+      'Pakaian Kasual',
+      3,
+    );
+    await _addQuestionToUniformType(
+      categoryId,
+      subcategoryId,
+      genderId,
+      'sepatu',
+      'kasual',
+      'Sepatu tertutup yang sopan dengan hak maksimal 7cm',
+      1,
+    );
+  }
+
+  // Helper methods untuk membuat struktur
+
+  Future<void> _addSection(
+    String categoryId,
+    String subcategoryId,
+    String genderId,
+    String sectionId,
+    String sectionName,
+    int order,
+  ) async {
+    await _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('gender_categories')
+        .doc(genderId)
+        .collection('sections')
+        .doc(sectionId)
+        .set({
+          'name': sectionName,
+          'order': order,
+          'isActive': true,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+  }
+
+  Future<void> _addUniformType(
+    String categoryId,
+    String subcategoryId,
+    String genderId,
+    String sectionId,
+    String uniformTypeId,
+    String uniformTypeName,
+    int order,
+  ) async {
+    await _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('gender_categories')
+        .doc(genderId)
+        .collection('sections')
+        .doc(sectionId)
+        .collection('uniform_types')
+        .doc(uniformTypeId)
+        .set({
+          'name': uniformTypeName,
+          'order': order,
+          'isActive': true,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+  }
+
+  Future<void> _addQuestionToSection(
+    String categoryId,
+    String subcategoryId,
+    String genderId,
+    String sectionId,
+    String questionText,
+    int order,
+  ) async {
+    await _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('gender_categories')
+        .doc(genderId)
+        .collection('sections')
+        .doc(sectionId)
+        .collection('questions')
+        .add({
+          'text': questionText,
+          'order': order,
+          'isActive': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+  }
+
+  Future<void> _addQuestionToUniformType(
+    String categoryId,
+    String subcategoryId,
+    String genderId,
+    String sectionId,
+    String uniformTypeId,
+    String questionText,
+    int order,
+  ) async {
+    await _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('gender_categories')
+        .doc(genderId)
+        .collection('sections')
+        .doc(sectionId)
+        .collection('uniform_types')
+        .doc(uniformTypeId)
+        .collection('questions')
+        .add({
+          'text': questionText,
+          'order': order,
+          'isActive': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+  }
+
+  // Method untuk menambahkan pertanyaan sederhana (tanpa hierarki gender/section)
+  Future<void> _addSimpleQuestionToAssessment(
+    String categoryId,
+    String subcategoryId,
+    String questionText,
+    int order,
+  ) async {
+    await _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('questions')
+        .add({
+          'text': questionText,
+          'order': order,
+          'isActive': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
   }
 
   // Inisialisasi kategori Satpam

@@ -1,70 +1,136 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/assessment_session.dart';
 
 class AssessmentSessionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collection = 'assessment_sessions';
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  Future<String> createSession(AssessmentSession session) async {
+  // Membuat assessment session baru saat user memilih bank dan tanggal
+  Future<String> createAssessmentSession({
+    required String bankBranchId,
+    required DateTime sessionDate,
+  }) async {
     try {
-      final docRef = await _firestore
-          .collection(_collection)
-          .add(session.toMap());
-      return docRef.id;
+      // Pastikan user sudah login
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('User belum login');
+      }
+
+      // Buat dokumen baru
+      final sessionRef = await _firestore
+          .collection('assessment_sessions')
+          .add({
+            'userId': user.uid,
+            'bankBranchId': bankBranchId,
+            'sessionDate': Timestamp.fromDate(
+              DateTime(sessionDate.year, sessionDate.month, sessionDate.day),
+            ),
+            'completedCategories': [],
+            'isSessionCompleted': false,
+            'categoryScores': {},
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+      return sessionRef.id;
     } catch (e) {
-      throw Exception('Failed to create session: $e');
+      print('Error creating assessment session: $e');
+      throw Exception('Gagal membuat sesi penilaian: $e');
     }
   }
 
-  Future<List<AssessmentSession>> getUserSessions(String userId) async {
+  // Update assessment session dengan data kategori yang sudah selesai
+  Future<void> updateAssessmentSession({
+    required String sessionId,
+    required String categoryId,
+    required double score,
+    required List<Map<String, dynamic>> answers,
+    Map<String, dynamic>? employeeData,
+  }) async {
     try {
-      final querySnapshot =
-          await _firestore
-              .collection(_collection)
-              .where('userId', isEqualTo: userId)
-              .orderBy('sessionDate', descending: true)
-              .get();
+      final sessionDoc = _firestore
+          .collection('assessment_sessions')
+          .doc(sessionId);
 
-      return querySnapshot.docs
-          .map((doc) => AssessmentSession.fromMap(doc.data(), doc.id))
-          .toList();
+      // Get current session data
+      final sessionSnapshot = await sessionDoc.get();
+      if (!sessionSnapshot.exists) {
+        throw Exception('Sesi penilaian tidak ditemukan');
+      }
+
+      final sessionData = sessionSnapshot.data()!;
+      List<String> completedCategories = List<String>.from(
+        sessionData['completedCategories'] ?? [],
+      );
+      Map<String, dynamic> categoryScores = Map<String, dynamic>.from(
+        sessionData['categoryScores'] ?? {},
+      );
+
+      // Update completed categories
+      if (!completedCategories.contains(categoryId)) {
+        completedCategories.add(categoryId);
+      }
+
+      // Update category score
+      categoryScores[categoryId] = score;
+
+      // Save answers in a subcollection
+      final answersRef = sessionDoc
+          .collection('category_answers')
+          .doc(categoryId);
+      await answersRef.set({
+        'answers': answers,
+        'score': score,
+        'employeeData': employeeData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Update session document
+      await sessionDoc.update({
+        'completedCategories': completedCategories,
+        'categoryScores': categoryScores,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     } catch (e) {
-      throw Exception('Failed to get user sessions: $e');
+      print('Error updating assessment session: $e');
+      throw Exception('Gagal memperbarui sesi penilaian: $e');
     }
   }
 
-  Future<AssessmentSession?> getActiveSession(
-    String userId,
-    String bankId,
-    DateTime date,
+  // Cek apakah sudah ada assessment session untuk bank dan tanggal tertentu
+  Future<bool> hasExistingSession(
+    String bankBranchId,
+    DateTime sessionDate,
   ) async {
     try {
-      // Check for session on the same date
-      final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = startOfDay.add(Duration(days: 1));
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('User belum login');
+      }
 
-      final querySnapshot =
+      final existingSessions =
           await _firestore
-              .collection(_collection)
-              .where('userId', isEqualTo: userId)
-              .where('bankBranchId', isEqualTo: bankId)
+              .collection('assessment_sessions')
+              .where('userId', isEqualTo: user.uid)
+              .where('bankBranchId', isEqualTo: bankBranchId)
               .where(
                 'sessionDate',
-                isGreaterThanOrEqualTo: startOfDay.millisecondsSinceEpoch,
+                isEqualTo: Timestamp.fromDate(
+                  DateTime(
+                    sessionDate.year,
+                    sessionDate.month,
+                    sessionDate.day,
+                  ),
+                ),
               )
-              .where('sessionDate', isLessThan: endOfDay.millisecondsSinceEpoch)
-              .limit(1)
               .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        return AssessmentSession.fromMap(
-          querySnapshot.docs.first.data(),
-          querySnapshot.docs.first.id,
-        );
-      }
-      return null;
+      return existingSessions.docs.isNotEmpty;
     } catch (e) {
-      throw Exception('Failed to get active session: $e');
+      print('Error checking existing session: $e');
+      return false;
     }
   }
 }
