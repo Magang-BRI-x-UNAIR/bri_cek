@@ -13,15 +13,27 @@ import 'package:bri_cek/models/checklist_item.dart';
 
 class ExcelExportService {
   final Map<String, String> categoryToSheetName = {
-    'Satpam': 'Satpam',
-    'Teller': 'Teller',
     'Customer Service': 'CS',
+    'Teller': 'Teller',
+    'Satpam': 'Satpam',
     'Banking Hall': 'Banking Hall',
     'Gallery e-Channel': 'Gallery E-Channel',
     'Fasad Gedung': 'Fasad Gedung',
     'Ruang BRIMEN': 'Ruang BRIMEN',
     'Toilet': 'Toilet',
   };
+
+  // Define sheet order - CS first, then Teller, then Satpam, etc.
+  final List<String> sheetOrder = [
+    'Customer Service',
+    'Teller',
+    'Satpam',
+    'Banking Hall',
+    'Gallery e-Channel',
+    'Fasad Gedung',
+    'Ruang BRIMEN',
+    'Toilet',
+  ];
 
   final DateFormat fileNameDateFormat = DateFormat('yyyy-MM-dd');
   final DateFormat displayDateFormat = DateFormat('dd MMMM yyyy', 'id_ID');
@@ -47,17 +59,51 @@ class ExcelExportService {
       final CellStyle wrappedTextStyle = CellStyle(
         verticalAlign: VerticalAlign.Top,
       );
-
       final allCategories =
-          allChecklistItems.map((e) => e.category).toSet().toList();
+          sheetOrder
+              .where(
+                (category) => allChecklistItems.any(
+                  (item) =>
+                      item.category == category ||
+                      (category == 'Customer Service' && item.category == '') ||
+                      (category == 'Satpam' &&
+                          item.category == '' &&
+                          item.id.startsWith('satpam')),
+                ),
+              )
+              .toList();
 
       for (var category in allCategories) {
         final sheetName = categoryToSheetName[category] ?? category;
         final sheet = excel[sheetName];
-        final categoryItems =
-            allChecklistItems
-                .where((item) => item.category == category)
-                .toList();
+
+        // Filter items for this category
+        List<ChecklistItem> categoryItems;
+        if (category == 'Customer Service') {
+          categoryItems =
+              allChecklistItems
+                  .where(
+                    (item) =>
+                        item.category == 'Customer Service' ||
+                        (item.category == '' && item.id.startsWith('cs')),
+                  )
+                  .toList();
+        } else if (category == 'Satpam') {
+          categoryItems =
+              allChecklistItems
+                  .where(
+                    (item) =>
+                        item.category == 'Satpam' ||
+                        (item.category == '' && item.id.startsWith('satpam')),
+                  )
+                  .toList();
+        } else {
+          categoryItems =
+              allChecklistItems
+                  .where((item) => item.category == category)
+                  .toList();
+        }
+
         categoryItems.sort(
           (a, b) => a.subcategory.compareTo(b.subcategory),
         ); // Note: Column width setting may depend on the Excel package version
@@ -119,16 +165,16 @@ class ExcelExportService {
             .cell(CellIndex.indexByString("C$currentRow"))
             .value = TextCellValue(bankCheckHistory.checkedBy);
         currentRow += 2;
-
         int tableHeaderRow = currentRow;
-        List<String> headers = [
-          "NO",
-          "ITEM",
-          "SUB ITEM",
-          "STATUS",
-          "KETERANGAN",
-          "FOTO",
-        ];
+        List<String> headers;
+
+        // Different headers for different sheet types
+        if (['CS', 'Teller', 'Satpam'].contains(sheetName)) {
+          headers = ["KATEGORI", "GENDER", "PERTANYAAN", "STATUS"];
+        } else {
+          headers = ["NO", "ITEM", "SUB ITEM", "STATUS", "KETERANGAN", "FOTO"];
+        }
+
         sheet.appendRow(headers.map((e) => TextCellValue(e)).toList());
         for (var i = 0; i < headers.length; i++) {
           sheet
@@ -139,69 +185,21 @@ class ExcelExportService {
                 ),
               )
               .cellStyle = headerStyle;
-        }
-
-        String lastSubCategory = "";
-        for (int i = 0; i < categoryItems.length; i++) {
-          final item = categoryItems[i];
-          final int rowIndex = tableHeaderRow + i;
-          sheet
-              .cell(
-                CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
-              )
-              .value = TextCellValue((i + 1).toString());
-          if (item.subcategory.isNotEmpty &&
-              item.subcategory != lastSubCategory) {
-            sheet
-                .cell(
-                  CellIndex.indexByColumnRow(
-                    columnIndex: 1,
-                    rowIndex: rowIndex,
-                  ),
-                )
-                .value = TextCellValue(item.subcategory);
-            lastSubCategory = item.subcategory;
-          }
-          sheet
-              .cell(
-                CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex),
-              )
-              .value = TextCellValue(item.question);
-          String status = "Belum Diisi";
-          if (item.skipped == true)
-            status = "Dilewati";
-          else if (item.answerValue != null)
-            status = item.answerValue! ? "Ya" : "Tidak";
-          sheet
-              .cell(
-                CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
-              )
-              .value = TextCellValue(status);
-          sheet
-              .cell(
-                CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex),
-              )
-              .value = TextCellValue(item.note ?? '');
-          sheet
-              .cell(
-                CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex),
-              )
-              .value = TextCellValue('');
-          sheet
-              .cell(
-                CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex),
-              )
-              .cellStyle = wrappedTextStyle;
-          sheet
-              .cell(
-                CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex),
-              )
-              .cellStyle = wrappedTextStyle;
-          sheet
-              .cell(
-                CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex),
-              )
-              .cellStyle = wrappedTextStyle;
+        } // Fill data based on sheet type
+        if (['CS', 'Teller', 'Satpam'].contains(sheetName)) {
+          _fillPersonnelSheetData(
+            sheet,
+            categoryItems,
+            tableHeaderRow,
+            wrappedTextStyle,
+          );
+        } else {
+          _fillGeneralSheetData(
+            sheet,
+            categoryItems,
+            tableHeaderRow,
+            wrappedTextStyle,
+          );
         }
       }
 
@@ -224,5 +222,272 @@ class ExcelExportService {
       debugPrint("Error exporting Excel: $e");
       debugPrint("Stacktrace: $stacktrace");
     }
+  }
+
+  // Helper method to fill data for personnel sheets (CS, Teller, Satpam)
+  void _fillPersonnelSheetData(
+    Sheet sheet,
+    List<ChecklistItem> categoryItems,
+    int tableHeaderRow,
+    CellStyle wrappedTextStyle,
+  ) {
+    int currentRowIndex = tableHeaderRow;
+
+    // Group items by main category and subcategory
+    Map<String, List<ChecklistItem>> categoryGroups = {};
+    for (var item in categoryItems) {
+      String mainCategory = item.category.isEmpty ? 'Umum' : item.category;
+      if (!categoryGroups.containsKey(mainCategory)) {
+        categoryGroups[mainCategory] = [];
+      }
+      categoryGroups[mainCategory]!.add(item);
+    }
+
+    // Define the order for categories
+    List<String> categoryOrder = [
+      'Grooming',
+      'Sigap',
+      'Mudah',
+      'Akurat',
+      'Ramah',
+      'Terampil',
+      'Umum',
+    ];
+
+    for (String categoryName in categoryOrder) {
+      if (!categoryGroups.containsKey(categoryName)) continue;
+
+      List<ChecklistItem> items = categoryGroups[categoryName]!;
+      if (categoryName == 'Grooming') {
+        // For Grooming, group by subcategory and gender
+        Map<String, List<ChecklistItem>> subcategoryGroups = {};
+        for (var item in items) {
+          String subcat = item.subcategory.isEmpty ? 'Umum' : item.subcategory;
+          if (!subcategoryGroups.containsKey(subcat)) {
+            subcategoryGroups[subcat] = [];
+          }
+          subcategoryGroups[subcat]!.add(item);
+        }
+
+        // Define subcategory order
+        List<String> subcategoryOrder = [
+          'Wajah & Badan',
+          'Rambut',
+          'Jilbab',
+          'Pakaian',
+          'Atribut & Aksesoris',
+          'Umum',
+        ];
+
+        for (String subcategoryName in subcategoryOrder) {
+          if (!subcategoryGroups.containsKey(subcategoryName)) continue;
+
+          List<ChecklistItem> subcategoryItems =
+              subcategoryGroups[subcategoryName]!;
+          // Add subcategory header row
+          sheet
+              .cell(
+                CellIndex.indexByColumnRow(
+                  columnIndex: 0,
+                  rowIndex: currentRowIndex,
+                ),
+              )
+              .value = TextCellValue(categoryName);
+          sheet
+              .cell(
+                CellIndex.indexByColumnRow(
+                  columnIndex: 1,
+                  rowIndex: currentRowIndex,
+                ),
+              )
+              .value = TextCellValue(subcategoryName);
+          sheet
+              .cell(
+                CellIndex.indexByColumnRow(
+                  columnIndex: 2,
+                  rowIndex: currentRowIndex,
+                ),
+              )
+              .value = TextCellValue('');
+          sheet
+              .cell(
+                CellIndex.indexByColumnRow(
+                  columnIndex: 3,
+                  rowIndex: currentRowIndex,
+                ),
+              )
+              .value = TextCellValue('');
+          currentRowIndex++;
+
+          // Group by gender
+          Map<String, List<ChecklistItem>> genderGroups = {
+            'Pria': [],
+            'Wanita': [],
+            'Umum': [],
+          };
+
+          for (var item in subcategoryItems) {
+            if (item.forHijab == true) {
+              genderGroups['Wanita']!.add(item);
+            } else if (item.forHijab == false) {
+              if (item.question.toLowerCase().contains('pria:')) {
+                genderGroups['Pria']!.add(item);
+              } else if (item.question.toLowerCase().contains('wanita:')) {
+                genderGroups['Wanita']!.add(item);
+              } else {
+                genderGroups['Umum']!.add(item);
+              }
+            } else {
+              genderGroups['Umum']!.add(item);
+            }
+          }
+
+          // Fill gender-specific items
+          for (String gender in ['Pria', 'Wanita', 'Umum']) {
+            for (var item in genderGroups[gender]!) {
+              String displayGender = gender == 'Umum' ? '' : gender;
+              _fillItemRow(
+                sheet,
+                item,
+                currentRowIndex,
+                '',
+                displayGender,
+                wrappedTextStyle,
+              );
+              currentRowIndex++;
+            }
+          }
+        }
+      } else {
+        // For non-Grooming categories, merge category and gender columns
+        for (var item in items) {
+          _fillItemRow(
+            sheet,
+            item,
+            currentRowIndex,
+            categoryName,
+            '',
+            wrappedTextStyle,
+          );
+          currentRowIndex++;
+        }
+      }
+    }
+  }
+
+  // Helper method to fill data for general sheets (Banking Hall, etc.)
+  void _fillGeneralSheetData(
+    Sheet sheet,
+    List<ChecklistItem> categoryItems,
+    int tableHeaderRow,
+    CellStyle wrappedTextStyle,
+  ) {
+    String lastSubCategory = "";
+    for (int i = 0; i < categoryItems.length; i++) {
+      final item = categoryItems[i];
+      final int rowIndex = tableHeaderRow + i;
+
+      // NO column
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+          .value = TextCellValue((i + 1).toString());
+
+      // ITEM column (subcategory)
+      if (item.subcategory.isNotEmpty && item.subcategory != lastSubCategory) {
+        sheet
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(item.subcategory);
+        lastSubCategory = item.subcategory;
+      }
+
+      // SUB ITEM column (question)
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+          .value = TextCellValue(item.question);
+
+      // STATUS column
+      String status = "Belum Diisi";
+      if (item.skipped == true) {
+        status = "Dilewati";
+      } else if (item.answerValue != null) {
+        status = item.answerValue! ? "Ya" : "Tidak";
+      }
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+          .value = TextCellValue(status);
+
+      // KETERANGAN column
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+          .value = TextCellValue(item.note ?? '');
+
+      // FOTO column
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
+          .value = TextCellValue('');
+
+      // Apply styles
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+          .cellStyle = wrappedTextStyle;
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+          .cellStyle = wrappedTextStyle;
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+          .cellStyle = wrappedTextStyle;
+    }
+  }
+
+  // Helper method to fill a single item row for personnel sheets
+  void _fillItemRow(
+    Sheet sheet,
+    ChecklistItem item,
+    int rowIndex,
+    String category,
+    String gender,
+    CellStyle wrappedTextStyle,
+  ) {
+    // KATEGORI column
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        .value = TextCellValue(category);
+
+    // GENDER column
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+        .value = TextCellValue(gender);
+
+    // PERTANYAAN column
+    String question = item.question;
+    // Remove gender prefixes if present
+    question = question.replaceAll(RegExp(r'^(Pria:|Wanita:)\s*'), '');
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+        .value = TextCellValue(question);
+
+    // STATUS column
+    String status = "Belum Diisi";
+    if (item.skipped == true) {
+      status = "Skip";
+    } else if (item.answerValue != null) {
+      status = item.answerValue! ? "Ya" : "Tidak";
+    }
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+        .value = TextCellValue(status);
+
+    // Apply styles
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        .cellStyle = wrappedTextStyle;
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+        .cellStyle = wrappedTextStyle;
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+        .cellStyle = wrappedTextStyle;
   }
 }

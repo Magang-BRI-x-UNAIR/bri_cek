@@ -5,6 +5,19 @@ import 'package:bri_cek/models/bank_check_history.dart';
 import 'package:bri_cek/models/checklist_item.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:intl/intl.dart';
+// MOCK DATA IMPORT - REMOVE WHEN FIRESTORE IS READY
+import 'package:bri_cek/data/checklist_item_data.dart' as MockData;
+
+// ==============================================
+// FIRESTORE INTEGRATION GUIDE
+// ==============================================
+// TODO: WHEN FIRESTORE IS READY, REPLACE THE FOLLOWING:
+// 1. Remove the MockData import above
+// 2. Replace fetchChecklistItemsForHistory() implementation
+// 3. Replace _getMockChecklistItems() implementation
+// 4. Add proper Firestore queries
+// 5. Remove all "MOCK DATA" comment sections
+// ==============================================
 
 class CheckHistoryDetailScreen extends StatefulWidget {
   final BankCheckHistory history;
@@ -26,17 +39,22 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
   late TabController _tabController;
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy');
   final ExcelExportService _excelExportService = ExcelExportService();
-
-  // Define all the categories
+  // Define all the categories in the correct order
   final List<Map<String, dynamic>> _categories = [
-    {'name': 'Satpam', 'icon': Icons.security},
-    {'name': 'Teller', 'icon': Icons.person},
-    {'name': 'Customer Service', 'icon': Icons.support_agent},
-    {'name': 'Banking Hall', 'icon': Icons.business},
-    {'name': 'Gallery e-Channel', 'icon': Icons.devices},
-    {'name': 'Fasad Gedung', 'icon': Icons.apartment},
-    {'name': 'Ruang BRIMEN', 'icon': Icons.meeting_room},
-    {'name': 'Toilet', 'icon': Icons.wc},
+    {'name': 'Customer Service', 'icon': Icons.support_agent}, // Sheet 1 - CS
+    {'name': 'Teller', 'icon': Icons.person}, // Sheet 2 - Teller
+    {'name': 'Satpam', 'icon': Icons.security}, // Sheet 3 - Satpam
+    {'name': 'Banking Hall', 'icon': Icons.business}, // Sheet 4 - Banking Hall
+    {
+      'name': 'Gallery e-Channel',
+      'icon': Icons.devices,
+    }, // Sheet 5 - Gallery e-Channel
+    {'name': 'Fasad Gedung', 'icon': Icons.apartment}, // Sheet 6 - Fasad Gedung
+    {
+      'name': 'Ruang BRIMEN',
+      'icon': Icons.meeting_room,
+    }, // Sheet 7 - Ruang BRIMEN
+    {'name': 'Toilet', 'icon': Icons.wc}, // Sheet 8 - Toilet
   ];
 
   @override
@@ -55,9 +73,81 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
   Future<List<ChecklistItem>> fetchChecklistItemsForHistory(
     String historyId,
   ) async {
-    // TODO: Implementasi fetch dari Firestore
-    // Untuk sekarang return list kosong sebagai placeholder
-    return [];
+    // TODO: REPLACE WITH FIRESTORE IMPLEMENTATION
+    // ==============================================
+    // MOCK DATA IMPLEMENTATION - DELETE THIS SECTION WHEN FIRESTORE IS READY
+    // This function should be replaced with actual Firestore queries to fetch
+    // checklist items based on the history ID
+    // ==============================================
+
+    // Simulate network delay
+    await Future.delayed(Duration(milliseconds: 500));
+
+    // Generate mock data with answers for all categories
+    List<ChecklistItem> allMockData =
+        []; // Mock data untuk setiap kategori dengan jawaban acak
+    for (String category in [
+      'Customer Service', // CS - Sheet 1
+      'Teller', // Teller - Sheet 2
+      'Satpam', // Satpam - Sheet 3
+      'Banking Hall', // Banking Hall - Sheet 4
+      'Gallery e-Channel', // Gallery E-Channel - Sheet 5
+      'Fasad Gedung', // Fasad Gedung - Sheet 6
+      'Ruang BRIMEN', // Ruang BRIMEN - Sheet 7
+      'Toilet', // Toilet - Sheet 8
+    ]) {
+      List<ChecklistItem> categoryItems = MockData.getChecklistForCategory(
+        category,
+      );
+
+      // Berikan jawaban mock untuk setiap item
+      for (ChecklistItem item in categoryItems) {
+        // 80% kemungkinan jawaban "Ya" (true)
+        bool mockAnswer = DateTime.now().millisecond % 5 != 0;
+        String mockNote =
+            mockAnswer ? '' : 'Perlu perbaikan atau catatan tambahan';
+        // Create new item with mock answers
+        ChecklistItem answeredItem = ChecklistItem(
+          id: item.id,
+          question: item.question,
+          category: item.category,
+          subcategory: item.subcategory,
+          uniformType: item.uniformType,
+          forHijab: item.forHijab,
+          answerValue: mockAnswer,
+          note: mockNote,
+        );
+
+        allMockData.add(answeredItem);
+      }
+    }
+
+    return allMockData;
+
+    // ==============================================
+    // END OF MOCK DATA SECTION
+    // ==============================================
+
+    // FIRESTORE IMPLEMENTATION TEMPLATE (UNCOMMENT AND MODIFY WHEN READY):
+    /*
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('checklist_responses')
+          .where('historyId', isEqualTo: historyId)
+          .get();
+      
+      List<ChecklistItem> items = [];
+      for (QueryDocumentSnapshot doc in querySnapshot.docs) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        items.add(ChecklistItem.fromFirestore(data));
+      }
+      
+      return items;
+    } catch (e) {
+      print('Error fetching checklist items: $e');
+      return [];
+    }
+    */
   }
 
   // Fungsi untuk tombol ekspor
@@ -84,7 +174,11 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
     );
 
     try {
-      // 1. Ambil List<ChecklistItem> dari Firestore untuk riwayat ini
+      // ==============================================
+      // MOCK DATA USAGE - REPLACE WITH FIRESTORE WHEN READY
+      // ==============================================
+
+      // 1. Ambil List<ChecklistItem> dari Mock Data (ganti dengan Firestore)
       final List<ChecklistItem> answeredItems =
           await fetchChecklistItemsForHistory(widget.history.id);
 
@@ -102,11 +196,30 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
         return;
       }
 
+      // Show success message with mock data indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '🚧 Menggunakan MOCK DATA - Total ${answeredItems.length} items',
+          ),
+          backgroundColor: Colors.blue.shade600,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
       // 2. Panggil service ekspor dengan data yang ada
       await _excelExportService.exportAndShareExcel(
         bankCheckHistory: widget.history,
         bankBranch: widget.branch,
         allChecklistItems: answeredItems,
+      );
+
+      // Show completion message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ File Excel berhasil diekspor!'),
+          backgroundColor: Colors.green.shade600,
+        ),
       );
     } catch (e) {
       // Close loading dialog if still open
@@ -472,50 +585,48 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
 
   // Helper method to get mock checklist items
   List<Map<String, dynamic>> _getMockChecklistItems(String categoryName) {
-    // Mock data for demonstration - replace with actual Firestore data
-    if (categoryName == 'Satpam') {
-      return [
-        {
-          'question': 'Penampilan seragam rapi dan bersih',
-          'completed': true,
-          'note': 'Seragam dalam kondisi baik',
-        },
-        {
-          'question': 'Bersikap ramah dan sopan',
-          'completed': true,
-          'note': null,
-        },
-        {
-          'question': 'Berada di posisi yang tepat',
-          'completed': false,
-          'note': 'Perlu perbaikan posisi',
-        },
-      ];
-    } else if (categoryName == 'Teller') {
-      return [
-        {
-          'question': 'Grooming sesuai standar',
-          'completed': true,
-          'note': 'Penampilan profesional',
-        },
-        {'question': 'Melayani dengan senyum', 'completed': true, 'note': null},
-      ];
-    } else if (categoryName == 'Customer Service') {
-      return [
-        {
-          'question': 'Menyambut nasabah dengan ramah',
-          'completed': true,
-          'note': 'Sangat baik',
-        },
-        {
-          'question': 'Memberikan informasi yang jelas',
-          'completed': false,
-          'note': 'Perlu training komunikasi',
-        },
-      ];
-    }
-    // Return empty list for other categories as placeholder
-    return [];
+    // ==============================================
+    // MOCK DATA IMPLEMENTATION - MODIFY WHEN FIRESTORE IS READY
+    // This function should be replaced with actual data from Firestore
+    // ==============================================
+
+    List<ChecklistItem> categoryItems = MockData.getChecklistForCategory(
+      categoryName,
+    );
+
+    // Convert ChecklistItem to display format with mock answers
+    return categoryItems.map((item) {
+      // 85% kemungkinan jawaban "Ya" untuk tampilan yang lebih realistis
+      bool mockCompleted = DateTime.now().millisecond % 7 != 0;
+      String? mockNote = mockCompleted ? null : 'Catatan perbaikan diperlukan';
+
+      return {
+        'question': item.question,
+        'completed': mockCompleted,
+        'note': mockNote,
+        'category': item.category,
+        'subcategory': item.subcategory,
+      };
+    }).toList();
+
+    // ==============================================
+    // END OF MOCK DATA SECTION
+    // ==============================================
+
+    // FIRESTORE IMPLEMENTATION TEMPLATE (UNCOMMENT WHEN READY):
+    /*
+    // This should return actual data from Firestore based on the historyId
+    // You would filter the ChecklistItem list based on category
+    return checklistItemsFromFirestore
+        .where((item) => item.category == categoryName)
+        .map((item) => {
+          'question': item.question,
+          'completed': item.answerValue ?? false,
+          'note': item.note,
+          'category': item.category,
+          'subcategory': item.subcategory,
+        }).toList();
+    */
   }
 }
 
