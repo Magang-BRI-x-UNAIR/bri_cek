@@ -1,12 +1,17 @@
 import 'dart:math';
-
+import 'package:bri_cek/screens/manage_users_screen.dart';
 import 'package:bri_cek/screens/choose_bank_screen.dart';
 import 'package:bri_cek/utils/app_size.dart';
+import 'package:bri_cek/widgets/burger_menu.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:bri_cek/models/user_model.dart';
+import 'package:bri_cek/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool isAdmin;
+
+  const HomeScreen({super.key, this.isAdmin = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -17,6 +22,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _contentAnimationController;
   late Animation<double> _headerAnimation;
   late Animation<double> _contentAnimation;
+
+  final AuthService _authService = AuthService();
+  UserModel? _currentUser;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -44,8 +53,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeInOut,
     );
 
-    // Start animations sequentially
-    _startAnimationsSequentially();
+    // Fetch user data and then start animations
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final user = await _authService.getUserData();
+      setState(() {
+        _currentUser = user;
+        _isLoading = false;
+      });
+      // Start animations after user data is loaded
+      _startAnimationsSequentially();
+    } catch (e) {
+      print('Error loading user data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      // Start animations even if there's an error
+      _startAnimationsSequentially();
+    }
   }
 
   void _startAnimationsSequentially() async {
@@ -93,9 +121,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildSwipeableBottomSheet() {
     return DraggableScrollableSheet(
-      initialChildSize: 0.05, // Starting size (just the handle showing)
-      minChildSize: 0.05, // Minimum size when collapsed
-      maxChildSize: 0.25, // Maximum size when expanded (25% of screen)
+      initialChildSize: 0.08, // Increased from 0.05
+      minChildSize: 0.08, // Increased from 0.05
+      maxChildSize: 0.3, // Increased from 0.25
+      snap: true,
+      snapSizes: [0.08, 0.3], // Define snap points
       builder: (BuildContext context, ScrollController scrollController) {
         return Container(
           decoration: BoxDecoration(
@@ -111,135 +141,155 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ],
           ),
-          child: Column(
-            children: [
-              // Handle indicator
-              Container(
-                margin: EdgeInsets.symmetric(vertical: 12),
-                width: AppSize.widthPercent(10),
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade500,
-                  borderRadius: BorderRadius.circular(10),
+          child: CustomScrollView(
+            controller: scrollController,
+            slivers: [
+              SliverToBoxAdapter(
+                child: Container(
+                  height: 60, // Fixed height for header
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Handle bar
+                      Container(
+                        margin: const EdgeInsets.only(top: 12, bottom: 8),
+                        width: AppSize.widthPercent(15),
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade600,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      // Text
+                      Text(
+                        "Swipe untuk melakukan penilaian",
+                        style: AppSize.getTextStyle(
+                          fontSize: AppSize.smallFontSize,
+                          color: Colors.blue.shade800,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              // Content
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSize.paddingHorizontal,
-                  ),
-                  children: [
-                    // Row with image and text
-                    Row(
-                      children: [
-                        // Image
-                        Container(
-                          width: AppSize.widthPercent(32),
-                          height: AppSize.heightPercent(20),
-                          decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage(
-                                'assets/images/assess_bank_person.png',
+              SliverPadding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSize.paddingHorizontal,
+                  vertical: 16,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      // Row with image and text
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Image
+                          Container(
+                            width: AppSize.widthPercent(32),
+                            height: AppSize.heightPercent(15),
+                            decoration: const BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage(
+                                  'assets/images/assess_bank_person.png',
+                                ),
+                                fit: BoxFit.contain,
                               ),
-                              fit: BoxFit.contain,
                             ),
                           ),
-                        ),
-                        SizedBox(width: AppSize.widthPercent(3)),
-                        // Penilaian text
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Beri Penilaian Kantor Kas',
-                              style: AppSize.getTextStyle(
-                                fontSize: AppSize.bodyFontSize,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black87,
-                              ),
-                            ),
-
-                            SizedBox(height: AppSize.widthPercent(3)),
-
-                            ElevatedButton(
-                              onPressed: () {
-                                // Navigate to ChooseBankScreen
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => const ChooseBankScreen(),
+                          SizedBox(width: AppSize.widthPercent(4)),
+                          // Penilaian text and button
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(height: AppSize.heightPercent(1)),
+                                Text(
+                                  'Beri Penilaian Kantor Kas',
+                                  style: AppSize.getTextStyle(
+                                    fontSize: AppSize.bodyFontSize,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
                                   ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.symmetric(),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                backgroundColor:
-                                    Colors
-                                        .transparent, // Make transparent to show gradient
-                                elevation: 0, // Remove shadow
-                              ).copyWith(
-                                backgroundColor: MaterialStateProperty.all(
-                                  Colors.transparent,
-                                ),
-                                overlayColor: MaterialStateProperty.all(
-                                  Colors.transparent,
-                                ),
-                                foregroundColor: MaterialStateProperty.all(
-                                  Colors.white,
-                                ),
-                              ),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF00529C),
-                                      Color(0xFF0086FF),
-                                    ],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: AppSize.widthPercent(5),
-                                    vertical: AppSize.heightPercent(1.2),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Mulai',
-                                        style: AppSize.getTextStyle(
-                                          fontSize: AppSize.bodyFontSize,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) =>
+                                                const ChooseBankScreen(),
                                       ),
-                                      SizedBox(width: AppSize.widthPercent(25)),
-                                      Icon(
-                                        Icons.arrow_forward,
-                                        color: Colors.white,
-                                        size: AppSize.iconSize,
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: AppSize.heightPercent(1),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    backgroundColor: Colors.transparent,
+                                    elevation: 0,
+                                    shadowColor: Colors.transparent,
+                                  ),
+                                  child: Ink(
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF00529C),
+                                          Color(0xFF0086FF),
+                                        ],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
                                       ),
-                                    ],
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: AppSize.widthPercent(3),
+                                        vertical: AppSize.heightPercent(1),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'Mulai',
+                                            style: AppSize.getTextStyle(
+                                              fontSize: AppSize.bodyFontSize,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: AppSize.widthPercent(18),
+                                          ),
+                                          Icon(
+                                            Icons.arrow_forward,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
+                          ),
+                        ],
+                      ),
+
+                      // Add extra content
+                      SizedBox(height: AppSize.heightPercent(2)),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -304,60 +354,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
 
-            // Bank icon
+            // Burger menu button
             Positioned(
-              right: AppSize.widthPercent(8),
-              top: AppSize.heightPercent(3),
+              top: AppSize.heightPercent(2),
+              left: AppSize.widthPercent(4),
               child: Container(
-                width: AppSize.widthPercent(45),
-                height: AppSize.heightPercent(20),
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/bank_transparent.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-
-            // Female character
-            Positioned(
-              right: AppSize.widthPercent(2),
-              top: AppSize.heightPercent(7),
-              child: Container(
-                width: AppSize.widthPercent(35),
-                height: AppSize.heightPercent(15),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/female_character.png'),
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ),
-
-            // Male Characters
-            Positioned(
-              right: AppSize.widthPercent(23),
-              top: AppSize.heightPercent(4),
-              child: Container(
-                width: AppSize.widthPercent(35),
-                height: AppSize.heightPercent(18),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/male_character.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
+                width: 50,
+                height: 50,
+                child: BurgerMenu(isAdmin: widget.isAdmin),
               ),
             ),
 
             // Greeting text
             Positioned(
-              top: AppSize.heightPercent(7),
-              left: AppSize.widthPercent(6),
+              top: AppSize.heightPercent(9),
+              left: AppSize.widthPercent(4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -370,7 +381,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                   Text(
-                    'Admin',
+                    _isLoading
+                        ? (widget.isAdmin == true ? 'Admin' : 'User')
+                        : (widget.isAdmin == true
+                            ? 'Admin BRI'
+                            : _getFirstName(_currentUser?.fullName)),
                     style: AppSize.getTextStyle(
                       fontSize: AppSize.titleFontSize,
                       fontWeight: FontWeight.bold,
@@ -378,6 +393,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            // Bank icon - adjust position untuk memberikan ruang lebih
+            Positioned(
+              right: AppSize.widthPercent(4),
+              top: AppSize.heightPercent(2), // Naikkan sedikit
+              child: Container(
+                width: AppSize.widthPercent(50), // Perbesar width
+                height: AppSize.heightPercent(20), // Perbesar height
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/bank_transparent.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+
+            // Female character
+            Positioned(
+              right: AppSize.widthPercent(1),
+              top: AppSize.heightPercent(6),
+              child: Container(
+                width: AppSize.widthPercent(35), // Perbesar dari 27% ke 40%
+                height: AppSize.heightPercent(18), // Perbesar dari 15% ke 18%
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/female_character.png'),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+
+            // Male Characters - PERBESAR UKURAN
+            Positioned(
+              right: AppSize.widthPercent(21), // Adjust position
+              top: AppSize.heightPercent(4),
+              child: Container(
+                width: AppSize.widthPercent(37), // Perbesar dari 25% ke 35%
+                height: AppSize.heightPercent(19), // Perbesar dari 15% ke 18%
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/male_character.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
             ),
           ],
@@ -471,9 +536,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _selectedMonth = 'Semua Bulan';
   final List<String> _banks = [
     'Semua Bank',
-    'KK Bulak',
+    'KK Bulog',
     'KK Gubeng',
-    'KK Kadam',
+    'KK Kodam',
     'KK Genteng',
   ];
   final List<String> _months = [
@@ -593,9 +658,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildChartLegend('KK Bulak', Colors.blue),
+                  _buildChartLegend('KK Bulog', Colors.blue),
                   _buildChartLegend('KK Gubeng', Colors.orange),
-                  _buildChartLegend('KK Kadam', Colors.green),
+                  _buildChartLegend('KK Kodam', Colors.green),
                   _buildChartLegend('KK Genteng', Colors.purple),
                 ],
               ),
@@ -623,9 +688,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildChartLegend('KK Bulak', Colors.blue),
+                  _buildChartLegend('KK Bulog', Colors.blue),
                   _buildChartLegend('KK Gubeng', Colors.orange),
-                  _buildChartLegend('KK Kadam', Colors.green),
+                  _buildChartLegend('KK Kodam', Colors.green),
                   _buildChartLegend('KK Genteng', Colors.purple),
                 ],
               ),
@@ -671,13 +736,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Get color based on selected bank
       Color bankColor;
       switch (_selectedBank) {
-        case 'KK Bulak':
+        case 'KK Bulog':
           bankColor = Colors.blue;
           break;
         case 'KK Gubeng':
           bankColor = Colors.orange;
           break;
-        case 'KK Kadam':
+        case 'KK Kodam':
           bankColor = Colors.green;
           break;
         case 'KK Genteng':
@@ -869,9 +934,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           minY: 0,
           maxY: 100,
           lineBarsData: [
-            // KK Bulak
+            // KK Bulog
             LineChartBarData(
-              spots: _getWeeklyData('KK Bulak', monthIndex),
+              spots: _getWeeklyData('KK Bulog', monthIndex),
               isCurved: true,
               color: Colors.blue,
               barWidth: 2.5,
@@ -907,9 +972,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 },
               ),
             ),
-            // KK Kadam
+            // KK Kodam
             LineChartBarData(
-              spots: _getWeeklyData('KK Kadam', monthIndex),
+              spots: _getWeeklyData('KK Kodam', monthIndex),
               isCurved: true,
               color: Colors.green,
               barWidth: 2.5,
@@ -961,13 +1026,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Base value depending on the bank (matches the monthly trend somewhat)
     double baseValue; // Change from int to double
     switch (bank) {
-      case 'KK Bulak':
+      case 'KK Bulog':
         baseValue = 60.0; // Add .0 to make it a double
         break;
       case 'KK Gubeng':
         baseValue = 50.0;
         break;
-      case 'KK Kadam':
+      case 'KK Kodam':
         baseValue = 75.0;
         break;
       case 'KK Genteng':
@@ -1003,7 +1068,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Data for all banks
     final List<LineChartBarData> allBanksData = [
-      // KK Bulak (Blue)
+      // KK Bulog (Blue)
       LineChartBarData(
         spots: [
           FlSpot(0, 20),
@@ -1021,18 +1086,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
         isCurved: true,
         color:
-            showSingleBank && _selectedBank != 'KK Bulak'
+            showSingleBank && _selectedBank != 'KK Bulog'
                 ? Colors.blue.withOpacity(0.3)
                 : Colors.blue,
-        barWidth: showSingleBank && _selectedBank == 'KK Bulak' ? 3.5 : 2.5,
+        barWidth: showSingleBank && _selectedBank == 'KK Bulog' ? 3.5 : 2.5,
         isStrokeCapRound: true,
         dotData: FlDotData(
           show: true,
           getDotPainter: (spot, percent, barData, index) {
             return FlDotCirclePainter(
-              radius: showSingleBank && _selectedBank == 'KK Bulak' ? 4 : 3,
+              radius: showSingleBank && _selectedBank == 'KK Bulog' ? 4 : 3,
               color:
-                  showSingleBank && _selectedBank != 'KK Bulak'
+                  showSingleBank && _selectedBank != 'KK Bulog'
                       ? Colors.blue.withOpacity(0.3)
                       : Colors.blue,
               strokeWidth: 1,
@@ -1041,7 +1106,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
         ),
         belowBarData: BarAreaData(
-          show: showSingleBank && _selectedBank == 'KK Bulak',
+          show: showSingleBank && _selectedBank == 'KK Bulog',
           color: Colors.blue.withOpacity(0.2),
         ),
       ),
@@ -1087,7 +1152,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           color: Colors.orange.withOpacity(0.2),
         ),
       ),
-      // KK Kadam (Green)
+      // KK Kodam (Green)
       LineChartBarData(
         spots: [
           FlSpot(0, 50),
@@ -1105,18 +1170,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
         isCurved: true,
         color:
-            showSingleBank && _selectedBank != 'KK Kadam'
+            showSingleBank && _selectedBank != 'KK Kodam'
                 ? Colors.green.withOpacity(0.3)
                 : Colors.green,
-        barWidth: showSingleBank && _selectedBank == 'KK Kadam' ? 3.5 : 2.5,
+        barWidth: showSingleBank && _selectedBank == 'KK Kodam' ? 3.5 : 2.5,
         isStrokeCapRound: true,
         dotData: FlDotData(
           show: true,
           getDotPainter: (spot, percent, barData, index) {
             return FlDotCirclePainter(
-              radius: showSingleBank && _selectedBank == 'KK Kadam' ? 4 : 3,
+              radius: showSingleBank && _selectedBank == 'KK Kodam' ? 4 : 3,
               color:
-                  showSingleBank && _selectedBank != 'KK Kadam'
+                  showSingleBank && _selectedBank != 'KK Kodam'
                       ? Colors.green.withOpacity(0.3)
                       : Colors.green,
               strokeWidth: 1,
@@ -1125,7 +1190,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
         ),
         belowBarData: BarAreaData(
-          show: showSingleBank && _selectedBank == 'KK Kadam',
+          show: showSingleBank && _selectedBank == 'KK Kodam',
           color: Colors.green.withOpacity(0.2),
         ),
       ),
@@ -1701,4 +1766,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
+}
+
+// Add this helper method to extract the first name
+String _getFirstName(String? fullName) {
+  if (fullName == null || fullName.isEmpty) {
+    return 'User';
+  }
+
+  // Split the full name by spaces and get the first word
+  final nameParts = fullName.trim().split(' ');
+  if (nameParts.isEmpty) {
+    return 'User';
+  }
+
+  // Return the first word of the full name
+  return nameParts[0];
 }

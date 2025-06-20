@@ -2,11 +2,17 @@ import 'package:bri_cek/screens/choose_category_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:intl/intl.dart';
+import 'package:bri_cek/services/assessment_session_service.dart';
 
 class ChooseDateScreen extends StatefulWidget {
   final String selectedBank;
+  final String bankBranchId;
 
-  const ChooseDateScreen({super.key, required this.selectedBank});
+  const ChooseDateScreen({
+    super.key,
+    required this.selectedBank,
+    required this.bankBranchId,
+  });
 
   @override
   State<ChooseDateScreen> createState() => _ChooseDateScreenState();
@@ -16,6 +22,9 @@ class _ChooseDateScreenState extends State<ChooseDateScreen>
     with TickerProviderStateMixin {
   DateTime _selectedDate = DateTime.now();
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy');
+  final AssessmentSessionService _assessmentSessionService =
+      AssessmentSessionService();
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -297,44 +306,63 @@ class _ChooseDateScreenState extends State<ChooseDateScreen>
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () {
-                                // Show selection feedback
-                                ScaffoldMessenger.of(
-                                  context,
-                                ).removeCurrentSnackBar();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Tanggal dipilih: ${_dateFormat.format(_selectedDate)}',
-                                    ),
-                                    backgroundColor: Colors.blue.shade700,
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppSize.cardBorderRadius,
-                                      ),
-                                    ),
-                                    duration: const Duration(seconds: 1),
-                                  ),
-                                );
+                              onTap:
+                                  _isLoading
+                                      ? null
+                                      : () async {
+                                        setState(() {
+                                          _isLoading = true;
+                                        });
 
-                                // Navigate to category selection screen with animation
-                                Future.delayed(
-                                  const Duration(milliseconds: 300),
-                                  () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder:
-                                            (context) => ChooseCategoryScreen(
-                                              selectedBank: widget.selectedBank,
-                                              selectedDate: _selectedDate,
+                                        try {
+                                          // Simpan data session ke Firestore
+                                          final sessionId =
+                                              await _assessmentSessionService
+                                                  .createAssessmentSession(
+                                                    bankBranchId:
+                                                        widget.bankBranchId,
+                                                    sessionDate: _selectedDate,
+                                                  );
+
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+
+                                          // Navigasi ke layar pemilihan kategori dengan data yang diperlukan
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (
+                                                    context,
+                                                  ) => ChooseCategoryScreen(
+                                                    selectedBank:
+                                                        widget.selectedBank,
+                                                    selectedDate: _selectedDate,
+                                                    bankBranchId:
+                                                        widget
+                                                            .bankBranchId, // Teruskan ID cabang
+                                                    sessionId:
+                                                        sessionId, // Teruskan ID sesi yang baru dibuat
+                                                  ),
                                             ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
+                                          );
+                                        } catch (e) {
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+
+                                          // Tampilkan error
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Error: $e'),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        }
+                                      },
                               borderRadius: BorderRadius.circular(
                                 AppSize.cardBorderRadius,
                               ),

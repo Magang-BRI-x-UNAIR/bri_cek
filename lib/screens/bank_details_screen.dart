@@ -106,8 +106,10 @@ class BankDetailScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder:
-                        (context) =>
-                            ChooseDateScreen(selectedBank: branch.name),
+                        (context) => ChooseDateScreen(
+                          selectedBank: branch.name,
+                          bankBranchId: branch.id,
+                        ),
                   ),
                 );
               } else {
