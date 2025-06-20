@@ -98,19 +98,21 @@ class _CheckHistoryDetailScreenState extends State<CheckHistoryDetailScreen>
     ]) {
       List<ChecklistItem> categoryItems = MockData.getChecklistForCategory(
         category,
-      );
-
-      // Berikan jawaban mock untuk setiap item
+      ); // Berikan jawaban mock untuk setiap item
       for (ChecklistItem item in categoryItems) {
         // 80% kemungkinan jawaban "Ya" (true)
         bool mockAnswer = DateTime.now().millisecond % 5 != 0;
         String mockNote =
             mockAnswer ? '' : 'Perlu perbaikan atau catatan tambahan';
-        // Create new item with mock answers
+
+        // Create new item with mock answers and ensure category is set
         ChecklistItem answeredItem = ChecklistItem(
           id: item.id,
           question: item.question,
-          category: item.category,
+          category:
+              item.category.isEmpty
+                  ? category
+                  : item.category, // Pastikan category tidak kosong
           subcategory: item.subcategory,
           uniformType: item.uniformType,
           forHijab: item.forHijab,

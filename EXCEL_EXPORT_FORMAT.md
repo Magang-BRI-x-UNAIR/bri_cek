@@ -46,20 +46,17 @@ File Excel hasil export memiliki format yang berbeda untuk setiap jenis kategori
 - "Skip" - Jika skipped = true
 - "Belum Diisi" - Jika belum ada jawaban
 
-## Format untuk Sheet Lainnya (Banking Hall, Gallery e-Channel, dll)
+## Format untuk Semua Sheet Lainnya (Banking Hall, Gallery e-Channel, dll)
 
 ### Header Columns:
-| Kolom A | Kolom B | Kolom C | Kolom D | Kolom E | Kolom F |
-|---------|---------|---------|---------|---------|---------|
-| NO | ITEM | SUB ITEM | STATUS | KETERANGAN | FOTO |
+| Kolom A | Kolom B | Kolom C |
+|---------|---------|---------|
+| ITEM | SUB ITEM | STATUS |
 
 ### Description:
-- **NO** - Nomor urut
 - **ITEM** - Subcategory (ditampilkan sekali per grup)
 - **SUB ITEM** - Pertanyaan checklist
 - **STATUS** - Ya/Tidak/Skip/Belum Diisi
-- **KETERANGAN** - Catatan dari user
-- **FOTO** - Kosong (untuk upload foto manual)
 
 ## Mock Data Implementation
 

@@ -1,7 +1,6 @@
 // file: services/excel_export_service.dart
 import 'dart:io';
 import 'package:excel/excel.dart';
-import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
@@ -65,27 +64,47 @@ class ExcelExportService {
                 (category) => allChecklistItems.any(
                   (item) =>
                       item.category == category ||
-                      (category == 'Customer Service' && item.category == '') ||
+                      (category == 'Customer Service' &&
+                          (item.category == '' || item.category.isEmpty) &&
+                          item.id.startsWith('cs')) ||
                       (category == 'Satpam' &&
-                          item.category == '' &&
-                          item.id.startsWith('satpam')),
+                          (item.category == '' || item.category.isEmpty) &&
+                          item.id.startsWith('satpam')) ||
+                      (category == 'Teller' &&
+                          (item.category == '' || item.category.isEmpty) &&
+                          item.id.startsWith('teller')) ||
+                      (category == 'Banking Hall' &&
+                          (item.category == '' || item.category.isEmpty) &&
+                          item.id.startsWith('hall')) ||
+                      (category == 'Gallery e-Channel' &&
+                          (item.category == '' || item.category.isEmpty) &&
+                          item.id.startsWith('channel')) ||
+                      (category == 'Fasad Gedung' &&
+                          (item.category == '' || item.category.isEmpty) &&
+                          item.id.startsWith('fasad')) ||
+                      (category == 'Ruang BRIMEN' &&
+                          (item.category == '' || item.category.isEmpty) &&
+                          item.id.startsWith('brimen')) ||
+                      (category == 'Toilet' &&
+                          (item.category == '' || item.category.isEmpty) &&
+                          item.id.startsWith('toilet')),
                 ),
               )
               .toList();
-
       for (var category in allCategories) {
         final sheetName = categoryToSheetName[category] ?? category;
         final sheet = excel[sheetName];
 
         // Filter items for this category
-        List<ChecklistItem> categoryItems;
+        List<ChecklistItem> categoryItems = [];
+
         if (category == 'Customer Service') {
           categoryItems =
               allChecklistItems
                   .where(
                     (item) =>
                         item.category == 'Customer Service' ||
-                        (item.category == '' && item.id.startsWith('cs')),
+                        (item.category.isEmpty && item.id.startsWith('cs')),
                   )
                   .toList();
         } else if (category == 'Satpam') {
@@ -94,7 +113,62 @@ class ExcelExportService {
                   .where(
                     (item) =>
                         item.category == 'Satpam' ||
-                        (item.category == '' && item.id.startsWith('satpam')),
+                        (item.category.isEmpty && item.id.startsWith('satpam')),
+                  )
+                  .toList();
+        } else if (category == 'Teller') {
+          categoryItems =
+              allChecklistItems
+                  .where(
+                    (item) =>
+                        item.category == 'Teller' ||
+                        (item.category.isEmpty && item.id.startsWith('teller')),
+                  )
+                  .toList();
+        } else if (category == 'Banking Hall') {
+          categoryItems =
+              allChecklistItems
+                  .where(
+                    (item) =>
+                        item.category == 'Banking Hall' ||
+                        (item.category.isEmpty && item.id.startsWith('hall')),
+                  )
+                  .toList();
+        } else if (category == 'Gallery e-Channel') {
+          categoryItems =
+              allChecklistItems
+                  .where(
+                    (item) =>
+                        item.category == 'Gallery e-Channel' ||
+                        (item.category.isEmpty &&
+                            item.id.startsWith('channel')),
+                  )
+                  .toList();
+        } else if (category == 'Fasad Gedung') {
+          categoryItems =
+              allChecklistItems
+                  .where(
+                    (item) =>
+                        item.category == 'Fasad Gedung' ||
+                        (item.category.isEmpty && item.id.startsWith('fasad')),
+                  )
+                  .toList();
+        } else if (category == 'Ruang BRIMEN') {
+          categoryItems =
+              allChecklistItems
+                  .where(
+                    (item) =>
+                        item.category == 'Ruang BRIMEN' ||
+                        (item.category.isEmpty && item.id.startsWith('brimen')),
+                  )
+                  .toList();
+        } else if (category == 'Toilet') {
+          categoryItems =
+              allChecklistItems
+                  .where(
+                    (item) =>
+                        item.category == 'Toilet' ||
+                        (item.category.isEmpty && item.id.startsWith('toilet')),
                   )
                   .toList();
         } else {
@@ -102,6 +176,11 @@ class ExcelExportService {
               allChecklistItems
                   .where((item) => item.category == category)
                   .toList();
+        }
+
+        // Skip empty categories
+        if (categoryItems.isEmpty) {
+          continue;
         }
 
         categoryItems.sort(
@@ -166,13 +245,11 @@ class ExcelExportService {
             .value = TextCellValue(bankCheckHistory.checkedBy);
         currentRow += 2;
         int tableHeaderRow = currentRow;
-        List<String> headers;
-
-        // Different headers for different sheet types
+        List<String> headers; // Different headers for different sheet types
         if (['CS', 'Teller', 'Satpam'].contains(sheetName)) {
           headers = ["KATEGORI", "GENDER", "PERTANYAAN", "STATUS"];
         } else {
-          headers = ["NO", "ITEM", "SUB ITEM", "STATUS", "KETERANGAN", "FOTO"];
+          headers = ["ITEM", "SUB ITEM", "STATUS"];
         }
 
         sheet.appendRow(headers.map((e) => TextCellValue(e)).toList());
@@ -219,8 +296,8 @@ class ExcelExportService {
         );
       }
     } catch (e, stacktrace) {
-      debugPrint("Error exporting Excel: $e");
-      debugPrint("Stacktrace: $stacktrace");
+      print("Error exporting Excel: $e");
+      print("Stacktrace: $stacktrace");
     }
   }
 
@@ -387,27 +464,22 @@ class ExcelExportService {
       final item = categoryItems[i];
       final int rowIndex = tableHeaderRow + i;
 
-      // NO column
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-          .value = TextCellValue((i + 1).toString());
-
-      // ITEM column (subcategory)
+      // ITEM column (subcategory) - Column A
       if (item.subcategory.isNotEmpty && item.subcategory != lastSubCategory) {
         sheet
             .cell(
-              CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex),
+              CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
             )
             .value = TextCellValue(item.subcategory);
         lastSubCategory = item.subcategory;
       }
 
-      // SUB ITEM column (question)
+      // SUB ITEM column (question) - Column B
       sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
           .value = TextCellValue(item.question);
 
-      // STATUS column
+      // STATUS column - Column C
       String status = "Belum Diisi";
       if (item.skipped == true) {
         status = "Dilewati";
@@ -415,28 +487,15 @@ class ExcelExportService {
         status = item.answerValue! ? "Ya" : "Tidak";
       }
       sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
           .value = TextCellValue(status);
-
-      // KETERANGAN column
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
-          .value = TextCellValue(item.note ?? '');
-
-      // FOTO column
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
-          .value = TextCellValue('');
 
       // Apply styles
       sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+          .cellStyle = wrappedTextStyle;
+      sheet
           .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-          .cellStyle = wrappedTextStyle;
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
-          .cellStyle = wrappedTextStyle;
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
           .cellStyle = wrappedTextStyle;
     }
   }
