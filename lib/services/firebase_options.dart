@@ -65,5 +65,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'bri-cek.firebasestorage.app',
     iosBundleId: 'com.example.briCek',
   );
-
 }

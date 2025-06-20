@@ -1,4 +1,5 @@
-import 'package:bri_cek/firebase_options.dart';
+import 'package:bri_cek/services/database_initializer.dart';
+import 'package:bri_cek/services/firebase_options.dart';
 import 'package:bri_cek/screens/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,11 @@ Future<void> main() async {
   await initializeDateFormatting('id_ID', null);
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize database with default data
+  final databaseInitializer = DatabaseInitializer();
+  await databaseInitializer.initializeDatabase();
+
   // Set preferensi orientasi (opsional)
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

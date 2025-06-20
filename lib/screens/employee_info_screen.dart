@@ -9,12 +9,16 @@ class EmployeeInfoScreen extends StatefulWidget {
   final String selectedBank;
   final DateTime selectedDate;
   final String selectedCategory;
+  final String bankBranchId;
+  final String sessionId;
 
   const EmployeeInfoScreen({
     super.key,
     required this.selectedBank,
     required this.selectedDate,
     required this.selectedCategory,
+    required this.bankBranchId, // Pastikan menerima parameter ini
+    required this.sessionId,
   });
 
   @override
@@ -654,6 +658,10 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                               selectedCategory:
                                                   widget.selectedCategory,
                                               employeeData: employeeData,
+                                              bankBranchId:
+                                                  widget
+                                                      .bankBranchId, // Teruskan dari widget
+                                              sessionId: widget.sessionId,
                                             ),
                                       ),
                                     );
