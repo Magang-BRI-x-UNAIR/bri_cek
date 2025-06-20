@@ -8,9 +8,6 @@ import 'package:bri_cek/services/checklist_service.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/data/checklist_item_data.dart';
-import 'package:bri_cek/services/excel_export_service.dart';
-import 'package:bri_cek/models/bank_check_history.dart';
-import 'package:bri_cek/models/bank_branch.dart';
 
 class ChecklistScreen extends StatefulWidget {
   final String selectedBank;
@@ -312,7 +309,7 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     _navigateToSubcategory(_currentCategoryIndex, index);
   }
 
-  void _handleSaveChecklist() {
+  void _handleSaveChecklist() async {
     // Ubah pengecekan untuk menerima pertanyaan yang di-skip
     final allAnswered = _checklistItems.every(
       (item) => item.answerValue != null || item.skipped == true,
@@ -328,13 +325,13 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         ),
       );
       return;
-    }
-
-    // Hitung jumlah pertanyaan yang di-skip
+    } // Hitung jumlah pertanyaan yang di-skip
     final skippedCount =
         _checklistItems.where((item) => item.skipped == true).length;
     final score = _checklistService.calculateScore(_checklistItems);
 
+    // Untuk sekarang, kita akan langsung show completion dialog
+    // Implementasi export Excel akan ditambahkan nanti setelah Firestore siap
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -343,52 +340,54 @@ class _ChecklistScreenState extends State<ChecklistScreen>
             score: score,
             categoryName: widget.selectedCategory,
             hasEmployeeData: widget.employeeData != null,
-            skippedCount: skippedCount, // Kirimkan jumlah yang di-skip
+            skippedCount: skippedCount,
             onBackToDetails: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Return to previous screen
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).pop(); // Go back to previous screen
             },
             onFinish: () {
-              // Save checklist results then return to home
-              // In a real app, you would save to local storage or API here
-              Navigator.popUntil(context, (route) => route.isFirst);
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
-      // 1. Dapatkan semua data yang diperlukan
-    final List<ChecklistItem> answeredItems = _checklistService.items;
     );
-    // ASUMSI: Anda perlu fungsi untuk mendapatkan objek BankBranch dan nama user
-    // Ini HANYA CONTOH, sesuaikan dengan cara Anda mengambil data
-    final BankBranch currentBranch = await getBankBranchByName(widget.selectedBank);
-    final String currentUserName = await getCurrentUserName(); // Nama pemeriksa yg login
-    
-    // 2. Buat objek BankCheckHistory yang LENGKAP
-    final history = BankCheckHistory(
-      id: 'some-unique-id-from-firestore', // ID unik
-      bankBranchId: currentBranch.id,
-      checkDate: widget.selectedDate,
-      checkedBy: currentUserName,
-      
-      // Mengambil data dari employeeData dan kategori
-      employeeName: widget.employeeData?['name'], // Ambil nama dari map
-      employeePosition: widget.selectedCategory, // Jabatan = Kategori yg dipilih
-      
-      // Kalkulasi skor dan data lainnya
-      score: _checklistService.calculateScore(),
-      aspectScores: {}, // Isi jika ada
-      isSuccessful: _checklistService.calculateScore() >= 70, // Contoh
-    );
-    
-    // 3. (Opsional) Simpan ke Firestore
-    // await saveToFirestore(history, answeredItems);
 
-    // 4. Panggil service ekspor
-    final excelService = ExcelExportService();
-    await excelService.exportAndShareExcel(
-      bankCheckHistory: history,
-      bankBranch: currentBranch,
-      allChecklistItems: answeredItems,
-    );
+    // TODO: Implementasi lengkap setelah Firestore siap
+    // 1. Simpan data ke Firestore
+    // 2. Buat BankCheckHistory object
+    // 3. Export ke Excel
+    /*
+    try {
+      // 1. Simpan ke Firestore dan dapatkan history ID
+      final historyId = await saveChecklistToFirestore(_checklistItems, widget.selectedBank, widget.selectedDate);
+      
+      // 2. Buat BankCheckHistory object
+      final history = BankCheckHistory(
+        id: historyId,
+        bankBranchId: widget.selectedBank, // Sesuaikan dengan ID branch
+        checkDate: widget.selectedDate,
+        checkedBy: 'current_user_name', // Dapatkan dari authentication
+        employeeName: widget.employeeData?['name'],
+        employeePosition: widget.selectedCategory,
+        score: score,
+        aspectScores: {}, // Hitung per kategori jika diperlukan
+        isSuccessful: score >= 70,
+      );
+      
+      // 3. Export ke Excel
+      final excelService = ExcelExportService();
+      await excelService.exportAndShareExcel(
+        bankCheckHistory: history,
+        bankBranch: getBranchObject(widget.selectedBank),
+        allChecklistItems: _checklistItems,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    */
   }
 
   @override

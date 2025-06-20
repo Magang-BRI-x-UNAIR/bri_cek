@@ -33,7 +33,6 @@ class ExcelExportService {
   }) async {
     try {
       var excel = Excel.createExcel();
-
       final CellStyle titleStyle = CellStyle(
         bold: true,
         fontSize: 12,
@@ -43,13 +42,10 @@ class ExcelExportService {
       final CellStyle headerStyle = CellStyle(
         bold: true,
         horizontalAlign: HorizontalAlign.Center,
-        backgroundColorHex: "#DDEBF7",
         verticalAlign: VerticalAlign.Center,
-        wrap: true,
       );
       final CellStyle wrappedTextStyle = CellStyle(
         verticalAlign: VerticalAlign.Top,
-        wrap: true,
       );
 
       final allCategories =
@@ -62,20 +58,21 @@ class ExcelExportService {
             allChecklistItems
                 .where((item) => item.category == category)
                 .toList();
-        categoryItems.sort((a, b) => a.subcategory.compareTo(b.subcategory));
-
-        sheet.setColWidth(0, 5);
-        sheet.setColWidth(1, 25);
-        sheet.setColWidth(2, 40);
-        sheet.setColWidth(3, 12);
-        sheet.setColWidth(4, 35);
-        sheet.setColWidth(5, 35);
+        categoryItems.sort(
+          (a, b) => a.subcategory.compareTo(b.subcategory),
+        ); // Note: Column width setting may depend on the Excel package version
+        // sheet.setColumnWidth(0, 5);
+        // sheet.setColumnWidth(1, 25);
+        // sheet.setColumnWidth(2, 40);
+        // sheet.setColumnWidth(3, 12);
+        // sheet.setColumnWidth(4, 35);
+        // sheet.setColumnWidth(5, 35);
 
         sheet.merge(
           CellIndex.indexByString("A1"),
           CellIndex.indexByString("F1"),
         );
-        sheet.cell(CellIndex.indexByString("A1")).value = const TextCellValue(
+        sheet.cell(CellIndex.indexByString("A1")).value = TextCellValue(
           "CHECKLIST KELENGKAPAN DAN KONDISI LAYANAN UNIT KERJA OPERASIONAL",
         );
         sheet.cell(CellIndex.indexByString("A1")).cellStyle = titleStyle;
@@ -86,14 +83,14 @@ class ExcelExportService {
         int currentRow = 4;
         sheet
             .cell(CellIndex.indexByString("A$currentRow"))
-            .value = const TextCellValue("NAMA CABANG :");
+            .value = TextCellValue("NAMA CABANG :");
         sheet
             .cell(CellIndex.indexByString("C$currentRow"))
             .value = TextCellValue(bankBranch.name);
         currentRow++;
         sheet
             .cell(CellIndex.indexByString("A$currentRow"))
-            .value = const TextCellValue("TANGGAL PENGECEKAN :");
+            .value = TextCellValue("TANGGAL PENGECEKAN :");
         sheet.cell(CellIndex.indexByString("C$currentRow")).value =
             TextCellValue(displayDateFormat.format(bankCheckHistory.checkDate));
         currentRow++;
@@ -101,14 +98,14 @@ class ExcelExportService {
         if (['Satpam', 'Teller', 'CS'].contains(sheetName)) {
           sheet
               .cell(CellIndex.indexByString("A$currentRow"))
-              .value = const TextCellValue("NAMA PETUGAS :");
+              .value = TextCellValue("NAMA PETUGAS :");
           sheet
               .cell(CellIndex.indexByString("C$currentRow"))
               .value = TextCellValue(bankCheckHistory.employeeName ?? '-');
           currentRow++;
           sheet
               .cell(CellIndex.indexByString("A$currentRow"))
-              .value = const TextCellValue("JABATAN :");
+              .value = TextCellValue("JABATAN :");
           sheet
               .cell(CellIndex.indexByString("C$currentRow"))
               .value = TextCellValue(bankCheckHistory.employeePosition ?? '-');
@@ -117,7 +114,7 @@ class ExcelExportService {
 
         sheet
             .cell(CellIndex.indexByString("A$currentRow"))
-            .value = const TextCellValue("DIPERIKSA OLEH :");
+            .value = TextCellValue("DIPERIKSA OLEH :");
         sheet
             .cell(CellIndex.indexByString("C$currentRow"))
             .value = TextCellValue(bankCheckHistory.checkedBy);
@@ -189,7 +186,7 @@ class ExcelExportService {
               .cell(
                 CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex),
               )
-              .value = const TextCellValue('');
+              .value = TextCellValue('');
           sheet
               .cell(
                 CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex),
