@@ -1,14 +1,14 @@
 // file: services/excel_export_service.dart
 import 'dart:io';
-import 'package:excel/excel.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
 
+import 'package:bri_cek/models/bank_branch.dart';
 // Ganti dengan path model Anda yang benar
 import 'package:bri_cek/models/bank_check_history.dart';
-import 'package:bri_cek/models/bank_branch.dart';
 import 'package:bri_cek/models/checklist_item.dart';
+import 'package:excel/excel.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ExcelExportService {
   final Map<String, String> categoryToSheetName = {
@@ -57,40 +57,8 @@ class ExcelExportService {
       );
       final CellStyle wrappedTextStyle = CellStyle(
         verticalAlign: VerticalAlign.Top,
-      );
-      final allCategories =
-          sheetOrder
-              .where(
-                (category) => allChecklistItems.any(
-                  (item) =>
-                      item.category == category ||
-                      (category == 'Customer Service' &&
-                          (item.category == '' || item.category.isEmpty) &&
-                          item.id.startsWith('cs')) ||
-                      (category == 'Satpam' &&
-                          (item.category == '' || item.category.isEmpty) &&
-                          item.id.startsWith('satpam')) ||
-                      (category == 'Teller' &&
-                          (item.category == '' || item.category.isEmpty) &&
-                          item.id.startsWith('teller')) ||
-                      (category == 'Banking Hall' &&
-                          (item.category == '' || item.category.isEmpty) &&
-                          item.id.startsWith('hall')) ||
-                      (category == 'Gallery e-Channel' &&
-                          (item.category == '' || item.category.isEmpty) &&
-                          item.id.startsWith('channel')) ||
-                      (category == 'Fasad Gedung' &&
-                          (item.category == '' || item.category.isEmpty) &&
-                          item.id.startsWith('fasad')) ||
-                      (category == 'Ruang BRIMEN' &&
-                          (item.category == '' || item.category.isEmpty) &&
-                          item.id.startsWith('brimen')) ||
-                      (category == 'Toilet' &&
-                          (item.category == '' || item.category.isEmpty) &&
-                          item.id.startsWith('toilet')),
-                ),
-              )
-              .toList();
+      ); // Always create all sheets regardless of data availability for consistency
+      final allCategories = sheetOrder.toList();
       for (var category in allCategories) {
         final sheetName = categoryToSheetName[category] ?? category;
         final sheet = excel[sheetName];
@@ -176,10 +144,15 @@ class ExcelExportService {
               allChecklistItems
                   .where((item) => item.category == category)
                   .toList();
-        }
-
-        // Skip empty categories
+        } // Skip empty categories only if truly no data available
         if (categoryItems.isEmpty) {
+          // Create empty sheet with headers and template message
+          _createEmptySheetTemplate(
+            sheet,
+            sheetName,
+            bankCheckHistory,
+            bankBranch,
+          );
           continue;
         }
 
@@ -548,5 +521,105 @@ class ExcelExportService {
     sheet
         .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
         .cellStyle = wrappedTextStyle;
+  }
+
+  // Helper method to create empty sheet template when no data is available
+  void _createEmptySheetTemplate(
+    Sheet sheet,
+    String sheetName,
+    BankCheckHistory bankCheckHistory,
+    BankBranch bankBranch,
+  ) {
+    final CellStyle titleStyle = CellStyle(
+      bold: true,
+      fontSize: 12,
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+    );
+    final CellStyle headerStyle = CellStyle(
+      bold: true,
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+    );
+
+    // Title
+    sheet.merge(CellIndex.indexByString("A1"), CellIndex.indexByString("F1"));
+    sheet.cell(CellIndex.indexByString("A1")).value = TextCellValue(
+      "CHECKLIST KELENGKAPAN DAN KONDISI LAYANAN UNIT KERJA OPERASIONAL",
+    );
+    sheet.cell(CellIndex.indexByString("A1")).cellStyle = titleStyle;
+    sheet.cell(CellIndex.indexByString("A2")).value = TextCellValue(
+      "TAHUN ${bankCheckHistory.checkDate.year}",
+    );
+
+    int currentRow = 4;
+    sheet.cell(CellIndex.indexByString("A$currentRow")).value = TextCellValue(
+      "NAMA CABANG :",
+    );
+    sheet.cell(CellIndex.indexByString("C$currentRow")).value = TextCellValue(
+      bankBranch.name,
+    );
+    currentRow++;
+    sheet.cell(CellIndex.indexByString("A$currentRow")).value = TextCellValue(
+      "TANGGAL PENGECEKAN :",
+    );
+    sheet.cell(CellIndex.indexByString("C$currentRow")).value = TextCellValue(
+      displayDateFormat.format(bankCheckHistory.checkDate),
+    );
+    currentRow++;
+
+    if (['Satpam', 'Teller', 'CS'].contains(sheetName)) {
+      sheet.cell(CellIndex.indexByString("A$currentRow")).value = TextCellValue(
+        "NAMA PETUGAS :",
+      );
+      sheet.cell(CellIndex.indexByString("C$currentRow")).value = TextCellValue(
+        bankCheckHistory.employeeName ?? '-',
+      );
+      currentRow++;
+      sheet.cell(CellIndex.indexByString("A$currentRow")).value = TextCellValue(
+        "JABATAN :",
+      );
+      sheet.cell(CellIndex.indexByString("C$currentRow")).value = TextCellValue(
+        bankCheckHistory.employeePosition ?? '-',
+      );
+      currentRow++;
+    }
+
+    sheet.cell(CellIndex.indexByString("A$currentRow")).value = TextCellValue(
+      "DIPERIKSA OLEH :",
+    );
+    sheet.cell(CellIndex.indexByString("C$currentRow")).value = TextCellValue(
+      bankCheckHistory.checkedBy,
+    );
+    currentRow += 2;
+
+    int tableHeaderRow = currentRow;
+    List<String> headers;
+    if (['CS', 'Teller', 'Satpam'].contains(sheetName)) {
+      headers = ["KATEGORI", "GENDER", "PERTANYAAN", "STATUS"];
+    } else {
+      headers = ["ITEM", "SUB ITEM", "STATUS"];
+    }
+
+    sheet.appendRow(headers.map((e) => TextCellValue(e)).toList());
+    for (var i = 0; i < headers.length; i++) {
+      sheet
+          .cell(
+            CellIndex.indexByColumnRow(
+              columnIndex: i,
+              rowIndex: tableHeaderRow - 1,
+            ),
+          )
+          .cellStyle = headerStyle;
+    }
+
+    // Add template message
+    currentRow = tableHeaderRow;
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+        .value = TextCellValue("-- TEMPLATE: REPLACE WITH FIRESTORE DATA --");
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow))
+        .value = TextCellValue("-- NO DATA AVAILABLE --");
   }
 }
