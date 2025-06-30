@@ -95,63 +95,79 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         '_',
       );
 
-      // Khusus untuk kategori "toilet"
-      if (categoryId == "toilet") {
-        print("Mengambil data pertanyaan toilet dari database...");
+      print("Mengambil data pertanyaan untuk kategori: $categoryId");
 
-        // Gunakan path khusus untuk toilet
-        final QuerySnapshot snapshot =
+      // 1. Ambil daftar subcategories terlebih dahulu
+      final subcategoriesSnapshot =
+          await FirebaseFirestore.instance
+              .collection('assessment_categories')
+              .doc(categoryId)
+              .collection('subcategories')
+              .get();
+
+      print(
+        "Ditemukan ${subcategoriesSnapshot.docs.length} subkategori untuk $categoryId",
+      );
+
+      if (subcategoriesSnapshot.docs.isEmpty) {
+        print("Tidak ada subkategori untuk $categoryId");
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // 2. Ambil pertanyaan dari setiap subcategory
+      for (var subcategoryDoc in subcategoriesSnapshot.docs) {
+        final subcategoryId = subcategoryDoc.id;
+        final subcategoryName = subcategoryDoc.data()['name'] ?? subcategoryId;
+
+        print(
+          "Mengambil pertanyaan untuk subkategori: $subcategoryName (ID: $subcategoryId)",
+        );
+
+        final questionsSnapshot =
             await FirebaseFirestore.instance
                 .collection('assessment_categories')
-                .doc('toilet')
+                .doc(categoryId)
                 .collection('subcategories')
-                .doc('toilet')
+                .doc(subcategoryId)
                 .collection('questions')
                 .orderBy('order')
                 .get();
 
         print(
-          "Database mengembalikan ${snapshot.docs.length} pertanyaan toilet",
+          "Subkategori $subcategoryName memiliki ${questionsSnapshot.docs.length} pertanyaan",
         );
 
-        if (snapshot.docs.isNotEmpty) {
-          items =
-              snapshot.docs.map((doc) {
+        if (questionsSnapshot.docs.isNotEmpty) {
+          // Convert to ChecklistItem
+          final subcategoryItems =
+              questionsSnapshot.docs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 return ChecklistItem(
                   id: doc.id,
                   question: data['text'] ?? '',
-                  category: 'Toilet',
-                  subcategory: 'Toilet',
+                  category: widget.selectedCategory,
+                  subcategory: subcategoryName,
                   order: data['order'] ?? 0,
                 );
               }).toList();
 
-          print(
-            "Berhasil memuat ${items.length} pertanyaan toilet dari database",
-          );
-        } else {
-          print(
-            "Tidak ada pertanyaan toilet di database. Menggunakan data default.",
-          );
-          items = _getDefaultChecklistItems();
-        }
-      } else {
-        // Untuk kategori lain, gunakan metode umum
-        final questionItems = await _questionService.getQuestionsForPath(
-          mainCategory: categoryId,
-          subcategory: categoryId,
-        );
-
-        if (questionItems.isNotEmpty) {
-          items = questionItems;
-        } else {
-          items = _getDefaultChecklistItems();
+          items.addAll(subcategoryItems);
         }
       }
 
-      // Organize items into categories and subcategories
-      _organizeChecklistItems(items);
+      print("Total berhasil memuat ${items.length} pertanyaan dari database");
+
+      if (items.isNotEmpty) {
+        // Organize items into categories and subcategories
+        _organizeChecklistItems(items);
+      } else {
+        print("Tidak ada pertanyaan di database. Menggunakan data default.");
+        items = _getDefaultChecklistItems();
+        _organizeChecklistItems(items);
+      }
     } catch (e) {
       print('Error loading checklist items: $e');
       // Fallback ke data statis jika terjadi error
