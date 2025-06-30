@@ -14,21 +14,11 @@ class ManageQuestionsScreen extends StatefulWidget {
 class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
   // Service
   final QuestionService _questionService = QuestionService();
-
-  String _getNameById(List<Category> items, String id) {
-    final category = items.firstWhere(
-      (item) => item.id == id,
-      orElse: () => Category(id: '', name: 'Tidak ditemukan'),
-    );
-    return category.name;
-  }
-
   // Question data
   List<ChecklistItem> _questions = [];
   final TextEditingController _questionController = TextEditingController();
 
   // UI state
-  bool _isAddingQuestion = false;
   bool _isLoading = false;
 
   // Selected categories at each level
@@ -107,16 +97,23 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     setState(() {
       _isLoading = true;
     });
-
     try {
       print("Loading main categories...");
       final categories = await _questionService.getMainCategories();
       print("Loaded ${categories.length} categories");
 
+      // Debug: Print urutan kategori
+      for (int i = 0; i < categories.length; i++) {
+        print(
+          "Category ${i + 1}: ${categories[i].name} (order: ${categories[i].order})",
+        );
+      }
+
       setState(() {
         _mainCategories = categories;
         if (categories.isNotEmpty) {
           _selectedMainCategory = categories.first.id;
+          print("Auto-selected first category: ${categories.first.name}");
           _loadSubcategories();
         }
       });
@@ -309,218 +306,17 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          insetPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.8,
-            ),
-            padding: EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Tambah Pertanyaan Baru',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade700,
-                  ),
-                ),
-                SizedBox(height: 16),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Kategori yang sudah dipilih
-                        _buildSelectedCategoryInfo(),
-                        SizedBox(height: 16),
-
-                        // Formulir pilihan hierarki kategori
-                        _buildCategoryHierarchyForm(),
-                        SizedBox(height: 16),
-
-                        // Input teks pertanyaan
-                        Text(
-                          'Pertanyaan:',
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        SizedBox(height: 8),
-                        TextField(
-                          controller: _questionController,
-                          decoration: InputDecoration(
-                            hintText: 'Masukkan pertanyaan...',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          maxLines: 3,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      child: Text('Batal'),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    SizedBox(width: 12),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade700,
-                      ),
-                      child: Text('Simpan'),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _addQuestion();
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // Helper widget untuk informasi kategori yang dipilih
-  Widget _buildSelectedCategoryInfo() {
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade100,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.category, color: Colors.blue.shade700),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Kategori: ${_getNameById(_mainCategories, _selectedMainCategory ?? "")}',
-              style: TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper widget untuk formulir hierarki kategori
-  Widget _buildCategoryHierarchyForm() {
-    return StatefulBuilder(
-      builder: (context, setDialogState) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Subkategori
-            Text(
-              'Pilih Subkategori:',
-              style: TextStyle(fontWeight: FontWeight.w500),
-            ),
-            SizedBox(height: 8),
-            _buildDropdown(
-              value: _selectedSubcategory,
-              items: _subcategories,
-              hint: "Pilih Subkategori",
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedSubcategory = value;
-                    _selectedGender = null;
-                    _selectedSection = null;
-                    _selectedUniformType = null;
-                  });
-                  _loadGenderOptions();
-                  setDialogState(() {});
-                }
-              },
-            ),
-
-            // Gender (jika tersedia)
-            if (_genderOptions.isNotEmpty) ...[
-              SizedBox(height: 16),
-              Text(
-                'Pilih Gender:',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 8),
-              _buildDropdown(
-                value: _selectedGender,
-                items: _genderOptions,
-                hint: "Pilih Gender",
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedGender = value;
-                      _selectedSection = null;
-                      _selectedUniformType = null;
-                    });
-                    _loadSections();
-                    setDialogState(() {});
-                  }
-                },
-              ),
-            ],
-
-            // Section (jika tersedia)
-            if (_sections.isNotEmpty) ...[
-              SizedBox(height: 16),
-              Text(
-                'Pilih Section:',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 8),
-              _buildDropdown(
-                value: _selectedSection,
-                items: _sections,
-                hint: "Pilih Section",
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedSection = value;
-                      _selectedUniformType = null;
-                    });
-                    _loadUniformTypes();
-                    setDialogState(() {});
-                  }
-                },
-              ),
-            ],
-
-            // Uniform Type (jika tersedia)
-            if (_uniformTypes.isNotEmpty) ...[
-              SizedBox(height: 16),
-              Text(
-                'Pilih Tipe Uniform:',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 8),
-              _buildDropdown(
-                value: _selectedUniformType,
-                items: _uniformTypes,
-                hint: "Pilih Tipe Uniform",
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedUniformType = value;
-                    });
-                    setDialogState(() {});
-                  }
-                },
-              ),
-            ],
-          ],
+        return _AddQuestionDialog(
+          mainCategories: _mainCategories,
+          selectedMainCategory: _selectedMainCategory,
+          subcategories: _subcategories,
+          questionService: _questionService,
+          questionController: _questionController,
+          onQuestionAdded: () {
+            _loadQuestions();
+            _showSuccessSnackbar('Pertanyaan berhasil ditambahkan');
+          },
+          onError: _showErrorSnackbar,
         );
       },
     );
@@ -552,42 +348,6 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     } catch (e) {
       print("Error loading questions: $e");
       _showErrorSnackbar('Gagal memuat pertanyaan: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  // Tambah pertanyaan
-  Future<void> _addQuestion() async {
-    if (_questionController.text.isEmpty) {
-      _showErrorSnackbar('Pertanyaan tidak boleh kosong');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _questionService.addQuestion(
-        mainCategory: _selectedMainCategory!,
-        subcategory: _selectedSubcategory ?? "general",
-        gender: _selectedGender,
-        section: _selectedSection,
-        uniformType: _selectedUniformType,
-        questionText: _questionController.text,
-      );
-
-      _questionController.clear();
-      // Tidak perlu mengubah _isAddingQuestion karena dialog otomatis tertutup
-
-      _loadQuestions();
-      _showSuccessSnackbar('Pertanyaan berhasil ditambahkan');
-    } catch (e) {
-      print("Error adding question: $e");
-      _showErrorSnackbar('Gagal menambahkan pertanyaan: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -806,7 +566,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Main categories dropdown
+                // Main categories dropdown - Urutan: 1.Customer Service, 2.Teller, 3.Satpam, dst.
                 _buildDropdown(
                   value: _selectedMainCategory,
                   items: _mainCategories,
@@ -1356,6 +1116,443 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                 );
               }).toList(),
           onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
+
+// Dialog untuk menambah pertanyaan dengan state management yang terpisah
+class _AddQuestionDialog extends StatefulWidget {
+  final List<Category> mainCategories;
+  final String? selectedMainCategory;
+  final List<Category> subcategories;
+  final QuestionService questionService;
+  final TextEditingController questionController;
+  final VoidCallback onQuestionAdded;
+  final Function(String) onError;
+
+  const _AddQuestionDialog({
+    required this.mainCategories,
+    required this.selectedMainCategory,
+    required this.subcategories,
+    required this.questionService,
+    required this.questionController,
+    required this.onQuestionAdded,
+    required this.onError,
+  });
+
+  @override
+  State<_AddQuestionDialog> createState() => _AddQuestionDialogState();
+}
+
+class _AddQuestionDialogState extends State<_AddQuestionDialog> {
+  // Dialog-specific state variables
+  String? _dialogSelectedSubcategory;
+  String? _dialogSelectedGender;
+  String? _dialogSelectedSection;
+  String? _dialogSelectedUniformType;
+
+  // Dialog-specific option lists
+  List<Category> _dialogGenderOptions = [];
+  List<Category> _dialogSections = [];
+  List<Category> _dialogUniformTypes = [];
+
+  bool _isLoading = false;
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with current main selection's subcategory if available
+    if (widget.subcategories.isNotEmpty) {
+      _dialogSelectedSubcategory = widget.subcategories.first.id;
+      _loadGenderOptionsForDialog();
+    }
+  }
+
+  // Dialog-specific load methods that don't interfere with main widget state
+  Future<void> _loadGenderOptionsForDialog() async {
+    if (widget.selectedMainCategory == null ||
+        _dialogSelectedSubcategory == null)
+      return;
+
+    setState(() {
+      _isLoading = true;
+      _dialogSelectedGender = null;
+      _dialogSelectedSection = null;
+      _dialogSelectedUniformType = null;
+      _dialogGenderOptions = [];
+      _dialogSections = [];
+      _dialogUniformTypes = [];
+    });
+
+    try {
+      final genders = await widget.questionService.getGenderCategories(
+        widget.selectedMainCategory!,
+        _dialogSelectedSubcategory!,
+      );
+
+      setState(() {
+        _dialogGenderOptions = genders;
+        if (genders.isNotEmpty) {
+          _dialogSelectedGender = genders.first.id;
+          _loadSectionsForDialog();
+        }
+      });
+    } catch (e) {
+      widget.onError('Gagal memuat opsi gender: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadSectionsForDialog() async {
+    if (widget.selectedMainCategory == null ||
+        _dialogSelectedSubcategory == null ||
+        _dialogSelectedGender == null)
+      return;
+
+    setState(() {
+      _isLoading = true;
+      _dialogSelectedSection = null;
+      _dialogSelectedUniformType = null;
+      _dialogSections = [];
+      _dialogUniformTypes = [];
+    });
+
+    try {
+      final sections = await widget.questionService.getSections(
+        widget.selectedMainCategory!,
+        _dialogSelectedSubcategory!,
+        _dialogSelectedGender!,
+      );
+
+      setState(() {
+        _dialogSections = sections;
+        if (sections.isNotEmpty) {
+          _dialogSelectedSection = sections.first.id;
+          _loadUniformTypesForDialog();
+        }
+      });
+    } catch (e) {
+      widget.onError('Gagal memuat bagian: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadUniformTypesForDialog() async {
+    if (widget.selectedMainCategory == null ||
+        _dialogSelectedSubcategory == null ||
+        _dialogSelectedGender == null ||
+        _dialogSelectedSection == null)
+      return;
+
+    setState(() {
+      _isLoading = true;
+      _dialogSelectedUniformType = null;
+      _dialogUniformTypes = [];
+    });
+
+    try {
+      final uniformTypes = await widget.questionService.getUniformTypes(
+        widget.selectedMainCategory!,
+        _dialogSelectedSubcategory!,
+        _dialogSelectedGender!,
+        _dialogSelectedSection!,
+      );
+
+      setState(() {
+        _dialogUniformTypes = uniformTypes;
+        if (uniformTypes.isNotEmpty) {
+          _dialogSelectedUniformType = uniformTypes.first.id;
+        }
+      });
+    } catch (e) {
+      widget.onError('Gagal memuat tipe seragam: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addQuestionInDialog() async {
+    if (widget.questionController.text.isEmpty) {
+      widget.onError('Pertanyaan tidak boleh kosong');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await widget.questionService.addQuestion(
+        mainCategory: widget.selectedMainCategory!,
+        subcategory: _dialogSelectedSubcategory ?? "general",
+        gender: _dialogSelectedGender,
+        section: _dialogSelectedSection,
+        uniformType: _dialogSelectedUniformType,
+        questionText: widget.questionController.text,
+      );
+
+      widget.questionController.clear();
+      Navigator.pop(context);
+      widget.onQuestionAdded();
+    } catch (e) {
+      widget.onError('Gagal menambahkan pertanyaan: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _getNameById(List<Category> items, String id) {
+    final category = items.firstWhere(
+      (item) => item.id == id,
+      orElse: () => Category(id: '', name: 'Tidak ditemukan'),
+    );
+    return category.name;
+  }
+
+  Widget _buildDialogDropdown({
+    required String? value,
+    required List<Category> items,
+    required String hint,
+    required Function(String?) onChanged,
+  }) {
+    bool valueExists =
+        value == null ? true : items.any((item) => item.id == value);
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: valueExists ? value : null,
+          isExpanded: true,
+          hint: Text(hint),
+          icon: Icon(Icons.arrow_drop_down, color: Colors.blue.shade700),
+          items:
+              items.map((category) {
+                return DropdownMenuItem<String>(
+                  value: category.id,
+                  child: Text(
+                    category.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                );
+              }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Tambah Pertanyaan Baru',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade700,
+              ),
+            ),
+            SizedBox(height: 16),
+
+            if (_isLoading)
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              )
+            else
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Kategori yang sudah dipilih
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.category, color: Colors.blue.shade700),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Kategori: ${_getNameById(widget.mainCategories, widget.selectedMainCategory ?? "")}',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // Subkategori
+                      Text(
+                        'Pilih Subkategori:',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      SizedBox(height: 8),
+                      _buildDialogDropdown(
+                        value: _dialogSelectedSubcategory,
+                        items: widget.subcategories,
+                        hint: "Pilih Subkategori",
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _dialogSelectedSubcategory = value;
+                              _dialogSelectedGender = null;
+                              _dialogSelectedSection = null;
+                              _dialogSelectedUniformType = null;
+                            });
+                            _loadGenderOptionsForDialog();
+                          }
+                        },
+                      ),
+
+                      // Gender (jika tersedia)
+                      if (_dialogGenderOptions.isNotEmpty) ...[
+                        SizedBox(height: 16),
+                        Text(
+                          'Pilih Gender:',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(height: 8),
+                        _buildDialogDropdown(
+                          value: _dialogSelectedGender,
+                          items: _dialogGenderOptions,
+                          hint: "Pilih Gender",
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _dialogSelectedGender = value;
+                                _dialogSelectedSection = null;
+                                _dialogSelectedUniformType = null;
+                              });
+                              _loadSectionsForDialog();
+                            }
+                          },
+                        ),
+                      ],
+
+                      // Section (jika tersedia)
+                      if (_dialogSections.isNotEmpty) ...[
+                        SizedBox(height: 16),
+                        Text(
+                          'Pilih Section:',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(height: 8),
+                        _buildDialogDropdown(
+                          value: _dialogSelectedSection,
+                          items: _dialogSections,
+                          hint: "Pilih Section",
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _dialogSelectedSection = value;
+                                _dialogSelectedUniformType = null;
+                              });
+                              _loadUniformTypesForDialog();
+                            }
+                          },
+                        ),
+                      ],
+
+                      // Uniform Type (jika tersedia)
+                      if (_dialogUniformTypes.isNotEmpty) ...[
+                        SizedBox(height: 16),
+                        Text(
+                          'Pilih Tipe Uniform:',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(height: 8),
+                        _buildDialogDropdown(
+                          value: _dialogSelectedUniformType,
+                          items: _dialogUniformTypes,
+                          hint: "Pilih Tipe Uniform",
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _dialogSelectedUniformType = value;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+
+                      SizedBox(height: 16),
+
+                      // Input teks pertanyaan
+                      Text(
+                        'Pertanyaan:',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      SizedBox(height: 8),
+                      TextField(
+                        controller: widget.questionController,
+                        decoration: InputDecoration(
+                          hintText: 'Masukkan pertanyaan...',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  child: Text('Batal'),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                SizedBox(width: 12),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                  ),
+                  child: Text('Simpan'),
+                  onPressed: _isLoading ? null : _addQuestionInDialog,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

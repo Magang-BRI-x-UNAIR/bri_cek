@@ -11,14 +11,14 @@ class QuestionService {
       print("Resetting and fixing database structure...");
 
       // Hapus koleksi yang ada
-      await _clearCollection('assessment_categories');
-
-      // Daftar kategori dan subkategori mereka
+      await _clearCollection(
+        'assessment_categories',
+      ); // Daftar kategori dan subkategori mereka
       final Map<String, Map<String, dynamic>> categories = {
-        'satpam': {
-          'name': 'Satpam',
+        'customer_service': {
+          'name': 'Customer Service',
           'order': 1,
-          'icon': 'security',
+          'icon': 'support_agent',
           'isActive': true,
           'isPersonBased': true,
           'subcategories': [
@@ -45,10 +45,10 @@ class QuestionService {
             {'name': 'Terampil', 'order': 6},
           ],
         },
-        'customer_service': {
-          'name': 'Customer Service',
+        'satpam': {
+          'name': 'Satpam',
           'order': 3,
-          'icon': 'support_agent',
+          'icon': 'security',
           'isActive': true,
           'isPersonBased': true,
           'subcategories': [
