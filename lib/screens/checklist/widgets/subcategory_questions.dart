@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bri_cek/models/checklist_item.dart';
 import 'package:bri_cek/utils/app_size.dart';
 
-class SubcategoryQuestions extends StatelessWidget {
+class SubcategoryQuestions extends StatefulWidget {
   final String categoryName;
   final String subcategoryName;
   final List<ChecklistItem> questions;
@@ -19,6 +19,89 @@ class SubcategoryQuestions extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<SubcategoryQuestions> createState() => _SubcategoryQuestionsState();
+}
+
+class _SubcategoryQuestionsState extends State<SubcategoryQuestions> {
+  // Local state to track changes and force rebuilds
+  late List<ChecklistItem> _localQuestions;
+
+  @override
+  void initState() {
+    super.initState();
+    _localQuestions = List.from(widget.questions);
+  }
+
+  @override
+  void didUpdateWidget(SubcategoryQuestions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update local questions when parent widget updates
+    if (widget.questions != oldWidget.questions || 
+        widget.questions.length != _localQuestions.length) {
+      setState(() {
+        _localQuestions = List.from(widget.questions);
+      });
+    } else {
+      // Check if any individual items have changed
+      bool hasChanges = false;
+      for (int i = 0; i < widget.questions.length; i++) {
+        final newItem = widget.questions[i];
+        final oldItem = _localQuestions[i];
+        if (newItem.answerValue != oldItem.answerValue || 
+            newItem.skipped != oldItem.skipped ||
+            newItem.note != oldItem.note) {
+          hasChanges = true;
+          _localQuestions[i] = newItem;
+        }
+      }
+      if (hasChanges) {
+        setState(() {});
+      }
+    }
+  }
+
+  void _handleAnswerChanged(ChecklistItem item, bool? value) {
+    setState(() {
+      // Update the item directly (this affects the original object)
+      item.answerValue = value;
+      if (value != null && item.skipped == true) {
+        item.skipped = false;
+      }
+      
+      // Update the local item as well
+      final index = _localQuestions.indexWhere((q) => q.id == item.id);
+      if (index != -1) {
+        _localQuestions[index].answerValue = value;
+        if (value != null && _localQuestions[index].skipped == true) {
+          _localQuestions[index].skipped = false;
+        }
+      }
+    });
+    // Call parent callback
+    widget.onAnswerChanged(item, value);
+  }
+
+  void _handleSkipChanged(ChecklistItem item, bool skipped) {
+    setState(() {
+      // Update the item directly (this affects the original object)
+      item.skipped = skipped;
+      if (skipped) {
+        item.answerValue = null;
+      }
+      
+      // Update the local item as well
+      final index = _localQuestions.indexWhere((q) => q.id == item.id);
+      if (index != -1) {
+        _localQuestions[index].skipped = skipped;
+        if (skipped) {
+          _localQuestions[index].answerValue = null;
+        }
+      }
+    });
+    // Call parent callback with null value to indicate skip
+    widget.onAnswerChanged(item, null);
+  }
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -28,9 +111,9 @@ class SubcategoryQuestions extends StatelessWidget {
         ListView.builder(
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
-          itemCount: questions.length,
+          itemCount: _localQuestions.length,
           itemBuilder: (context, index) {
-            return _buildQuestionCard(questions[index], index);
+            return _buildQuestionCard(_localQuestions[index], index);
           },
         ),
         // Add padding at bottom to ensure last card isn't cut off by navigation bar
@@ -46,7 +129,7 @@ class SubcategoryQuestions extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            categoryName,
+            widget.categoryName,
             style: AppSize.getTextStyle(
               fontSize: AppSize.smallFontSize,
               fontWeight: FontWeight.w500,
@@ -64,7 +147,9 @@ class SubcategoryQuestions extends StatelessWidget {
               SizedBox(width: AppSize.widthPercent(2)),
               Expanded(
                 child: Text(
-                  subcategoryName.isEmpty ? "Pertanyaan" : subcategoryName,
+                  widget.subcategoryName.isEmpty
+                      ? "Pertanyaan"
+                      : widget.subcategoryName,
                   style: AppSize.getTextStyle(
                     fontSize: AppSize.subtitleFontSize,
                     fontWeight: FontWeight.bold,
@@ -205,11 +290,7 @@ class SubcategoryQuestions extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            onAnswerChanged(item, value);
-            // Reset skipped status when giving a regular answer
-            if (item.skipped == true) {
-              item.skipped = false;
-            }
+            _handleAnswerChanged(item, value);
           },
           borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
           child: Container(
@@ -270,19 +351,9 @@ class SubcategoryQuestions extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            // Clear answer if item was answered before
-            if (item.answerValue != null) {
-              onAnswerChanged(item, null);
-            }
-
             // Toggle skip status
             bool newSkipStatus = !(item.skipped ?? false);
-            item.skipped = newSkipStatus;
-
-            // Trigger progress update through the callback
-            // We need to call this even though we're not changing the answer value
-            // to trigger the progress bar update
-            onAnswerChanged(item, null);
+            _handleSkipChanged(item, newSkipStatus);
           },
           borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
           child: Container(
@@ -335,7 +406,7 @@ class SubcategoryQuestions extends StatelessWidget {
       margin: EdgeInsets.only(top: AppSize.heightPercent(1.5)),
       child: TextFormField(
         initialValue: item.note,
-        onChanged: (value) => onNoteChanged(item, value),
+        onChanged: (value) => widget.onNoteChanged(item, value),
         maxLines: 2,
         decoration: InputDecoration(
           hintText: 'Tambahkan catatan (opsional)',

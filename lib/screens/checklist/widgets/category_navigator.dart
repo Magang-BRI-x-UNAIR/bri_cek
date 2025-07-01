@@ -2,35 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
 
 class CategoryNavigator extends StatelessWidget {
-  final List<String> categories;
-  final List<List<String>> subcategories;
-  final int currentCategoryIndex;
-  final int currentSubcategoryIndex;
-  final Function(int) onCategorySelected;
-  final Function(int) onSubcategorySelected;
-  final List<bool> categoryCompletionStatus;
-  final List<List<bool>> subcategoryCompletionStatus;
+  final List<String> subcategories; // Sebenarnya subcategories di database
+  final List<List<String>> sections; // Sebenarnya sections di database
+  final int currentSubcategoryIndex; // Index subcategory saat ini
+  final int currentSectionIndex; // Index section saat ini
+  final Function(int) onSubcategorySelected; // Callback untuk subcategory
+  final Function(int) onSectionSelected; // Callback untuk section
+  final List<bool> subcategoryCompletionStatus; // Status completion subcategory
+  final List<List<bool>> sectionCompletionStatus; // Status completion section
 
   const CategoryNavigator({
     Key? key,
-    required this.categories,
     required this.subcategories,
-    required this.currentCategoryIndex,
+    required this.sections,
     required this.currentSubcategoryIndex,
-    required this.onCategorySelected,
+    required this.currentSectionIndex,
     required this.onSubcategorySelected,
-    required this.categoryCompletionStatus,
+    required this.onSectionSelected,
     required this.subcategoryCompletionStatus,
+    required this.sectionCompletionStatus,
   }) : super(key: key);
 
   @override
   @override
   Widget build(BuildContext context) {
-    // Check if the current category has valid subcategories
-    bool hasSubcategories =
-        currentCategoryIndex < subcategories.length &&
-        subcategories[currentCategoryIndex].isNotEmpty &&
-        subcategories[currentCategoryIndex].length > 1;
+    // Check if the current subcategory has valid sections
+    bool hasSections =
+        currentSubcategoryIndex < sections.length &&
+        sections[currentSubcategoryIndex].isNotEmpty &&
+        sections[currentSubcategoryIndex].length > 1;
 
     return Container(
       margin: EdgeInsets.symmetric(
@@ -40,38 +40,38 @@ class CategoryNavigator extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCategoryTabs(context),
-          // Only show subcategories section if valid subcategories exist
-          if (hasSubcategories) ...[
+          _buildSubcategoryTabs(context),
+          // Only show sections if valid sections exist
+          if (hasSections) ...[
             SizedBox(height: AppSize.heightPercent(1.5)),
-            _buildSubcategoryTabs(),
+            _buildSectionTabs(),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildCategoryTabs(BuildContext context) {
-    // Calculate available width for category tabs
+  Widget _buildSubcategoryTabs(BuildContext context) {
+    // Calculate available width for subcategory tabs
     final double availableWidth =
         MediaQuery.of(context).size.width -
         (AppSize.widthPercent(10)); // Account for horizontal margin
 
-    // Calculate width per category based on number of categories
+    // Calculate width per subcategory based on number of subcategories
     // We'll set a minimum width to ensure readability
-    final int categoryCount = categories.length;
-    final double minCategoryWidth = AppSize.widthPercent(
+    final int subcategoryCount = subcategories.length;
+    final double minSubcategoryWidth = AppSize.widthPercent(
       20,
-    ); // Minimum width for a category
+    ); // Minimum width for a subcategory
     final double connectorWidth = AppSize.widthPercent(
       10,
     ); // Width of connector line
     final double circleWidth = AppSize.widthPercent(7); // Width of circle
 
-    // Calculate total width needed for all categories
+    // Calculate total width needed for all subcategories
     final double totalMinWidth =
-        (categoryCount * (circleWidth + minCategoryWidth)) +
-        ((categoryCount - 1) * connectorWidth);
+        (subcategoryCount * (circleWidth + minSubcategoryWidth)) +
+        ((subcategoryCount - 1) * connectorWidth);
 
     // If we have enough space, distribute evenly, otherwise use scrolling
     final bool needsScrolling = totalMinWidth > availableWidth;
@@ -81,37 +81,37 @@ class CategoryNavigator extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: List.generate(
-            categories.length,
-            (index) => _buildCategoryTab(index),
+            subcategories.length,
+            (index) => _buildSubcategoryTab(index),
           ),
         ),
       );
     } else {
-      // Calculate equal width per category
+      // Calculate equal width per subcategory
       final double spacing =
-          (availableWidth - (categoryCount * circleWidth)) /
-          (categoryCount + (categoryCount - 1));
+          (availableWidth - (subcategoryCount * circleWidth)) /
+          (subcategoryCount + (subcategoryCount - 1));
 
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(
-          categories.length,
-          (index) => _buildFlexCategoryTab(index, spacing),
+          subcategories.length,
+          (index) => _buildFlexSubcategoryTab(index, spacing),
         ),
       );
     }
   }
 
-  Widget _buildFlexCategoryTab(int index, double spacing) {
-    final bool isActive = index == currentCategoryIndex;
+  Widget _buildFlexSubcategoryTab(int index, double spacing) {
+    final bool isActive = index == currentSubcategoryIndex;
     final bool isCompleted =
-        index < categoryCompletionStatus.length
-            ? categoryCompletionStatus[index]
+        index < subcategoryCompletionStatus.length
+            ? subcategoryCompletionStatus[index]
             : false;
 
     return Expanded(
       child: InkWell(
-        onTap: () => onCategorySelected(index),
+        onTap: () => onSubcategorySelected(index),
         child: Column(
           children: [
             Row(
@@ -146,7 +146,7 @@ class CategoryNavigator extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (index < categories.length - 1)
+                if (index < subcategories.length - 1)
                   Expanded(
                     child: Container(
                       height: 2,
@@ -162,7 +162,7 @@ class CategoryNavigator extends StatelessWidget {
             Container(
               constraints: BoxConstraints(maxWidth: AppSize.widthPercent(20)),
               child: Text(
-                categories[index],
+                subcategories[index],
                 style: AppSize.getTextStyle(
                   fontSize: AppSize.smallFontSize,
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
@@ -184,15 +184,15 @@ class CategoryNavigator extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryTab(int index) {
-    final bool isActive = index == currentCategoryIndex;
+  Widget _buildSubcategoryTab(int index) {
+    final bool isActive = index == currentSubcategoryIndex;
     final bool isCompleted =
-        index < categoryCompletionStatus.length
-            ? categoryCompletionStatus[index]
+        index < subcategoryCompletionStatus.length
+            ? subcategoryCompletionStatus[index]
             : false;
 
     return InkWell(
-      onTap: () => onCategorySelected(index),
+      onTap: () => onSubcategorySelected(index),
       child: Container(
         margin: EdgeInsets.only(right: AppSize.widthPercent(2)),
         child: Column(
@@ -228,7 +228,7 @@ class CategoryNavigator extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (index < categories.length - 1)
+                if (index < subcategories.length - 1)
                   Container(
                     width: AppSize.widthPercent(10),
                     height: 2,
@@ -243,7 +243,7 @@ class CategoryNavigator extends StatelessWidget {
             Container(
               constraints: BoxConstraints(maxWidth: AppSize.widthPercent(20)),
               child: Text(
-                categories[index],
+                subcategories[index],
                 style: AppSize.getTextStyle(
                   fontSize: AppSize.smallFontSize,
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
@@ -265,36 +265,36 @@ class CategoryNavigator extends StatelessWidget {
     );
   }
 
-  Widget _buildSubcategoryTabs() {
+  Widget _buildSectionTabs() {
     // Safety checks
-    if (currentCategoryIndex >= subcategories.length) {
+    if (currentSubcategoryIndex >= sections.length) {
       return SizedBox.shrink();
     }
 
-    final categorySubcats = subcategories[currentCategoryIndex];
+    final subcategorySections = sections[currentSubcategoryIndex];
 
-    // Don't show anything if there are no subcategories
-    if (categorySubcats.isEmpty) {
+    // Don't show anything if there are no sections
+    if (subcategorySections.isEmpty) {
       return SizedBox.shrink();
     }
 
-    final subcatCompletionStatus =
-        currentCategoryIndex < subcategoryCompletionStatus.length
-            ? subcategoryCompletionStatus[currentCategoryIndex]
+    final sectionCompletionStatusList =
+        currentSubcategoryIndex < sectionCompletionStatus.length
+            ? sectionCompletionStatus[currentSubcategoryIndex]
             : <bool>[];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: List.generate(categorySubcats.length, (index) {
-          final bool isActive = index == currentSubcategoryIndex;
+        children: List.generate(subcategorySections.length, (index) {
+          final bool isActive = index == currentSectionIndex;
           final bool isCompleted =
-              index < subcatCompletionStatus.length
-                  ? subcatCompletionStatus[index]
+              index < sectionCompletionStatusList.length
+                  ? sectionCompletionStatusList[index]
                   : false;
 
           return InkWell(
-            onTap: () => onSubcategorySelected(index),
+            onTap: () => onSectionSelected(index),
             child: Container(
               margin: EdgeInsets.only(right: AppSize.widthPercent(2)),
               child: AnimatedContainer(
@@ -330,7 +330,7 @@ class CategoryNavigator extends StatelessWidget {
                       ),
                     if (isCompleted) SizedBox(width: AppSize.widthPercent(1)),
                     Text(
-                      categorySubcats[index],
+                      subcategorySections[index],
                       style: AppSize.getTextStyle(
                         fontSize: AppSize.smallFontSize,
                         fontWeight:
