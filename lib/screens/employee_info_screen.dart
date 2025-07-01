@@ -507,6 +507,8 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                                   widget
                                                       .bankBranchId, // Teruskan dari widget
                                               sessionId: widget.sessionId,
+                                              fetchFromDatabase:
+                                                  true, // Fetch from database for person-based categories
                                             ),
                                       ),
                                     );

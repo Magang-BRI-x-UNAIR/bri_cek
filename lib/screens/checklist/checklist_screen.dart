@@ -149,7 +149,8 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         }
       } else {
         // Untuk kategori lain, ambil semua subcategory dari kategori tersebut
-        print("Mengambil data pertanyaan untuk kategori: $categoryId");
+        print("=== FETCHING DATA FOR CATEGORY: $categoryId ===");
+        print("Employee data: ${widget.employeeData}");
 
         try {
           // Ambil semua subcategory dari kategori ini
@@ -157,15 +158,16 @@ class _ChecklistScreenState extends State<ChecklistScreen>
             categoryId,
           );
 
-          print(
-            "Found ${subcategories.length} subcategories: ${subcategories.map((s) => s.name).toList()}",
-          );
+          print("=== SUBCATEGORIES FOUND ===");
+          print("Count: ${subcategories.length}");
+          print("Names: ${subcategories.map((s) => s.name).toList()}");
+          print("IDs: ${subcategories.map((s) => s.id).toList()}");
 
           if (subcategories.isNotEmpty) {
             // Ambil pertanyaan dari semua subcategory
             for (var subcategory in subcategories) {
               print(
-                "Fetching questions for subcategory: ${subcategory.name} (${subcategory.id})",
+                "=== PROCESSING SUBCATEGORY: ${subcategory.name} (${subcategory.id}) ===",
               );
 
               final subcategoryItems = await _questionService
@@ -174,11 +176,19 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                     subcategory: subcategory.id,
                   );
 
+              print(
+                "Questions found for ${subcategory.name}: ${subcategoryItems.length}",
+              );
+
               // Create new ChecklistItem objects with corrected subcategory name from database
               final correctedItems =
                   subcategoryItems.map((item) {
                     // Use the name from database only
                     final subcategoryDisplayName = subcategory.name;
+
+                    print(
+                      "Item: ${item.question} -> Category: ${item.category}, Subcategory: $subcategoryDisplayName",
+                    );
 
                     // Section names are already set from database in the new method
                     return ChecklistItem(
@@ -207,12 +217,14 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
               items.addAll(correctedItems);
               print(
-                "Added ${subcategoryItems.length} questions from subcategory ${subcategory.name}",
+                "Added ${correctedItems.length} questions from subcategory ${subcategory.name}",
               );
             }
             print(
-              "Berhasil memuat ${items.length} pertanyaan dari ${subcategories.length} subcategory",
+              "=== TOTAL QUESTIONS LOADED: ${items.length} from ${subcategories.length} subcategories ===",
             );
+          } else {
+            print("=== NO SUBCATEGORIES FOUND FOR $categoryId ===");
           }
 
           // Coba juga ambil pertanyaan langsung dari level kategori (jika ada)
