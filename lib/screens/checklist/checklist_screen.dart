@@ -84,10 +84,14 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       List<ChecklistItem> items = [];
 
       // Ambil pertanyaan dari Firestore berdasarkan kategori yang dipilih
-      String categoryId = widget.selectedCategory.toLowerCase().replaceAll(
-        ' ',
-        '_',
-      );
+      String categoryId;
+
+      // Handle khusus untuk kategori tertentu
+      if (widget.selectedCategory.toLowerCase() == "gallery e-channel") {
+        categoryId = "gallery_echannel";
+      } else {
+        categoryId = widget.selectedCategory.toLowerCase().replaceAll(' ', '_');
+      }
 
       // Khusus untuk kategori "toilet"
       if (categoryId == "toilet") {
