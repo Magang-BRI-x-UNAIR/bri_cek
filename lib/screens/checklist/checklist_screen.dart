@@ -65,18 +65,26 @@ class _ChecklistScreenState extends State<ChecklistScreen>
   String _currentSubcategory = '';
 
   final QuestionService _questionService = QuestionService();
-
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+
+    print("InitState - Selected category: ${widget.selectedCategory}");
+    print("InitState - fetchFromDatabase: ${widget.fetchFromDatabase}");
+
     // Selalu ambil dari database untuk kategori Toilet
     if (widget.selectedCategory == "Toilet" || widget.fetchFromDatabase) {
+      print(
+        "Calling _fetchChecklistItems for category: ${widget.selectedCategory}",
+      );
       _fetchChecklistItems();
     } else {
+      print(
+        "Calling _loadDefaultChecklistItems for category: ${widget.selectedCategory}",
+      );
       _loadDefaultChecklistItems();
     }
-    _setupAnimations();
-    _loadChecklistItems();
   }
 
   Future<void> _fetchChecklistItems() async {
@@ -87,93 +95,163 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     try {
       List<ChecklistItem> items = [];
 
-      // Ubah metode transformasi id di _fetchChecklistItems()
-      String categoryId = widget.selectedCategory.toLowerCase();
+      // Ambil pertanyaan dari Firestore berdasarkan kategori yang dipilih
+      String categoryId;
 
-      // Untuk "Gallery E-Channel" khususnya
-      if (categoryId == "gallery e-channel") {
-        categoryId = "gallery_echannel"; // Gunakan ID yang benar di database
+      // Handle khusus untuk kategori tertentu
+      if (widget.selectedCategory.toLowerCase() == "gallery e-channel") {
+        categoryId = "gallery_echannel";
       } else {
-        // Transformasi standar untuk kategori lain
-        categoryId = categoryId
-            .replaceAll(' ', '_')
-            .replaceAll('-', '')
-            .replaceAll(RegExp(r'[^\w\s_]'), '');
+        categoryId = widget.selectedCategory.toLowerCase().replaceAll(' ', '_');
       }
 
-      print("Mengambil data pertanyaan untuk kategori: $categoryId");
+      // Khusus untuk kategori "toilet"
+      if (categoryId == "toilet") {
+        print("Mengambil data pertanyaan toilet dari database...");
 
-      // 1. Ambil daftar subcategories terlebih dahulu
-      final subcategoriesSnapshot =
-          await FirebaseFirestore.instance
-              .collection('assessment_categories')
-              .doc(categoryId)
-              .collection('subcategories')
-              .get();
-
-      print(
-        "Ditemukan ${subcategoriesSnapshot.docs.length} subkategori untuk $categoryId",
-      );
-
-      if (subcategoriesSnapshot.docs.isEmpty) {
-        print("Tidak ada subkategori untuk $categoryId");
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // 2. Ambil pertanyaan dari setiap subcategory
-      for (var subcategoryDoc in subcategoriesSnapshot.docs) {
-        final subcategoryId = subcategoryDoc.id;
-        final subcategoryName = subcategoryDoc.data()['name'] ?? subcategoryId;
-
-        print(
-          "Mengambil pertanyaan untuk subkategori: $subcategoryName (ID: $subcategoryId)",
-        );
-
-        final questionsSnapshot =
+        // Gunakan path khusus untuk toilet
+        final QuerySnapshot snapshot =
             await FirebaseFirestore.instance
                 .collection('assessment_categories')
-                .doc(categoryId)
+                .doc('toilet')
                 .collection('subcategories')
-                .doc(subcategoryId)
+                .doc('toilet')
                 .collection('questions')
                 .orderBy('order')
                 .get();
 
         print(
-          "Subkategori $subcategoryName memiliki ${questionsSnapshot.docs.length} pertanyaan",
+          "Database mengembalikan ${snapshot.docs.length} pertanyaan toilet",
         );
 
-        if (questionsSnapshot.docs.isNotEmpty) {
-          // Convert to ChecklistItem
-          final subcategoryItems =
-              questionsSnapshot.docs.map((doc) {
+        if (snapshot.docs.isNotEmpty) {
+          items =
+              snapshot.docs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 return ChecklistItem(
                   id: doc.id,
                   question: data['text'] ?? '',
-                  category: widget.selectedCategory,
-                  subcategory: subcategoryName,
+                  category: 'Toilet',
+                  subcategory: 'Toilet',
                   order: data['order'] ?? 0,
                 );
               }).toList();
 
-          items.addAll(subcategoryItems);
+          print(
+            "Berhasil memuat ${items.length} pertanyaan toilet dari database",
+          );
+        } else {
+          print(
+            "Tidak ada pertanyaan toilet di database. Menggunakan data default.",
+          );
+          items = _getDefaultChecklistItems();
+          print("Default toilet items count: ${items.length}");
+        }
+      } else {
+        // Untuk kategori lain, ambil semua subcategory dari kategori tersebut
+        print("=== FETCHING DATA FOR CATEGORY: $categoryId ===");
+        print("Employee data: ${widget.employeeData}");
+
+        try {
+          // Ambil semua subcategory dari kategori ini
+          final subcategories = await _questionService.getSubcategories(
+            categoryId,
+          );
+
+          print("=== SUBCATEGORIES FOUND ===");
+          print("Count: ${subcategories.length}");
+          print("Names: ${subcategories.map((s) => s.name).toList()}");
+          print("IDs: ${subcategories.map((s) => s.id).toList()}");
+
+          if (subcategories.isNotEmpty) {
+            // Ambil pertanyaan dari semua subcategory
+            for (var subcategory in subcategories) {
+              print(
+                "=== PROCESSING SUBCATEGORY: ${subcategory.name} (${subcategory.id}) ===",
+              );
+
+              final subcategoryItems = await _questionService
+                  .getQuestionsForPath(
+                    mainCategory: categoryId,
+                    subcategory: subcategory.id,
+                  );
+
+              print(
+                "Questions found for ${subcategory.name}: ${subcategoryItems.length}",
+              );
+
+              // Create new ChecklistItem objects with corrected subcategory name from database
+              final correctedItems =
+                  subcategoryItems.map((item) {
+                    // Use the name from database only
+                    final subcategoryDisplayName = subcategory.name;
+
+                    print(
+                      "Item: ${item.question} -> Category: ${item.category}, Subcategory: $subcategoryDisplayName",
+                    );
+
+                    // Section names are already set from database in the new method
+                    return ChecklistItem(
+                      id: item.id,
+                      question: item.question,
+                      category: item.category,
+                      subcategory: subcategoryDisplayName,
+                      gender: item.gender,
+                      section:
+                          item.section, // Already contains the name from database
+                      uniformType:
+                          item.uniformType, // Already contains the name from database
+                      forHijab: item.forHijab,
+                      order: item.order,
+                      options: item.options,
+                      isRequired: item.isRequired,
+                      allowsNote: item.allowsNote,
+                      answerValue: item.answerValue,
+                      note: item.note,
+                      skipped: item.skipped,
+                      createdAt: item.createdAt,
+                      updatedAt: item.updatedAt,
+                      isActive: item.isActive,
+                    );
+                  }).toList();
+
+              items.addAll(correctedItems);
+              print(
+                "Added ${correctedItems.length} questions from subcategory ${subcategory.name}",
+              );
+            }
+            print(
+              "=== TOTAL QUESTIONS LOADED: ${items.length} from ${subcategories.length} subcategories ===",
+            );
+          } else {
+            print("=== NO SUBCATEGORIES FOUND FOR $categoryId ===");
+          }
+
+          // Coba juga ambil pertanyaan langsung dari level kategori (jika ada)
+          final directCategoryItems = await _questionService
+              .getQuestionsForPath(
+                mainCategory: categoryId,
+                // subcategory: null, jadi ambil langsung dari kategori
+              );
+          items.addAll(directCategoryItems);
+
+          if (directCategoryItems.isNotEmpty) {
+            print(
+              "Berhasil memuat ${directCategoryItems.length} pertanyaan langsung dari kategori",
+            );
+          }
+        } catch (e) {
+          print("Error mengambil pertanyaan: $e");
+        }
+
+        if (items.isEmpty) {
+          print("Tidak ada pertanyaan ditemukan, menggunakan data default");
+          items = _getDefaultChecklistItems();
         }
       }
 
-      print("Total berhasil memuat ${items.length} pertanyaan dari database");
-
-      if (items.isNotEmpty) {
-        // Organize items into categories and subcategories
-        _organizeChecklistItems(items);
-      } else {
-        print("Tidak ada pertanyaan di database. Menggunakan data default.");
-        items = _getDefaultChecklistItems();
-        _organizeChecklistItems(items);
-      }
+      // Organize items into categories and subcategories
+      _organizeChecklistItems(items);
     } catch (e) {
       print('Error loading checklist items: $e');
       // Fallback ke data statis jika terjadi error
@@ -183,6 +261,12 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       setState(() {
         _isLoading = false;
       });
+
+      // Start animation after loading is complete for toilet
+      if (widget.selectedCategory.toLowerCase() == "toilet" &&
+          _currentSubcategoryItems.isNotEmpty) {
+        _animationController.forward();
+      }
     }
   }
 
@@ -192,6 +276,13 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     _subcategoryNames = [];
     _checklist = [];
     _checklistItems = items;
+
+    // Set total items untuk progress calculation
+    _totalItems = items.length;
+    _completedItems =
+        items
+            .where((item) => item.answerValue != null || item.skipped == true)
+            .length;
 
     print(
       "Organizing ${items.length} checklist items for category: ${widget.selectedCategory}",
@@ -206,11 +297,14 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
     // Case khusus untuk Toilet atau kategori sederhana lainnya
     if (widget.selectedCategory == "Toilet") {
+      print("Processing Toilet category with ${items.length} items");
+
       // Jika tidak ada item, gunakan kategori default
       if (items.isEmpty) {
+        print("No toilet items found, using default");
         _categoryNames = ["Toilet"];
         _subcategoryNames = [
-          ["Umum"],
+          ["Toilet"],
         ];
         _checklist = [[]];
         _currentCategoryIndex = 0;
@@ -219,39 +313,38 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         return;
       }
 
-      // Mengelompokkan items berdasarkan subcategory
-      Map<String, List<ChecklistItem>> subcategoryMap = {};
-
-      for (var item in items) {
-        String subcategory =
-            item.subcategory.isNotEmpty ? item.subcategory : "Umum";
-        if (!subcategoryMap.containsKey(subcategory)) {
-          subcategoryMap[subcategory] = [];
-        }
-        subcategoryMap[subcategory]!.add(item);
-      }
-
-      // Menggunakan satu kategori untuk Toilet
+      // Untuk toilet, gunakan struktur sederhana
       _categoryNames = ["Toilet"];
+      _subcategoryNames = [
+        ["Toilet"],
+      ]; // Hanya satu subcategory
+      _checklist = [items]; // Semua items toilet dalam satu checklist
 
-      // Subkategori adalah keys dari subcategoryMap
-      _subcategoryNames = [subcategoryMap.keys.toList()];
+      // Inisialisasi completion status
+      _categoryCompletionStatus = [false];
+      _subcategoryCompletionStatus = [
+        [false],
+      ];
 
-      // Bentuk checklist structure
-      List<List<ChecklistItem>> subcategorizedItems = [];
-      for (var subcategory in _subcategoryNames[0]) {
-        subcategorizedItems.add(subcategoryMap[subcategory]!);
-      }
-
-      _checklist = [subcategorizedItems.expand((e) => e).toList()];
-
-      // Set indeks awal
+      // Set indeks awal dan current items
       _currentCategoryIndex = 0;
       _currentSubcategoryIndex = 0;
-      _currentSubcategoryItems =
-          _checklist.isNotEmpty && _checklist[0].isNotEmpty
-              ? _checklist[0]
-              : [];
+      _currentSubcategoryItems = items; // Langsung gunakan semua items toilet
+      _currentCategory = "Toilet";
+      _currentSubcategory = "Toilet";
+
+      print("Toilet setup complete:");
+      print("- _categoryNames: $_categoryNames");
+      print("- _subcategoryNames: $_subcategoryNames");
+      print(
+        "- _currentSubcategoryItems count: ${_currentSubcategoryItems.length}",
+      );
+      print(
+        "- Items: ${_currentSubcategoryItems.map((e) => e.question).toList()}",
+      );
+
+      // Update completion status
+      _updateCompletionStatus();
 
       return;
     }
@@ -312,6 +405,44 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       _currentCategoryIndex = 0;
       _currentSubcategoryIndex = 0;
       _currentSubcategoryItems = _checklist.isNotEmpty ? _checklist[0] : [];
+      _currentCategory = _categoryNames[0];
+      _currentSubcategory =
+          _subcategoryNames.isNotEmpty && _subcategoryNames[0].isNotEmpty
+              ? _subcategoryNames[0][0]
+              : '';
+
+      print(
+        "Initial setup - Category: $_currentCategory, Subcategory: $_currentSubcategory",
+      );
+      print(
+        "Initial _currentSubcategoryItems count: ${_currentSubcategoryItems.length}",
+      );
+
+      // Initialize completion status arrays
+      _categoryCompletionStatus = List<bool>.filled(
+        _categoryNames.length,
+        false,
+      );
+      _subcategoryCompletionStatus = List.generate(
+        _categoryNames.length,
+        (catIndex) =>
+            List<bool>.filled(_subcategoryNames[catIndex].length, false),
+      );
+
+      // Update completion status
+      _updateCompletionStatus();
+
+      // For toilet, don't use automatic navigation since we have simple structure
+      if (widget.selectedCategory.toLowerCase() != "toilet") {
+        // Automatically navigate to the first subcategory to show questions for complex categories
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_categoryNames.isNotEmpty &&
+              _subcategoryNames.isNotEmpty &&
+              _subcategoryNames[0].isNotEmpty) {
+            _navigateToSubcategory(0, 0);
+          }
+        });
+      }
     }
   }
 
@@ -326,73 +457,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     );
   }
 
-  void _loadChecklistItems() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final items = getChecklistForCategory(widget.selectedCategory);
-      final filteredItems = _checklistService.getFilteredItems(
-        items,
-        widget.employeeData,
-      );
-
-      if (filteredItems.isEmpty) {
-        setState(() {
-          _checklistItems = [];
-          _groupedChecklistItems = {};
-          _categoryNames = [];
-          _subcategoryNames = [];
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final groupedItems = _checklistService.groupItems(filteredItems);
-
-      setState(() {
-        _checklistItems = filteredItems;
-        _groupedChecklistItems = groupedItems;
-        _categoryNames = groupedItems.keys.toList();
-
-        if (_categoryNames.isNotEmpty) {
-          _subcategoryNames =
-              _categoryNames
-                  .map((category) => groupedItems[category]!.keys.toList())
-                  .toList();
-
-          // Initialize completion status arrays
-          _categoryCompletionStatus = List<bool>.filled(
-            _categoryNames.length,
-            false,
-          );
-          _subcategoryCompletionStatus = List.generate(
-            _categoryNames.length,
-            (catIndex) =>
-                List<bool>.filled(_subcategoryNames[catIndex].length, false),
-          );
-
-          // Navigate to first subcategory
-          _navigateToSubcategory(0, 0);
-
-          _totalItems = filteredItems.length;
-          _completedItems =
-              filteredItems.where((item) => item.answerValue != null).length;
-
-          // Update completion status
-          _updateCompletionStatus();
-        }
-      });
-    } catch (e) {
-      print('Error loading checklist items: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   void _updateCompletionStatus() {
     // Check each category and subcategory for completion
     for (int catIndex = 0; catIndex < _categoryNames.length; catIndex++) {
@@ -405,7 +469,25 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         subIndex++
       ) {
         final subcategory = _subcategoryNames[catIndex][subIndex];
-        final items = _groupedChecklistItems[category]![subcategory]!;
+
+        // Try to get items from _groupedChecklistItems first, fallback to filtering _checklistItems
+        List<ChecklistItem> items = [];
+        if (_groupedChecklistItems.isNotEmpty &&
+            _groupedChecklistItems[category]?[subcategory] != null) {
+          items = _groupedChecklistItems[category]![subcategory]!;
+        } else {
+          // Fallback: filter items by subcategory name
+          items =
+              _checklistItems
+                  .where(
+                    (item) =>
+                        item.subcategory == category &&
+                        (item.section == subcategory ||
+                            (item.section?.isEmpty ??
+                                true && subcategory == "Umum")),
+                  )
+                  .toList();
+        }
 
         // A subcategory is complete if all its items have an answer or are skipped
         final isSubcategoryComplete = items.every(
@@ -446,6 +528,16 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       // Ambil data checklist default sesuai kategori yang dipilih
       List<ChecklistItem> items = _getDefaultChecklistItems();
 
+      // Jika tidak ada data default, coba ambil dari static data dan filter
+      if (items.isEmpty) {
+        final staticItems = getChecklistForCategory(widget.selectedCategory);
+        final filteredItems = _checklistService.getFilteredItems(
+          staticItems,
+          widget.employeeData,
+        );
+        items = filteredItems;
+      }
+
       // Organize items into categories and subcategories
       _organizeChecklistItems(items);
     } catch (e) {
@@ -458,6 +550,8 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       _currentCategoryIndex = 0;
       _currentSubcategoryIndex = 0;
       _currentSubcategoryItems = [];
+      _totalItems = 0;
+      _completedItems = 0;
     } finally {
       setState(() {
         _isLoading = false;
@@ -525,6 +619,28 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     final category = _categoryNames[categoryIndex];
     final subcategories = _subcategoryNames[categoryIndex];
 
+    // Special handling for Toilet category - always show all items
+    if (widget.selectedCategory.toLowerCase() == "toilet") {
+      setState(() {
+        _currentCategoryIndex = categoryIndex;
+        _currentSubcategoryIndex = subcategoryIndex;
+        _currentSubcategoryItems = _checklistItems; // Use all toilet items
+        _currentCategory = category;
+        _currentSubcategory = "Toilet";
+      });
+
+      print(
+        "Toilet navigation - showing ${_currentSubcategoryItems.length} items",
+      );
+      print(
+        "Items: ${_currentSubcategoryItems.map((e) => e.question).toList()}",
+      );
+
+      _animationController.reset();
+      _animationController.forward();
+      return;
+    }
+
     // Handle categories that don't have subcategories
     if (subcategories.isEmpty) {
       // For categories without subcategories, show all items in that category
@@ -557,13 +673,39 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
       // If this is a section selection (subcategoryIndex represents section index)
       // and we have grouped items by section, filter accordingly
-      if (_groupedChecklistItems.isNotEmpty) {
-        final category = _categoryNames[categoryIndex];
-        items = _groupedChecklistItems[category]?[subcategory] ?? [];
+      if (_groupedChecklistItems.isNotEmpty &&
+          _groupedChecklistItems.containsKey(category) &&
+          _groupedChecklistItems[category]!.containsKey(subcategory)) {
+        items = _groupedChecklistItems[category]![subcategory]!;
+        print(
+          "Using grouped items for $category -> $subcategory: ${items.length} items",
+        );
       } else {
         // Fallback: use all items from this subcategory
         items = allSubcategoryItems;
+        print(
+          "Using all subcategory items for $category: ${items.length} items",
+        );
       }
+    }
+
+    // If still no items, try to filter from _checklistItems directly
+    if (items.isEmpty && _checklistItems.isNotEmpty) {
+      items =
+          _checklistItems.where((item) {
+            // For toilet or single category items
+            if (widget.selectedCategory.toLowerCase() == "toilet") {
+              return item.category.toLowerCase() == "toilet";
+            }
+
+            // For other categories, match by subcategory and section
+            return item.subcategory == category &&
+                (item.section == subcategory ||
+                    (item.section?.isEmpty ?? true && subcategory == "Umum"));
+          }).toList();
+      print(
+        "Fallback filter found ${items.length} items for $category -> $subcategory",
+      );
     }
 
     // Scroll back to top when changing subcategories
@@ -754,9 +896,12 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     );
 
     // Check if we should show the subcategory navigator (database subcategories)
+    // Don't show for toilet category since it's simple
     final bool showCategoryNavigator =
-        _categoryNames.length > 1 ||
-        (_categoryNames.length == 1 && _categoryNames[0] != 'Uncategorized');
+        widget.selectedCategory.toLowerCase() != "toilet" &&
+        (_categoryNames.length > 1 ||
+            (_categoryNames.length == 1 &&
+                _categoryNames[0] != 'Uncategorized'));
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -858,10 +1003,16 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                           child:
                               _currentSubcategoryItems.isNotEmpty
                                   ? SubcategoryQuestions(
+                                    key: ValueKey(
+                                      '${_currentCategoryIndex}_${_currentSubcategoryIndex}_${_currentSubcategoryItems.length}',
+                                    ),
                                     categoryName:
-                                        showCategoryNavigator
-                                            ? _currentCategory
-                                            : '',
+                                        widget.selectedCategory.toLowerCase() ==
+                                                "toilet"
+                                            ? "Toilet"
+                                            : (showCategoryNavigator
+                                                ? _currentCategory
+                                                : ''),
                                     subcategoryName: _currentSubcategory,
                                     questions: _currentSubcategoryItems,
                                     onAnswerChanged: _handleAnswerChanged,

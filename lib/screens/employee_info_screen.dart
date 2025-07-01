@@ -35,7 +35,14 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
 
   // Add uniform type selection
   String? _selectedUniformType;
-  final List<String> _uniformOptions = ['Korporat', 'Batik', 'Casual'];
+  List<String> get _uniformOptions {
+    // Khusus untuk Satpam, gunakan pilihan PDH dan PDL
+    if (widget.selectedCategory.toLowerCase() == 'satpam') {
+      return ['PDH', 'PDL'];
+    }
+    // Untuk kategori lain, gunakan pilihan standar
+    return ['Korporat', 'Batik', 'Casual'];
+  }
 
   // Add hijab option for female employees
   bool? _hasHijab;
@@ -500,6 +507,8 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                                   widget
                                                       .bankBranchId, // Teruskan dari widget
                                               sessionId: widget.sessionId,
+                                              fetchFromDatabase:
+                                                  true, // Fetch from database for person-based categories
                                             ),
                                       ),
                                     );
