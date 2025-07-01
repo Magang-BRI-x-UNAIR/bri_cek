@@ -69,14 +69,14 @@ class _ChecklistScreenState extends State<ChecklistScreen>
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+
     // Selalu ambil dari database untuk kategori Toilet
     if (widget.selectedCategory == "Toilet" || widget.fetchFromDatabase) {
       _fetchChecklistItems();
     } else {
       _loadDefaultChecklistItems();
     }
-    _setupAnimations();
-    _loadChecklistItems();
   }
 
   Future<void> _fetchChecklistItems() async {
@@ -250,6 +250,13 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     _checklist = [];
     _checklistItems = items;
 
+    // Set total items untuk progress calculation
+    _totalItems = items.length;
+    _completedItems =
+        items
+            .where((item) => item.answerValue != null || item.skipped == true)
+            .length;
+
     print(
       "Organizing ${items.length} checklist items for category: ${widget.selectedCategory}",
     );
@@ -309,6 +316,15 @@ class _ChecklistScreenState extends State<ChecklistScreen>
           _checklist.isNotEmpty && _checklist[0].isNotEmpty
               ? _checklist[0]
               : [];
+      _currentCategory = "Toilet";
+      _currentSubcategory =
+          _subcategoryNames.isNotEmpty && _subcategoryNames[0].isNotEmpty
+              ? _subcategoryNames[0][0]
+              : "Toilet";
+
+      print(
+        "Toilet setup - _currentSubcategoryItems count: ${_currentSubcategoryItems.length}",
+      );
 
       return;
     }
@@ -369,6 +385,41 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       _currentCategoryIndex = 0;
       _currentSubcategoryIndex = 0;
       _currentSubcategoryItems = _checklist.isNotEmpty ? _checklist[0] : [];
+      _currentCategory = _categoryNames[0];
+      _currentSubcategory =
+          _subcategoryNames.isNotEmpty && _subcategoryNames[0].isNotEmpty
+              ? _subcategoryNames[0][0]
+              : '';
+
+      print(
+        "Initial setup - Category: $_currentCategory, Subcategory: $_currentSubcategory",
+      );
+      print(
+        "Initial _currentSubcategoryItems count: ${_currentSubcategoryItems.length}",
+      );
+
+      // Initialize completion status arrays
+      _categoryCompletionStatus = List<bool>.filled(
+        _categoryNames.length,
+        false,
+      );
+      _subcategoryCompletionStatus = List.generate(
+        _categoryNames.length,
+        (catIndex) =>
+            List<bool>.filled(_subcategoryNames[catIndex].length, false),
+      );
+
+      // Update completion status
+      _updateCompletionStatus();
+
+      // Automatically navigate to the first subcategory to show questions
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_categoryNames.isNotEmpty &&
+            _subcategoryNames.isNotEmpty &&
+            _subcategoryNames[0].isNotEmpty) {
+          _navigateToSubcategory(0, 0);
+        }
+      });
     }
   }
 
@@ -383,73 +434,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     );
   }
 
-  void _loadChecklistItems() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final items = getChecklistForCategory(widget.selectedCategory);
-      final filteredItems = _checklistService.getFilteredItems(
-        items,
-        widget.employeeData,
-      );
-
-      if (filteredItems.isEmpty) {
-        setState(() {
-          _checklistItems = [];
-          _groupedChecklistItems = {};
-          _categoryNames = [];
-          _subcategoryNames = [];
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final groupedItems = _checklistService.groupItems(filteredItems);
-
-      setState(() {
-        _checklistItems = filteredItems;
-        _groupedChecklistItems = groupedItems;
-        _categoryNames = groupedItems.keys.toList();
-
-        if (_categoryNames.isNotEmpty) {
-          _subcategoryNames =
-              _categoryNames
-                  .map((category) => groupedItems[category]!.keys.toList())
-                  .toList();
-
-          // Initialize completion status arrays
-          _categoryCompletionStatus = List<bool>.filled(
-            _categoryNames.length,
-            false,
-          );
-          _subcategoryCompletionStatus = List.generate(
-            _categoryNames.length,
-            (catIndex) =>
-                List<bool>.filled(_subcategoryNames[catIndex].length, false),
-          );
-
-          // Navigate to first subcategory
-          _navigateToSubcategory(0, 0);
-
-          _totalItems = filteredItems.length;
-          _completedItems =
-              filteredItems.where((item) => item.answerValue != null).length;
-
-          // Update completion status
-          _updateCompletionStatus();
-        }
-      });
-    } catch (e) {
-      print('Error loading checklist items: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   void _updateCompletionStatus() {
     // Check each category and subcategory for completion
     for (int catIndex = 0; catIndex < _categoryNames.length; catIndex++) {
@@ -462,7 +446,25 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         subIndex++
       ) {
         final subcategory = _subcategoryNames[catIndex][subIndex];
-        final items = _groupedChecklistItems[category]![subcategory]!;
+
+        // Try to get items from _groupedChecklistItems first, fallback to filtering _checklistItems
+        List<ChecklistItem> items = [];
+        if (_groupedChecklistItems.isNotEmpty &&
+            _groupedChecklistItems[category]?[subcategory] != null) {
+          items = _groupedChecklistItems[category]![subcategory]!;
+        } else {
+          // Fallback: filter items by subcategory name
+          items =
+              _checklistItems
+                  .where(
+                    (item) =>
+                        item.subcategory == category &&
+                        (item.section == subcategory ||
+                            (item.section?.isEmpty ??
+                                true && subcategory == "Umum")),
+                  )
+                  .toList();
+        }
 
         // A subcategory is complete if all its items have an answer or are skipped
         final isSubcategoryComplete = items.every(
@@ -503,6 +505,16 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       // Ambil data checklist default sesuai kategori yang dipilih
       List<ChecklistItem> items = _getDefaultChecklistItems();
 
+      // Jika tidak ada data default, coba ambil dari static data dan filter
+      if (items.isEmpty) {
+        final staticItems = getChecklistForCategory(widget.selectedCategory);
+        final filteredItems = _checklistService.getFilteredItems(
+          staticItems,
+          widget.employeeData,
+        );
+        items = filteredItems;
+      }
+
       // Organize items into categories and subcategories
       _organizeChecklistItems(items);
     } catch (e) {
@@ -515,6 +527,8 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       _currentCategoryIndex = 0;
       _currentSubcategoryIndex = 0;
       _currentSubcategoryItems = [];
+      _totalItems = 0;
+      _completedItems = 0;
     } finally {
       setState(() {
         _isLoading = false;
@@ -614,13 +628,39 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
       // If this is a section selection (subcategoryIndex represents section index)
       // and we have grouped items by section, filter accordingly
-      if (_groupedChecklistItems.isNotEmpty) {
-        final category = _categoryNames[categoryIndex];
-        items = _groupedChecklistItems[category]?[subcategory] ?? [];
+      if (_groupedChecklistItems.isNotEmpty &&
+          _groupedChecklistItems.containsKey(category) &&
+          _groupedChecklistItems[category]!.containsKey(subcategory)) {
+        items = _groupedChecklistItems[category]![subcategory]!;
+        print(
+          "Using grouped items for $category -> $subcategory: ${items.length} items",
+        );
       } else {
         // Fallback: use all items from this subcategory
         items = allSubcategoryItems;
+        print(
+          "Using all subcategory items for $category: ${items.length} items",
+        );
       }
+    }
+
+    // If still no items, try to filter from _checklistItems directly
+    if (items.isEmpty && _checklistItems.isNotEmpty) {
+      items =
+          _checklistItems.where((item) {
+            // For toilet or single category items
+            if (widget.selectedCategory.toLowerCase() == "toilet") {
+              return item.category.toLowerCase() == "toilet";
+            }
+
+            // For other categories, match by subcategory and section
+            return item.subcategory == category &&
+                (item.section == subcategory ||
+                    (item.section?.isEmpty ?? true && subcategory == "Umum"));
+          }).toList();
+      print(
+        "Fallback filter found ${items.length} items for $category -> $subcategory",
+      );
     }
 
     // Scroll back to top when changing subcategories
@@ -915,7 +955,9 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                           child:
                               _currentSubcategoryItems.isNotEmpty
                                   ? SubcategoryQuestions(
-                                    key: ValueKey('${_currentCategoryIndex}_${_currentSubcategoryIndex}_${_currentSubcategoryItems.length}'),
+                                    key: ValueKey(
+                                      '${_currentCategoryIndex}_${_currentSubcategoryIndex}_${_currentSubcategoryItems.length}',
+                                    ),
                                     categoryName:
                                         showCategoryNavigator
                                             ? _currentCategory

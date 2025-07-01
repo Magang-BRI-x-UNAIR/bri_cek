@@ -36,7 +36,7 @@ class _SubcategoryQuestionsState extends State<SubcategoryQuestions> {
   void didUpdateWidget(SubcategoryQuestions oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Update local questions when parent widget updates
-    if (widget.questions != oldWidget.questions || 
+    if (widget.questions != oldWidget.questions ||
         widget.questions.length != _localQuestions.length) {
       setState(() {
         _localQuestions = List.from(widget.questions);
@@ -47,7 +47,7 @@ class _SubcategoryQuestionsState extends State<SubcategoryQuestions> {
       for (int i = 0; i < widget.questions.length; i++) {
         final newItem = widget.questions[i];
         final oldItem = _localQuestions[i];
-        if (newItem.answerValue != oldItem.answerValue || 
+        if (newItem.answerValue != oldItem.answerValue ||
             newItem.skipped != oldItem.skipped ||
             newItem.note != oldItem.note) {
           hasChanges = true;
@@ -67,7 +67,7 @@ class _SubcategoryQuestionsState extends State<SubcategoryQuestions> {
       if (value != null && item.skipped == true) {
         item.skipped = false;
       }
-      
+
       // Update the local item as well
       final index = _localQuestions.indexWhere((q) => q.id == item.id);
       if (index != -1) {
@@ -88,7 +88,7 @@ class _SubcategoryQuestionsState extends State<SubcategoryQuestions> {
       if (skipped) {
         item.answerValue = null;
       }
-      
+
       // Update the local item as well
       final index = _localQuestions.indexWhere((q) => q.id == item.id);
       if (index != -1) {
@@ -101,6 +101,7 @@ class _SubcategoryQuestionsState extends State<SubcategoryQuestions> {
     // Call parent callback with null value to indicate skip
     widget.onAnswerChanged(item, null);
   }
+
   @override
   Widget build(BuildContext context) {
     return Column(
