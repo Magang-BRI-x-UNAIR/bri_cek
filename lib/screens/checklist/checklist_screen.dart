@@ -65,16 +65,24 @@ class _ChecklistScreenState extends State<ChecklistScreen>
   String _currentSubcategory = '';
 
   final QuestionService _questionService = QuestionService();
-
   @override
   void initState() {
     super.initState();
     _setupAnimations();
 
+    print("InitState - Selected category: ${widget.selectedCategory}");
+    print("InitState - fetchFromDatabase: ${widget.fetchFromDatabase}");
+
     // Selalu ambil dari database untuk kategori Toilet
     if (widget.selectedCategory == "Toilet" || widget.fetchFromDatabase) {
+      print(
+        "Calling _fetchChecklistItems for category: ${widget.selectedCategory}",
+      );
       _fetchChecklistItems();
     } else {
+      print(
+        "Calling _loadDefaultChecklistItems for category: ${widget.selectedCategory}",
+      );
       _loadDefaultChecklistItems();
     }
   }
@@ -137,6 +145,7 @@ class _ChecklistScreenState extends State<ChecklistScreen>
             "Tidak ada pertanyaan toilet di database. Menggunakan data default.",
           );
           items = _getDefaultChecklistItems();
+          print("Default toilet items count: ${items.length}");
         }
       } else {
         // Untuk kategori lain, ambil semua subcategory dari kategori tersebut
@@ -240,6 +249,12 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       setState(() {
         _isLoading = false;
       });
+
+      // Start animation after loading is complete for toilet
+      if (widget.selectedCategory.toLowerCase() == "toilet" &&
+          _currentSubcategoryItems.isNotEmpty) {
+        _animationController.forward();
+      }
     }
   }
 
@@ -270,11 +285,14 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
     // Case khusus untuk Toilet atau kategori sederhana lainnya
     if (widget.selectedCategory == "Toilet") {
+      print("Processing Toilet category with ${items.length} items");
+
       // Jika tidak ada item, gunakan kategori default
       if (items.isEmpty) {
+        print("No toilet items found, using default");
         _categoryNames = ["Toilet"];
         _subcategoryNames = [
-          ["Umum"],
+          ["Toilet"],
         ];
         _checklist = [[]];
         _currentCategoryIndex = 0;
@@ -283,48 +301,38 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         return;
       }
 
-      // Mengelompokkan items berdasarkan subcategory
-      Map<String, List<ChecklistItem>> subcategoryMap = {};
-
-      for (var item in items) {
-        String subcategory =
-            item.subcategory.isNotEmpty ? item.subcategory : "Umum";
-        if (!subcategoryMap.containsKey(subcategory)) {
-          subcategoryMap[subcategory] = [];
-        }
-        subcategoryMap[subcategory]!.add(item);
-      }
-
-      // Menggunakan satu kategori untuk Toilet
+      // Untuk toilet, gunakan struktur sederhana
       _categoryNames = ["Toilet"];
+      _subcategoryNames = [
+        ["Toilet"],
+      ]; // Hanya satu subcategory
+      _checklist = [items]; // Semua items toilet dalam satu checklist
 
-      // Subkategori adalah keys dari subcategoryMap
-      _subcategoryNames = [subcategoryMap.keys.toList()];
+      // Inisialisasi completion status
+      _categoryCompletionStatus = [false];
+      _subcategoryCompletionStatus = [
+        [false],
+      ];
 
-      // Bentuk checklist structure
-      List<List<ChecklistItem>> subcategorizedItems = [];
-      for (var subcategory in _subcategoryNames[0]) {
-        subcategorizedItems.add(subcategoryMap[subcategory]!);
-      }
-
-      _checklist = [subcategorizedItems.expand((e) => e).toList()];
-
-      // Set indeks awal
+      // Set indeks awal dan current items
       _currentCategoryIndex = 0;
       _currentSubcategoryIndex = 0;
-      _currentSubcategoryItems =
-          _checklist.isNotEmpty && _checklist[0].isNotEmpty
-              ? _checklist[0]
-              : [];
+      _currentSubcategoryItems = items; // Langsung gunakan semua items toilet
       _currentCategory = "Toilet";
-      _currentSubcategory =
-          _subcategoryNames.isNotEmpty && _subcategoryNames[0].isNotEmpty
-              ? _subcategoryNames[0][0]
-              : "Toilet";
+      _currentSubcategory = "Toilet";
 
+      print("Toilet setup complete:");
+      print("- _categoryNames: $_categoryNames");
+      print("- _subcategoryNames: $_subcategoryNames");
       print(
-        "Toilet setup - _currentSubcategoryItems count: ${_currentSubcategoryItems.length}",
+        "- _currentSubcategoryItems count: ${_currentSubcategoryItems.length}",
       );
+      print(
+        "- Items: ${_currentSubcategoryItems.map((e) => e.question).toList()}",
+      );
+
+      // Update completion status
+      _updateCompletionStatus();
 
       return;
     }
@@ -412,14 +420,17 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       // Update completion status
       _updateCompletionStatus();
 
-      // Automatically navigate to the first subcategory to show questions
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_categoryNames.isNotEmpty &&
-            _subcategoryNames.isNotEmpty &&
-            _subcategoryNames[0].isNotEmpty) {
-          _navigateToSubcategory(0, 0);
-        }
-      });
+      // For toilet, don't use automatic navigation since we have simple structure
+      if (widget.selectedCategory.toLowerCase() != "toilet") {
+        // Automatically navigate to the first subcategory to show questions for complex categories
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_categoryNames.isNotEmpty &&
+              _subcategoryNames.isNotEmpty &&
+              _subcategoryNames[0].isNotEmpty) {
+            _navigateToSubcategory(0, 0);
+          }
+        });
+      }
     }
   }
 
@@ -595,6 +606,28 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
     final category = _categoryNames[categoryIndex];
     final subcategories = _subcategoryNames[categoryIndex];
+
+    // Special handling for Toilet category - always show all items
+    if (widget.selectedCategory.toLowerCase() == "toilet") {
+      setState(() {
+        _currentCategoryIndex = categoryIndex;
+        _currentSubcategoryIndex = subcategoryIndex;
+        _currentSubcategoryItems = _checklistItems; // Use all toilet items
+        _currentCategory = category;
+        _currentSubcategory = "Toilet";
+      });
+
+      print(
+        "Toilet navigation - showing ${_currentSubcategoryItems.length} items",
+      );
+      print(
+        "Items: ${_currentSubcategoryItems.map((e) => e.question).toList()}",
+      );
+
+      _animationController.reset();
+      _animationController.forward();
+      return;
+    }
 
     // Handle categories that don't have subcategories
     if (subcategories.isEmpty) {
@@ -851,9 +884,12 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     );
 
     // Check if we should show the subcategory navigator (database subcategories)
+    // Don't show for toilet category since it's simple
     final bool showCategoryNavigator =
-        _categoryNames.length > 1 ||
-        (_categoryNames.length == 1 && _categoryNames[0] != 'Uncategorized');
+        widget.selectedCategory.toLowerCase() != "toilet" &&
+        (_categoryNames.length > 1 ||
+            (_categoryNames.length == 1 &&
+                _categoryNames[0] != 'Uncategorized'));
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -959,9 +995,12 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                                       '${_currentCategoryIndex}_${_currentSubcategoryIndex}_${_currentSubcategoryItems.length}',
                                     ),
                                     categoryName:
-                                        showCategoryNavigator
-                                            ? _currentCategory
-                                            : '',
+                                        widget.selectedCategory.toLowerCase() ==
+                                                "toilet"
+                                            ? "Toilet"
+                                            : (showCategoryNavigator
+                                                ? _currentCategory
+                                                : ''),
                                     subcategoryName: _currentSubcategory,
                                     questions: _currentSubcategoryItems,
                                     onAnswerChanged: _handleAnswerChanged,
