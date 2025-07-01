@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:bri_cek/screens/checklist/checklist_screen.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 
 class EmployeeInfoScreen extends StatefulWidget {
   final String selectedBank;
@@ -42,42 +40,11 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
   // Add hijab option for female employees
   bool? _hasHijab;
 
-  // Add image picker and selected image
-  final ImagePicker _picker = ImagePicker();
-  File? _employeeImage;
-
   @override
   void dispose() {
     _nameController.dispose();
     _idController.dispose();
     super.dispose();
-  }
-
-  // Add this method inside the _EmployeeInfoScreenState class
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final XFile? pickedImage = await _picker.pickImage(
-        source: source,
-        imageQuality: 80,
-      );
-
-      if (pickedImage != null) {
-        setState(() {
-          _employeeImage = File(pickedImage.path);
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal mengambil gambar: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSize.cardBorderRadius),
-          ),
-        ),
-      );
-    }
   }
 
   @override
@@ -416,131 +383,6 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                       }).toList(),
                                 ),
                               ),
-                              // Add this right after the uniform selection section and before the SizedBox at the end of the form
-                              SizedBox(height: AppSize.heightPercent(2)),
-
-                              // Photo Upload Section
-                              _buildFormLabel('Foto Karyawan'),
-                              Container(
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(
-                                    AppSize.cardBorderRadius,
-                                  ),
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                ),
-                                padding: EdgeInsets.all(
-                                  AppSize.widthPercent(4),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    // Display selected image if available
-                                    if (_employeeImage != null) ...[
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(
-                                          AppSize.cardBorderRadius,
-                                        ),
-                                        child: Image.file(
-                                          _employeeImage!,
-                                          height: AppSize.heightPercent(25),
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        height: AppSize.heightPercent(2),
-                                      ),
-                                    ],
-
-                                    // Image source buttons
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        Expanded(
-                                          child: ElevatedButton.icon(
-                                            onPressed:
-                                                () => _pickImage(
-                                                  ImageSource.camera,
-                                                ),
-                                            icon: Icon(
-                                              Icons.camera_alt,
-                                              size: AppSize.iconSize * 0.8,
-                                            ),
-                                            label: Text(
-                                              'Kamera',
-                                              style: AppSize.getTextStyle(
-                                                fontSize: AppSize.smallFontSize,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  Colors.blue.shade700,
-                                              foregroundColor: Colors.white,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      AppSize.cardBorderRadius,
-                                                    ),
-                                              ),
-                                              padding: EdgeInsets.symmetric(
-                                                vertical: AppSize.heightPercent(
-                                                  1.5,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: AppSize.widthPercent(3),
-                                        ),
-                                        Expanded(
-                                          child: ElevatedButton.icon(
-                                            onPressed:
-                                                () => _pickImage(
-                                                  ImageSource.gallery,
-                                                ),
-                                            icon: Icon(
-                                              Icons.photo_library,
-                                              size: AppSize.iconSize * 0.8,
-                                            ),
-                                            label: Text(
-                                              'Galeri',
-                                              style: AppSize.getTextStyle(
-                                                fontSize: AppSize.smallFontSize,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  Colors.green.shade600,
-                                              foregroundColor: Colors.white,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      AppSize.cardBorderRadius,
-                                                    ),
-                                              ),
-                                              padding: EdgeInsets.symmetric(
-                                                vertical: AppSize.heightPercent(
-                                                  1.5,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -627,14 +469,13 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                               child: InkWell(
                                 // In the onTap method of the Next button, update the validation and data passing
                                 onTap: () {
-                                  // Add validation for new fields including image
+                                  // Add validation for new fields
                                   if (_formKey.currentState!.validate() &&
                                       _selectedGender != null &&
                                       _selectedUniformType != null &&
                                       (_selectedGender != 'Wanita' ||
-                                          _hasHijab != null) &&
-                                      _employeeImage != null) {
-                                    // Create employee data map with new fields including image path
+                                          _hasHijab != null)) {
+                                    // Create employee data map with new fields
                                     final employeeData = {
                                       'name': _nameController.text,
                                       'id': _idController.text,
@@ -642,9 +483,6 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                       'position': widget.selectedCategory,
                                       'hasHijab': _hasHijab,
                                       'uniformType': _selectedUniformType,
-                                      'imagePath':
-                                          _employeeImage!
-                                              .path, // Add the image path
                                     };
 
                                     // Navigate to checklist screen with employee data
@@ -658,10 +496,10 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                               selectedCategory:
                                                   widget.selectedCategory,
                                               employeeData: employeeData,
-                                              bankBranchId: widget.bankBranchId,
+                                              bankBranchId:
+                                                  widget
+                                                      .bankBranchId, // Teruskan dari widget
                                               sessionId: widget.sessionId,
-                                              fetchFromDatabase:
-                                                  true, // Always fetch from database for employee categories
                                             ),
                                       ),
                                     );
@@ -679,9 +517,6 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                     } else if (_selectedUniformType == null) {
                                       errorMessage =
                                           'Silahkan pilih jenis seragam';
-                                    } else if (_employeeImage == null) {
-                                      errorMessage =
-                                          'Silahkan ambil foto karyawan';
                                     }
 
                                     ScaffoldMessenger.of(context).showSnackBar(
