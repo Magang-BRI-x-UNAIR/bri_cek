@@ -1,3 +1,4 @@
+import 'package:bri_cek/data/checklist_item_data.dart';
 import 'package:bri_cek/models/checklist_item.dart';
 import 'package:bri_cek/screens/checklist/widgets/category_navigator.dart';
 import 'package:bri_cek/screens/checklist/widgets/checklist_header.dart';
@@ -5,12 +6,10 @@ import 'package:bri_cek/screens/checklist/widgets/completion_dialog.dart';
 import 'package:bri_cek/screens/checklist/widgets/navigation_controls.dart';
 import 'package:bri_cek/screens/checklist/widgets/subcategory_questions.dart';
 import 'package:bri_cek/services/checklist_service.dart';
-import 'package:bri_cek/utils/app_size.dart';
-import 'package:flutter/material.dart';
-import 'package:bri_cek/data/checklist_item_data.dart';
-import 'package:bri_cek/services/assessment_session_service.dart';
 import 'package:bri_cek/services/question_service.dart';
+import 'package:bri_cek/utils/app_size.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 class ChecklistScreen extends StatefulWidget {
   final String selectedBank;
@@ -42,7 +41,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
   late Animation<double> _fadeAnimation;
   final ChecklistService _checklistService = ChecklistService();
   final ScrollController _scrollController = ScrollController();
-  bool _isSaving = false;
 
   // State variables
   bool _isLoading = true;
@@ -63,10 +61,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
   String _currentSubcategory = '';
 
   final QuestionService _questionService = QuestionService();
-  final AssessmentSessionService _assessmentSessionService =
-      AssessmentSessionService();
-
-  late TabController _tabController;
 
   @override
   void initState() {
@@ -137,15 +131,49 @@ class _ChecklistScreenState extends State<ChecklistScreen>
           items = _getDefaultChecklistItems();
         }
       } else {
-        // Untuk kategori lain, gunakan metode umum
-        final questionItems = await _questionService.getQuestionsForPath(
-          mainCategory: categoryId,
-          subcategory: categoryId,
-        );
+        // Untuk kategori lain, ambil semua subcategory dari kategori tersebut
+        print("Mengambil data pertanyaan untuk kategori: $categoryId");
 
-        if (questionItems.isNotEmpty) {
-          items = questionItems;
-        } else {
+        try {
+          // Ambil semua subcategory dari kategori ini
+          final subcategories = await _questionService.getSubcategories(
+            categoryId,
+          );
+
+          if (subcategories.isNotEmpty) {
+            // Ambil pertanyaan dari semua subcategory
+            for (var subcategory in subcategories) {
+              final subcategoryItems = await _questionService
+                  .getQuestionsForPath(
+                    mainCategory: categoryId,
+                    subcategory: subcategory.id,
+                  );
+              items.addAll(subcategoryItems);
+            }
+            print(
+              "Berhasil memuat ${items.length} pertanyaan dari ${subcategories.length} subcategory",
+            );
+          }
+
+          // Coba juga ambil pertanyaan langsung dari level kategori (jika ada)
+          final directCategoryItems = await _questionService
+              .getQuestionsForPath(
+                mainCategory: categoryId,
+                // subcategory: null, jadi ambil langsung dari kategori
+              );
+          items.addAll(directCategoryItems);
+
+          if (directCategoryItems.isNotEmpty) {
+            print(
+              "Berhasil memuat ${directCategoryItems.length} pertanyaan langsung dari kategori",
+            );
+          }
+        } catch (e) {
+          print("Error mengambil pertanyaan: $e");
+        }
+
+        if (items.isEmpty) {
+          print("Tidak ada pertanyaan ditemukan, menggunakan data default");
           items = _getDefaultChecklistItems();
         }
       }
