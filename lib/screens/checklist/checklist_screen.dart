@@ -87,150 +87,93 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     try {
       List<ChecklistItem> items = [];
 
-      // Ambil pertanyaan dari Firestore berdasarkan kategori yang dipilih
-      String categoryId;
+      // Ubah metode transformasi id di _fetchChecklistItems()
+      String categoryId = widget.selectedCategory.toLowerCase();
 
-      // Handle khusus untuk kategori tertentu
-      if (widget.selectedCategory.toLowerCase() == "gallery e-channel") {
-        categoryId = "gallery_echannel";
+      // Untuk "Gallery E-Channel" khususnya
+      if (categoryId == "gallery e-channel") {
+        categoryId = "gallery_echannel"; // Gunakan ID yang benar di database
       } else {
-        categoryId = widget.selectedCategory.toLowerCase().replaceAll(' ', '_');
+        // Transformasi standar untuk kategori lain
+        categoryId = categoryId
+            .replaceAll(' ', '_')
+            .replaceAll('-', '')
+            .replaceAll(RegExp(r'[^\w\s_]'), '');
       }
 
-      // Khusus untuk kategori "toilet"
-      if (categoryId == "toilet") {
-        print("Mengambil data pertanyaan toilet dari database...");
+      print("Mengambil data pertanyaan untuk kategori: $categoryId");
 
-        // Gunakan path khusus untuk toilet
-        final QuerySnapshot snapshot =
+      // 1. Ambil daftar subcategories terlebih dahulu
+      final subcategoriesSnapshot =
+          await FirebaseFirestore.instance
+              .collection('assessment_categories')
+              .doc(categoryId)
+              .collection('subcategories')
+              .get();
+
+      print(
+        "Ditemukan ${subcategoriesSnapshot.docs.length} subkategori untuk $categoryId",
+      );
+
+      if (subcategoriesSnapshot.docs.isEmpty) {
+        print("Tidak ada subkategori untuk $categoryId");
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // 2. Ambil pertanyaan dari setiap subcategory
+      for (var subcategoryDoc in subcategoriesSnapshot.docs) {
+        final subcategoryId = subcategoryDoc.id;
+        final subcategoryName = subcategoryDoc.data()['name'] ?? subcategoryId;
+
+        print(
+          "Mengambil pertanyaan untuk subkategori: $subcategoryName (ID: $subcategoryId)",
+        );
+
+        final questionsSnapshot =
             await FirebaseFirestore.instance
                 .collection('assessment_categories')
-                .doc('toilet')
+                .doc(categoryId)
                 .collection('subcategories')
-                .doc('toilet')
+                .doc(subcategoryId)
                 .collection('questions')
                 .orderBy('order')
                 .get();
 
         print(
-          "Database mengembalikan ${snapshot.docs.length} pertanyaan toilet",
+          "Subkategori $subcategoryName memiliki ${questionsSnapshot.docs.length} pertanyaan",
         );
 
-        if (snapshot.docs.isNotEmpty) {
-          items =
-              snapshot.docs.map((doc) {
+        if (questionsSnapshot.docs.isNotEmpty) {
+          // Convert to ChecklistItem
+          final subcategoryItems =
+              questionsSnapshot.docs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 return ChecklistItem(
                   id: doc.id,
                   question: data['text'] ?? '',
-                  category: 'Toilet',
-                  subcategory: 'Toilet',
+                  category: widget.selectedCategory,
+                  subcategory: subcategoryName,
                   order: data['order'] ?? 0,
                 );
               }).toList();
 
-          print(
-            "Berhasil memuat ${items.length} pertanyaan toilet dari database",
-          );
-        } else {
-          print(
-            "Tidak ada pertanyaan toilet di database. Menggunakan data default.",
-          );
-          items = _getDefaultChecklistItems();
-        }
-      } else {
-        // Untuk kategori lain, ambil semua subcategory dari kategori tersebut
-        print("Mengambil data pertanyaan untuk kategori: $categoryId");
-
-        try {
-          // Ambil semua subcategory dari kategori ini
-          final subcategories = await _questionService.getSubcategories(
-            categoryId,
-          );
-
-          print(
-            "Found ${subcategories.length} subcategories: ${subcategories.map((s) => s.name).toList()}",
-          );
-
-          if (subcategories.isNotEmpty) {
-            // Ambil pertanyaan dari semua subcategory
-            for (var subcategory in subcategories) {
-              print(
-                "Fetching questions for subcategory: ${subcategory.name} (${subcategory.id})",
-              );
-
-              final subcategoryItems = await _questionService
-                  .getAllQuestionsForSubcategory(
-                    mainCategory: categoryId,
-                    subcategory: subcategory.id,
-                  );
-
-              // Create new ChecklistItem objects with corrected subcategory name from database
-              final correctedItems =
-                  subcategoryItems.map((item) {
-                    // Use the name from database only
-                    final subcategoryDisplayName = subcategory.name;
-
-                    // Section names are already set from database in the new method
-                    return ChecklistItem(
-                      id: item.id,
-                      question: item.question,
-                      category: item.category,
-                      subcategory: subcategoryDisplayName,
-                      gender: item.gender,
-                      section:
-                          item.section, // Already contains the name from database
-                      uniformType:
-                          item.uniformType, // Already contains the name from database
-                      forHijab: item.forHijab,
-                      order: item.order,
-                      options: item.options,
-                      isRequired: item.isRequired,
-                      allowsNote: item.allowsNote,
-                      answerValue: item.answerValue,
-                      note: item.note,
-                      skipped: item.skipped,
-                      createdAt: item.createdAt,
-                      updatedAt: item.updatedAt,
-                      isActive: item.isActive,
-                    );
-                  }).toList();
-
-              items.addAll(correctedItems);
-              print(
-                "Added ${subcategoryItems.length} questions from subcategory ${subcategory.name}",
-              );
-            }
-            print(
-              "Berhasil memuat ${items.length} pertanyaan dari ${subcategories.length} subcategory",
-            );
-          }
-
-          // Coba juga ambil pertanyaan langsung dari level kategori (jika ada)
-          final directCategoryItems = await _questionService
-              .getQuestionsForPath(
-                mainCategory: categoryId,
-                // subcategory: null, jadi ambil langsung dari kategori
-              );
-          items.addAll(directCategoryItems);
-
-          if (directCategoryItems.isNotEmpty) {
-            print(
-              "Berhasil memuat ${directCategoryItems.length} pertanyaan langsung dari kategori",
-            );
-          }
-        } catch (e) {
-          print("Error mengambil pertanyaan: $e");
-        }
-
-        if (items.isEmpty) {
-          print("Tidak ada pertanyaan ditemukan, menggunakan data default");
-          items = _getDefaultChecklistItems();
+          items.addAll(subcategoryItems);
         }
       }
 
-      // Organize items into categories and subcategories
-      _organizeChecklistItems(items);
+      print("Total berhasil memuat ${items.length} pertanyaan dari database");
+
+      if (items.isNotEmpty) {
+        // Organize items into categories and subcategories
+        _organizeChecklistItems(items);
+      } else {
+        print("Tidak ada pertanyaan di database. Menggunakan data default.");
+        items = _getDefaultChecklistItems();
+        _organizeChecklistItems(items);
+      }
     } catch (e) {
       print('Error loading checklist items: $e');
       // Fallback ke data statis jika terjadi error
