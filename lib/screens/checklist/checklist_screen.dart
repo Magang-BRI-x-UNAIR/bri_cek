@@ -89,11 +89,19 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     try {
       List<ChecklistItem> items = [];
 
-      // Ambil pertanyaan dari Firestore berdasarkan kategori yang dipilih
-      String categoryId = widget.selectedCategory.toLowerCase().replaceAll(
-        ' ',
-        '_',
-      );
+      // Ubah metode transformasi id di _fetchChecklistItems()
+      String categoryId = widget.selectedCategory.toLowerCase();
+
+      // Untuk "Gallery E-Channel" khususnya
+      if (categoryId == "gallery e-channel") {
+        categoryId = "gallery_echannel"; // Gunakan ID yang benar di database
+      } else {
+        // Transformasi standar untuk kategori lain
+        categoryId = categoryId
+            .replaceAll(' ', '_')
+            .replaceAll('-', '')
+            .replaceAll(RegExp(r'[^\w\s_]'), '');
+      }
 
       print("Mengambil data pertanyaan untuk kategori: $categoryId");
 
