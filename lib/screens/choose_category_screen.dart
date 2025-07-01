@@ -332,8 +332,7 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                                                 selectedCategory:
                                                     _selectedCategory!,
                                                 bankBranchId:
-                                                    widget
-                                                        .bankBranchId, // Teruskan dari widget
+                                                    widget.bankBranchId,
                                                 sessionId: widget.sessionId,
                                               ),
                                         ),
@@ -352,13 +351,10 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                                                 selectedCategory:
                                                     _selectedCategory!,
                                                 bankBranchId:
-                                                    widget
-                                                        .bankBranchId, // Tambahkan ini
-                                                sessionId:
-                                                    widget
-                                                        .sessionId, // Tambahkan ini
-                                                // Employee data is null for non-people categories
-                                                employeeData: null,
+                                                    widget.bankBranchId,
+                                                sessionId: widget.sessionId,
+                                                employeeData:
+                                                    null, // No employee data for location-based categories
                                                 fetchFromDatabase: true,
                                               ),
                                         ),

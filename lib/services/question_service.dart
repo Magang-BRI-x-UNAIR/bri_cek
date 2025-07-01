@@ -1796,7 +1796,7 @@ class QuestionService {
     try {
       final snapshot =
           await _firestore
-              .collection('categories')
+              .collection('assessment_categories')
               .doc(mainCategoryId)
               .collection('subcategories')
               .doc(subcategoryId)
@@ -1828,7 +1828,7 @@ class QuestionService {
     try {
       final snapshot =
           await _firestore
-              .collection('categories')
+              .collection('assessment_categories')
               .doc(mainCategoryId)
               .collection('subcategories')
               .doc(subcategoryId)
@@ -1863,7 +1863,7 @@ class QuestionService {
     try {
       final snapshot =
           await _firestore
-              .collection('categories')
+              .collection('assessment_categories')
               .doc(mainCategoryId)
               .collection('subcategories')
               .doc(subcategoryId)
@@ -1959,100 +1959,166 @@ class QuestionService {
     }
   }
 
-  // Menambahkan pertanyaan baru
-  // Sesuaikan method addQuestion untuk menerima subcategory null
-  Future<void> addQuestion({
+  // Get all questions for a subcategory by traversing through all gender categories and sections
+  Future<List<ChecklistItem>> getAllQuestionsForSubcategory({
     required String mainCategory,
-    required String
-    subcategory, // Parameter masih required, tapi di implementasi kita akan memberikan nilai default
-    String? gender,
-    String? section,
-    String? uniformType,
-    required String questionText,
+    required String subcategory,
   }) async {
     try {
-      String path = 'assessment_categories/$mainCategory';
+      print(
+        "Getting all questions for subcategory: $mainCategory/$subcategory",
+      );
 
-      // Pastikan subcategory tidak null dalam path
-      path += '/subcategories/$subcategory';
+      List<ChecklistItem> allQuestions = [];
 
-      if (gender != null) {
-        path += '/gender_categories/$gender';
+      // First, try to get questions directly from subcategory level
+      try {
+        final directQuestions = await getQuestionsForPath(
+          mainCategory: mainCategory,
+          subcategory: subcategory,
+        );
+        allQuestions.addAll(directQuestions);
+        print(
+          "Found ${directQuestions.length} direct questions for subcategory",
+        );
+      } catch (e) {
+        print("No direct questions found for subcategory: $e");
+      }
 
-        if (section != null) {
-          path += '/sections/$section';
+      // Then, traverse through gender categories and sections
+      try {
+        final genderCategories = await getGenderCategories(
+          mainCategory,
+          subcategory,
+        );
+        print("Found ${genderCategories.length} gender categories");
 
-          if (uniformType != null) {
-            path += '/uniform_types/$uniformType';
+        for (var gender in genderCategories) {
+          print("Processing gender category: ${gender.name} (${gender.id})");
+
+          // Get sections for this gender category
+          final sections = await getSections(
+            mainCategory,
+            subcategory,
+            gender.id,
+          );
+          print("Found ${sections.length} sections for gender ${gender.name}");
+
+          for (var section in sections) {
+            print("Processing section: ${section.name} (${section.id})");
+
+            // Get questions for this section
+            final sectionQuestions = await getQuestionsForPath(
+              mainCategory: mainCategory,
+              subcategory: subcategory,
+              gender: gender.id,
+              section: section.id,
+            );
+
+            // Update the section name in the questions to use the database name
+            final questionsWithSectionName =
+                sectionQuestions.map((question) {
+                  return ChecklistItem(
+                    id: question.id,
+                    question: question.question,
+                    category: question.category,
+                    subcategory: question.subcategory,
+                    gender: question.gender,
+                    section: section.name, // Use the section name from database
+                    uniformType: question.uniformType,
+                    forHijab: question.forHijab,
+                    order: question.order,
+                    options: question.options,
+                    isRequired: question.isRequired,
+                    allowsNote: question.allowsNote,
+                    answerValue: question.answerValue,
+                    note: question.note,
+                    skipped: question.skipped,
+                    createdAt: question.createdAt,
+                    updatedAt: question.updatedAt,
+                    isActive: question.isActive,
+                  );
+                }).toList();
+
+            allQuestions.addAll(questionsWithSectionName);
+            print(
+              "Added ${sectionQuestions.length} questions from section ${section.name}",
+            );
+
+            // Also check for uniform types within this section
+            try {
+              final uniformTypes = await getUniformTypes(
+                mainCategory,
+                subcategory,
+                gender.id,
+                section.id,
+              );
+              print(
+                "Found ${uniformTypes.length} uniform types for section ${section.name}",
+              );
+
+              for (var uniformType in uniformTypes) {
+                print(
+                  "Processing uniform type: ${uniformType.name} (${uniformType.id})",
+                );
+
+                final uniformQuestions = await getQuestionsForPath(
+                  mainCategory: mainCategory,
+                  subcategory: subcategory,
+                  gender: gender.id,
+                  section: section.id,
+                  uniformType: uniformType.id,
+                );
+
+                // Update the section name and uniform type in the questions
+                final questionsWithUniformType =
+                    uniformQuestions.map((question) {
+                      return ChecklistItem(
+                        id: question.id,
+                        question: question.question,
+                        category: question.category,
+                        subcategory: question.subcategory,
+                        gender: question.gender,
+                        section:
+                            section.name, // Use the section name from database
+                        uniformType:
+                            uniformType
+                                .name, // Use the uniform type name from database
+                        forHijab: question.forHijab,
+                        order: question.order,
+                        options: question.options,
+                        isRequired: question.isRequired,
+                        allowsNote: question.allowsNote,
+                        answerValue: question.answerValue,
+                        note: question.note,
+                        skipped: question.skipped,
+                        createdAt: question.createdAt,
+                        updatedAt: question.updatedAt,
+                        isActive: question.isActive,
+                      );
+                    }).toList();
+
+                allQuestions.addAll(questionsWithUniformType);
+                print(
+                  "Added ${uniformQuestions.length} questions from uniform type ${uniformType.name}",
+                );
+              }
+            } catch (e) {
+              print("No uniform types found for section ${section.name}: $e");
+            }
           }
         }
+      } catch (e) {
+        print("No gender categories found for subcategory: $e");
       }
 
-      path += '/questions';
-
-      print("Adding question to path: $path");
-
-      await _firestore.collection(path).add({
-        'text': questionText,
-        'order': await _getNextQuestionOrder(path),
-        'isActive': true,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      print("Question added successfully");
+      print(
+        "Total questions found for subcategory $subcategory: ${allQuestions.length}",
+      );
+      return allQuestions;
     } catch (e) {
-      print('Error adding question: $e');
-      throw e;
-    }
-  }
-
-  // Helper untuk mendapatkan urutan pertanyaan berikutnya
-  Future<int> _getNextQuestionOrder(String path) async {
-    try {
-      final snapshot =
-          await _firestore
-              .collection(path)
-              .orderBy('order', descending: true)
-              .limit(1)
-              .get();
-
-      if (snapshot.docs.isEmpty) {
-        return 1;
-      }
-
-      return (snapshot.docs.first['order'] ?? 0) + 1;
-    } catch (e) {
-      return 1;
-    }
-  }
-
-  // Mengedit pertanyaan
-  Future<void> editQuestion({
-    required String path,
-    required String questionId,
-    required String newText,
-  }) async {
-    try {
-      await _firestore.collection(path).doc(questionId).update({
-        'text': newText,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      print('Error editing question: $e');
-      throw e;
-    }
-  }
-
-  // Menghapus pertanyaan
-  Future<void> deleteQuestion({
-    required String path,
-    required String questionId,
-  }) async {
-    try {
-      await _firestore.collection(path).doc(questionId).delete();
-    } catch (e) {
-      print('Error deleting question: $e');
-      throw e;
+      print('Error getting all questions for subcategory: $e');
+      return [];
     }
   }
 }

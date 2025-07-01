@@ -658,10 +658,10 @@ class _EmployeeInfoScreenState extends State<EmployeeInfoScreen> {
                                               selectedCategory:
                                                   widget.selectedCategory,
                                               employeeData: employeeData,
-                                              bankBranchId:
-                                                  widget
-                                                      .bankBranchId, // Teruskan dari widget
+                                              bankBranchId: widget.bankBranchId,
                                               sessionId: widget.sessionId,
+                                              fetchFromDatabase:
+                                                  true, // Always fetch from database for employee categories
                                             ),
                                       ),
                                     );
