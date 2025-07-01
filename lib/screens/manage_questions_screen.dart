@@ -98,14 +98,14 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
       _isLoading = true;
     });
     try {
-      print("Loading main categories...");
+      print("=== DEBUG: Loading main categories ===");
       final categories = await _questionService.getMainCategories();
       print("Loaded ${categories.length} categories");
 
       // Debug: Print urutan kategori
       for (int i = 0; i < categories.length; i++) {
         print(
-          "Category ${i + 1}: ${categories[i].name} (order: ${categories[i].order})",
+          "Category ${i + 1}: ${categories[i].name} (ID: ${categories[i].id}, order: ${categories[i].order})",
         );
       }
 
@@ -113,10 +113,14 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         _mainCategories = categories;
         if (categories.isNotEmpty) {
           _selectedMainCategory = categories.first.id;
-          print("Auto-selected first category: ${categories.first.name}");
-          _loadSubcategories();
+          print("Auto-selected first category: ${categories.first.name} (${categories.first.id})");
         }
       });
+      
+      // Start the loading chain
+      if (categories.isNotEmpty) {
+        await _loadSubcategories();
+      }
     } catch (e) {
       print("Error loading categories: $e");
       _showErrorSnackbar('Gagal memuat kategori: $e');
@@ -144,7 +148,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     });
 
     try {
-      print("Loading subcategories for $_selectedMainCategory");
+      print("=== DEBUG: Loading subcategories for $_selectedMainCategory ===");
       final subcategories = await _questionService.getSubcategories(
         _selectedMainCategory!,
       );
@@ -154,9 +158,17 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         _subcategories = subcategories;
         if (subcategories.isNotEmpty) {
           _selectedSubcategory = subcategories.first.id;
-          _loadGenderOptions();
+          print("Auto-selected subcategory: ${subcategories.first.name}");
         }
       });
+      
+      // Continue loading chain or load questions if no subcategories
+      if (subcategories.isNotEmpty) {
+        await _loadGenderOptions();
+      } else {
+        print("No subcategories found, loading questions directly");
+        await _loadQuestions();
+      }
     } catch (e) {
       print("Error loading subcategories: $e");
       _showErrorSnackbar('Gagal memuat subkategori: $e');
@@ -183,7 +195,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
 
     try {
       print(
-        "Loading gender options for $_selectedMainCategory/$_selectedSubcategory",
+        "=== DEBUG: Loading gender options for $_selectedMainCategory/$_selectedSubcategory ===",
       );
       final genders = await _questionService.getGenderCategories(
         _selectedMainCategory!,
@@ -195,12 +207,17 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         _genderOptions = genders;
         if (genders.isNotEmpty) {
           _selectedGender = genders.first.id;
-          _loadSections();
-        } else {
-          // If no gender options, load questions directly for the subcategory
-          _loadQuestions();
+          print("Auto-selected gender: ${genders.first.name}");
         }
       });
+      
+      // Continue loading chain or load questions if no gender options
+      if (genders.isNotEmpty) {
+        await _loadSections();
+      } else {
+        print("No gender options found, loading questions for subcategory");
+        await _loadQuestions();
+      }
     } catch (e) {
       print("Error loading gender options: $e");
       _showErrorSnackbar('Gagal memuat opsi gender: $e');
@@ -228,7 +245,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
 
     try {
       print(
-        "Loading sections for $_selectedMainCategory/$_selectedSubcategory/$_selectedGender",
+        "=== DEBUG: Loading sections for $_selectedMainCategory/$_selectedSubcategory/$_selectedGender ===",
       );
       final sections = await _questionService.getSections(
         _selectedMainCategory!,
@@ -241,12 +258,17 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         _sections = sections;
         if (sections.isNotEmpty) {
           _selectedSection = sections.first.id;
-          _loadUniformTypes();
-        } else {
-          // If no sections, load questions for the gender
-          _loadQuestions();
+          print("Auto-selected section: ${sections.first.name}");
         }
       });
+      
+      // Continue loading chain or load questions if no sections
+      if (sections.isNotEmpty) {
+        await _loadUniformTypes();
+      } else {
+        print("No sections found, loading questions for gender");
+        await _loadQuestions();
+      }
     } catch (e) {
       print("Error loading sections: $e");
       _showErrorSnackbar('Gagal memuat bagian: $e');
@@ -273,7 +295,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
 
     try {
       print(
-        "Loading uniform types for $_selectedMainCategory/$_selectedSubcategory/$_selectedGender/$_selectedSection",
+        "=== DEBUG: Loading uniform types for $_selectedMainCategory/$_selectedSubcategory/$_selectedGender/$_selectedSection ===",
       );
       final uniformTypes = await _questionService.getUniformTypes(
         _selectedMainCategory!,
@@ -287,10 +309,13 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         _uniformTypes = uniformTypes;
         if (uniformTypes.isNotEmpty) {
           _selectedUniformType = uniformTypes.first.id;
+          print("Auto-selected uniform type: ${uniformTypes.first.name}");
         }
-        // Always load questions after setting uniform type (or if none)
-        _loadQuestions();
       });
+      
+      // Always load questions after uniform types (whether found or not)
+      print("Loading questions after uniform type selection");
+      await _loadQuestions();
     } catch (e) {
       print("Error loading uniform types: $e");
       _showErrorSnackbar('Gagal memuat tipe seragam: $e');
@@ -324,15 +349,42 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
 
   // Load pertanyaan
   Future<void> _loadQuestions() async {
+    if (_selectedMainCategory == null) {
+      print("DEBUG: Cannot load questions - no main category selected");
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _questions = [];
     });
 
     try {
-      print(
-        "Loading questions with path: $_selectedMainCategory/$_selectedSubcategory/$_selectedGender/$_selectedSection/$_selectedUniformType",
-      );
+      print("=== DEBUG: Loading Questions ===");
+      print("Selected Categories:");
+      print("- Main Category: $_selectedMainCategory");
+      print("- Subcategory: $_selectedSubcategory");
+      print("- Gender: $_selectedGender");
+      print("- Section: $_selectedSection");
+      print("- Uniform Type: $_selectedUniformType");
+      
+      // Build expected Firestore path for debugging
+      String expectedPath = 'assessment_categories/$_selectedMainCategory';
+      if (_selectedSubcategory != null && _selectedSubcategory != "general") {
+        expectedPath += '/subcategories/$_selectedSubcategory';
+        if (_selectedGender != null) {
+          expectedPath += '/gender_categories/$_selectedGender';
+          if (_selectedSection != null) {
+            expectedPath += '/sections/$_selectedSection';
+            if (_selectedUniformType != null) {
+              expectedPath += '/uniform_types/$_selectedUniformType';
+            }
+          }
+        }
+      }
+      expectedPath += '/questions';
+      print("Expected Firestore path: $expectedPath");
+      
       final questions = await _questionService.getQuestionsForPath(
         mainCategory: _selectedMainCategory!,
         subcategory: _selectedSubcategory,
@@ -340,13 +392,31 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         section: _selectedSection,
         uniformType: _selectedUniformType,
       );
-      print("Loaded ${questions.length} questions");
+      
+      print("=== DEBUG: Questions Retrieved ===");
+      print("Total questions found: ${questions.length}");
+      
+      if (questions.isNotEmpty) {
+        print("First 3 questions:");
+        for (int i = 0; i < questions.length && i < 3; i++) {
+          print("  ${i + 1}. ID: ${questions[i].id}");
+          print("     Question: ${questions[i].question}");
+          print("     Category: ${questions[i].category}");
+          print("     Subcategory: ${questions[i].subcategory}");
+        }
+      } else {
+        print("No questions found for current selection");
+        print("Try checking if questions exist at path: $expectedPath");
+      }
+      print("=== END DEBUG ===");
 
       setState(() {
         _questions = questions;
       });
     } catch (e) {
-      print("Error loading questions: $e");
+      print("=== ERROR loading questions ===");
+      print("Error: $e");
+      print("Stack trace: ${StackTrace.current}");
       _showErrorSnackbar('Gagal memuat pertanyaan: $e');
     } finally {
       setState(() {
@@ -571,13 +641,13 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                   value: _selectedMainCategory,
                   items: _mainCategories,
                   hint: "Pilih Kategori",
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     if (value != null) {
                       print("Selected main category: $value");
                       setState(() {
                         _selectedMainCategory = value;
                       });
-                      _loadSubcategories();
+                      await _loadSubcategories();
                     }
                   },
                 ),
@@ -591,13 +661,13 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                     value: _selectedSubcategory,
                     items: _subcategories,
                     hint: "Pilih Subkategori",
-                    onChanged: (value) {
+                    onChanged: (value) async {
                       if (value != null) {
                         print("Selected subcategory: $value");
                         setState(() {
                           _selectedSubcategory = value;
                         });
-                        _loadGenderOptions();
+                        await _loadGenderOptions();
                       }
                     },
                   ),
@@ -611,13 +681,13 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                     value: _selectedGender,
                     items: _genderOptions,
                     hint: "Pilih Gender",
-                    onChanged: (value) {
+                    onChanged: (value) async {
                       if (value != null) {
                         print("Selected gender: $value");
                         setState(() {
                           _selectedGender = value;
                         });
-                        _loadSections();
+                        await _loadSections();
                       }
                     },
                   ),
@@ -631,13 +701,13 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                     value: _selectedSection,
                     items: _sections,
                     hint: "Pilih Bagian",
-                    onChanged: (value) {
+                    onChanged: (value) async {
                       if (value != null) {
                         print("Selected section: $value");
                         setState(() {
                           _selectedSection = value;
                         });
-                        _loadUniformTypes();
+                        await _loadUniformTypes();
                       }
                     },
                   ),
@@ -651,13 +721,13 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                     value: _selectedUniformType,
                     items: _uniformTypes,
                     hint: "Pilih Tipe Seragam",
-                    onChanged: (value) {
+                    onChanged: (value) async {
                       if (value != null) {
                         print("Selected uniform type: $value");
                         setState(() {
                           _selectedUniformType = value;
                         });
-                        _loadQuestions();
+                        await _loadQuestions();
                       }
                     },
                   ),

@@ -1,13 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bri_cek/screens/manage_users_screen.dart';
-// import 'package:bri_cek/screens/manage_questions_screen.dart'; // Temporarily commented out
-//       MaterialPageRoute(
-//         builder:
-//             (context) => const ManageQuestionsScreen(),
-//       ),
-//     );
-//   },
-// ),uestions_screen.dart';
+import 'package:bri_cek/screens/manage_questions_screen.dart';
 import 'package:bri_cek/screens/login_screen.dart';
 import 'package:bri_cek/services/auth_service.dart';
 import 'package:bri_cek/utils/app_size.dart';
@@ -132,21 +125,20 @@ class _BurgerMenuState extends State<BurgerMenu> {
                           },
                         ),
                         _buildMenuDivider(),
-                        // Temporarily commented out due to missing methods
-                        // _buildMenuItem(
-                        //   icon: Icons.quiz,
-                        //   title: 'Manage Questions',
-                        //   onTap: () {
-                        //     _hideBurgerMenu();
-                        //     Navigator.push(
-                        //       context,
-                        //       MaterialPageRoute(
-                        //         builder:
-                        //             (context) => const ManageQuestionsScreen(),
-                        //       ),
-                        //     );
-                        //   },
-                        // ),
+                        _buildMenuItem(
+                          icon: Icons.quiz,
+                          title: 'Manage Questions',
+                          onTap: () {
+                            _hideBurgerMenu();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => const ManageQuestionsScreen(),
+                              ),
+                            );
+                          },
+                        ),
                         _buildMenuDivider(),
                       ],
 

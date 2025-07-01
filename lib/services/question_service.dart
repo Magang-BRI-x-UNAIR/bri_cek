@@ -1733,184 +1733,20 @@ class QuestionService {
         });
   }
 
-  // BAGIAN UNTUK MENGAKSES DATA
-
-  // Mendapatkan semua kategori utama
-  Future<List<Category>> getMainCategories() async {
-    try {
-      print("Accessing Firestore for categories");
-      final snapshot =
-          await _firestore
-              .collection('assessment_categories')
-              .orderBy('order')
-              .get();
-
-      print("Firestore returned ${snapshot.docs.length} categories");
-
-      return snapshot.docs.map((doc) {
-        return Category(
-          id: doc.id,
-          name: doc.data()['name'] ?? doc.id,
-          order: doc.data()['order'] ?? 0,
-        );
-      }).toList();
-    } catch (e) {
-      print('Error getting main categories: $e');
-      return [];
-    }
-  }
-
-  // Mendapatkan subkategori
-  Future<List<Category>> getSubcategories(String mainCategoryId) async {
-    try {
-      print("Getting subcategories for $mainCategoryId");
-
-      final snapshot =
-          await _firestore
-              .collection('assessment_categories')
-              .doc(mainCategoryId)
-              .collection('subcategories')
-              .orderBy('order')
-              .get();
-
-      print("Found ${snapshot.docs.length} subcategories");
-
-      return snapshot.docs.map((doc) {
-        return Category(
-          id: doc.id,
-          name: doc.data()['name'] ?? doc.id,
-          order: doc.data()['order'] ?? 0,
-        );
-      }).toList();
-    } catch (e) {
-      print('Error getting subcategories: $e');
-      return [];
-    }
-  }
-
-  // Mendapatkan kategori gender
-  Future<List<Category>> getGenderCategories(
-    String mainCategoryId,
-    String subcategoryId,
-  ) async {
-    try {
-      final snapshot =
-          await _firestore
-              .collection('assessment_categories')
-              .doc(mainCategoryId)
-              .collection('subcategories')
-              .doc(subcategoryId)
-              .collection('gender_categories')
-              .orderBy('order')
-              .get();
-
-      return snapshot.docs
-          .map(
-            (doc) => Category(
-              id: doc.id,
-              name: doc['name'] ?? doc.id,
-              order: doc['order'] ?? 0,
-            ),
-          )
-          .toList();
-    } catch (e) {
-      print('Error getting gender categories: $e');
-      return [];
-    }
-  }
-
-  // Mendapatkan sections
-  Future<List<Category>> getSections(
-    String mainCategoryId,
-    String subcategoryId,
-    String genderId,
-  ) async {
-    try {
-      final snapshot =
-          await _firestore
-              .collection('assessment_categories')
-              .doc(mainCategoryId)
-              .collection('subcategories')
-              .doc(subcategoryId)
-              .collection('gender_categories')
-              .doc(genderId)
-              .collection('sections')
-              .orderBy('order')
-              .get();
-
-      return snapshot.docs
-          .map(
-            (doc) => Category(
-              id: doc.id,
-              name: doc['name'] ?? doc.id,
-              order: doc['order'] ?? 0,
-            ),
-          )
-          .toList();
-    } catch (e) {
-      print('Error getting sections: $e');
-      return [];
-    }
-  }
-
-  // Mendapatkan tipe uniform
-  Future<List<Category>> getUniformTypes(
-    String mainCategoryId,
-    String subcategoryId,
-    String genderId,
-    String sectionId,
-  ) async {
-    try {
-      final snapshot =
-          await _firestore
-              .collection('assessment_categories')
-              .doc(mainCategoryId)
-              .collection('subcategories')
-              .doc(subcategoryId)
-              .collection('gender_categories')
-              .doc(genderId)
-              .collection('sections')
-              .doc(sectionId)
-              .collection('uniform_types')
-              .orderBy('order')
-              .get();
-
-      return snapshot.docs
-          .map(
-            (doc) => Category(
-              id: doc.id,
-              name: doc['name'] ?? doc.id,
-              order: doc['order'] ?? 0,
-            ),
-          )
-          .toList();
-    } catch (e) {
-      print('Error getting uniform types: $e');
-      return [];
-    }
-  }
-
-  // Mendapatkan pertanyaan berdasarkan path
-  // Di QuestionService, perbaiki method getQuestionsForPath()
-  Future<List<ChecklistItem>> getQuestionsForPath({
+  // Method untuk menambah pertanyaan
+  Future<void> addQuestion({
     required String mainCategory,
-    String? subcategory,
+    required String subcategory,
     String? gender,
     String? section,
     String? uniformType,
+    required String questionText,
   }) async {
     try {
-      print("Getting questions for path with parameters:");
-      print("- mainCategory: $mainCategory");
-      print("- subcategory: $subcategory");
-      print("- gender: $gender");
-      print("- section: $section");
-      print("- uniformType: $uniformType");
+      // Build collection path
+      String path = 'assessment_categories/$mainCategory';
 
-      String path =
-          'assessment_categories/$mainCategory'; // Sesuaikan dengan struktur saat menambah!
-
-      if (subcategory != null) {
+      if (subcategory != "general") {
         path += '/subcategories/$subcategory';
 
         if (gender != null) {
@@ -1928,34 +1764,57 @@ class QuestionService {
 
       path += '/questions';
 
-      print("Final query path: $path");
+      // Get current questions to determine order
+      final snapshot = await _firestore.collection(path).get();
+      final nextOrder = snapshot.docs.length + 1;
 
-      final snapshot = await _firestore.collection(path).orderBy('order').get();
+      // Add new question
+      await _firestore.collection(path).add({
+        'text': questionText,
+        'order': nextOrder,
+        'isActive': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
-      print("Firestore returned ${snapshot.docs.length} questions");
-
-      List<ChecklistItem> questions = [];
-
-      for (var doc in snapshot.docs) {
-        print("Processing question ${doc.id}: ${doc.data()}");
-        questions.add(
-          ChecklistItem(
-            id: doc.id,
-            question: doc.data()['text'] ?? '',
-            category: mainCategory,
-            subcategory: subcategory ?? '',
-            gender: gender,
-            section: section,
-            uniformType: uniformType,
-            order: doc.data()['order'] ?? 0,
-          ),
-        );
-      }
-
-      return questions;
+      print('Question added successfully to path: $path');
     } catch (e) {
-      print("Error getting questions: $e");
-      return [];
+      print('Error adding question: $e');
+      throw e;
+    }
+  }
+
+  // Method untuk mengedit pertanyaan
+  Future<void> editQuestion({
+    required String path,
+    required String questionId,
+    required String newText,
+  }) async {
+    try {
+      await _firestore.collection(path).doc(questionId).update({
+        'text': newText,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      print('Question edited successfully: $questionId');
+    } catch (e) {
+      print('Error editing question: $e');
+      throw e;
+    }
+  }
+
+  // Method untuk menghapus pertanyaan
+  Future<void> deleteQuestion({
+    required String path,
+    required String questionId,
+  }) async {
+    try {
+      await _firestore.collection(path).doc(questionId).delete();
+
+      print('Question deleted successfully: $questionId');
+    } catch (e) {
+      print('Error deleting question: $e');
+      throw e;
     }
   }
 
@@ -2119,6 +1978,510 @@ class QuestionService {
     } catch (e) {
       print('Error getting all questions for subcategory: $e');
       return [];
+    }
+  }
+
+  // Get main categories
+  Future<List<Category>> getMainCategories() async {
+    try {
+      print("Getting main categories from assessment_categories");
+
+      final snapshot =
+          await _firestore
+              .collection('assessment_categories')
+              .orderBy('order')
+              .get();
+
+      final categories =
+          snapshot.docs.map((doc) {
+            return Category.fromMap(doc.data(), doc.id);
+          }).toList();
+
+      print("Found ${categories.length} main categories");
+      return categories;
+    } catch (e) {
+      print('Error getting main categories: $e');
+      return [];
+    }
+  }
+
+  // Get subcategories for a main category
+  Future<List<Category>> getSubcategories(String mainCategory) async {
+    try {
+      print("Getting subcategories for main category: $mainCategory");
+
+      final snapshot =
+          await _firestore
+              .collection('assessment_categories')
+              .doc(mainCategory)
+              .collection('subcategories')
+              .orderBy('order')
+              .get();
+
+      final subcategories =
+          snapshot.docs.map((doc) {
+            return Category.fromMap(doc.data(), doc.id);
+          }).toList();
+
+      print("Found ${subcategories.length} subcategories for $mainCategory");
+      return subcategories;
+    } catch (e) {
+      print('Error getting subcategories for $mainCategory: $e');
+      return [];
+    }
+  }
+
+  // Get gender categories for a specific subcategory
+  Future<List<Category>> getGenderCategories(
+    String mainCategory,
+    String subcategory,
+  ) async {
+    try {
+      print("Getting gender categories for $mainCategory/$subcategory");
+
+      final snapshot =
+          await _firestore
+              .collection('assessment_categories')
+              .doc(mainCategory)
+              .collection('subcategories')
+              .doc(subcategory)
+              .collection('gender_categories')
+              .orderBy('order')
+              .get();
+
+      final genderCategories =
+          snapshot.docs.map((doc) {
+            return Category.fromMap(doc.data(), doc.id);
+          }).toList();
+
+      print(
+        "Found ${genderCategories.length} gender categories for $mainCategory/$subcategory",
+      );
+      return genderCategories;
+    } catch (e) {
+      print(
+        'Error getting gender categories for $mainCategory/$subcategory: $e',
+      );
+      return [];
+    }
+  }
+
+  // Get sections for a specific gender category
+  Future<List<Category>> getSections(
+    String mainCategory,
+    String subcategory,
+    String gender,
+  ) async {
+    try {
+      print("Getting sections for $mainCategory/$subcategory/$gender");
+
+      final snapshot =
+          await _firestore
+              .collection('assessment_categories')
+              .doc(mainCategory)
+              .collection('subcategories')
+              .doc(subcategory)
+              .collection('gender_categories')
+              .doc(gender)
+              .collection('sections')
+              .orderBy('order')
+              .get();
+
+      final sections =
+          snapshot.docs.map((doc) {
+            return Category.fromMap(doc.data(), doc.id);
+          }).toList();
+
+      print(
+        "Found ${sections.length} sections for $mainCategory/$subcategory/$gender",
+      );
+      return sections;
+    } catch (e) {
+      print(
+        'Error getting sections for $mainCategory/$subcategory/$gender: $e',
+      );
+      return [];
+    }
+  }
+
+  // Get uniform types for a specific section
+  Future<List<Category>> getUniformTypes(
+    String mainCategory,
+    String subcategory,
+    String gender,
+    String section,
+  ) async {
+    try {
+      print(
+        "Getting uniform types for $mainCategory/$subcategory/$gender/$section",
+      );
+
+      final snapshot =
+          await _firestore
+              .collection('assessment_categories')
+              .doc(mainCategory)
+              .collection('subcategories')
+              .doc(subcategory)
+              .collection('gender_categories')
+              .doc(gender)
+              .collection('sections')
+              .doc(section)
+              .collection('uniform_types')
+              .orderBy('order')
+              .get();
+
+      final uniformTypes =
+          snapshot.docs.map((doc) {
+            return Category.fromMap(doc.data(), doc.id);
+          }).toList();
+
+      print(
+        "Found ${uniformTypes.length} uniform types for $mainCategory/$subcategory/$gender/$section",
+      );
+      return uniformTypes;
+    } catch (e) {
+      print(
+        'Error getting uniform types for $mainCategory/$subcategory/$gender/$section: $e',
+      );
+      return [];
+    }
+  }
+
+  // Get questions for a specific path
+  Future<List<ChecklistItem>> getQuestionsForPath({
+    required String mainCategory,
+    String? subcategory,
+    String? gender,
+    String? section,
+    String? uniformType,
+  }) async {
+    try {
+      print("Getting questions for path with parameters:");
+      print("- mainCategory: $mainCategory");
+      print("- subcategory: $subcategory");
+      print("- gender: $gender");
+      print("- section: $section");
+      print("- uniformType: $uniformType");
+
+      // Build the collection path based on provided parameters
+      String collectionPath = 'assessment_categories/$mainCategory';
+
+      if (subcategory != null && subcategory != "general") {
+        collectionPath += '/subcategories/$subcategory';
+
+        if (gender != null) {
+          collectionPath += '/gender_categories/$gender';
+
+          if (section != null) {
+            collectionPath += '/sections/$section';
+
+            if (uniformType != null) {
+              collectionPath += '/uniform_types/$uniformType';
+            }
+          }
+        }
+      }
+
+      collectionPath += '/questions';
+
+      print("Getting questions from path: $collectionPath");
+
+      // Try to get documents without ordering first
+      QuerySnapshot snapshot;
+      try {
+        snapshot = await _firestore.collection(collectionPath).orderBy('order').get();
+      } catch (orderError) {
+        print("Error with orderBy, trying without ordering: $orderError");
+        snapshot = await _firestore.collection(collectionPath).get();
+      }
+
+      final questions =
+          snapshot.docs.map((doc) {
+            final rawData = doc.data();
+            
+            // Check if data is null
+            if (rawData == null) {
+              print("Document ${doc.id} has null data");
+              return ChecklistItem(
+                id: doc.id,
+                question: 'Empty document',
+                category: mainCategory,
+                subcategory: subcategory ?? '',
+                gender: gender ?? '',
+                section: section ?? '',
+                uniformType: uniformType ?? '',
+              );
+            }
+            
+            // Cast to Map<String, dynamic>
+            final data = rawData as Map<String, dynamic>;
+            
+            // Debug: Print document structure
+            print("Processing document ${doc.id}:");
+            print("  Document data keys: ${data.keys.toList()}");
+            
+            // Try different field names for the question text
+            String questionText = '';
+            if (data.containsKey('text')) {
+              questionText = data['text'] ?? '';
+              print("  Found question text in 'text' field: $questionText");
+            } else if (data.containsKey('question')) {
+              questionText = data['question'] ?? '';
+              print("  Found question text in 'question' field: $questionText");
+            } else if (data.containsKey('questionText')) {
+              questionText = data['questionText'] ?? '';
+              print("  Found question text in 'questionText' field: $questionText");
+            } else {
+              // If no standard field found, print the document structure for debugging
+              print(
+                "Unknown question structure in doc ${doc.id}: ${data.keys.toList()}",
+              );
+              print("Full document data: $data");
+              questionText =
+                  data.values
+                      .firstWhere(
+                        (value) => value is String && value.length > 10,
+                        orElse: () => 'Unknown question format',
+                      )
+                      .toString();
+              print("  Using fallback question text: $questionText");
+            }
+
+            // Safe conversion for timestamps
+            DateTime? createdAt;
+            DateTime? updatedAt;
+            
+            try {
+              if (data['createdAt'] != null) {
+                if (data['createdAt'] is Timestamp) {
+                  createdAt = (data['createdAt'] as Timestamp).toDate();
+                } else if (data['createdAt'] is DateTime) {
+                  createdAt = data['createdAt'] as DateTime;
+                }
+              }
+            } catch (e) {
+              print("  Error converting createdAt: $e");
+            }
+            
+            try {
+              if (data['updatedAt'] != null) {
+                if (data['updatedAt'] is Timestamp) {
+                  updatedAt = (data['updatedAt'] as Timestamp).toDate();
+                } else if (data['updatedAt'] is DateTime) {
+                  updatedAt = data['updatedAt'] as DateTime;
+                }
+              }
+            } catch (e) {
+              print("  Error converting updatedAt: $e");
+            }
+
+            return ChecklistItem(
+              id: doc.id,
+              question: questionText,
+              category: data['category'] ?? mainCategory,
+              subcategory: data['subcategory'] ?? subcategory ?? '',
+              gender: data['gender'] ?? gender ?? '',
+              section: data['section'] ?? section ?? '',
+              uniformType: data['uniformType'] ?? uniformType ?? '',
+              forHijab: data['forHijab'] ?? false,
+              order: data['order'] ?? 0,
+              options: List<String>.from(data['options'] ?? []),
+              isRequired: data['isRequired'] ?? true,
+              allowsNote: data['allowsNote'] ?? false,
+              answerValue: data['answerValue'],
+              note: data['note'],
+              skipped: data['skipped'] ?? false,
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+              isActive: data['isActive'] ?? true,
+            );
+          }).toList();
+
+      print("Found ${questions.length} questions in $collectionPath");
+
+      // Debug: Print first few questions if found
+      if (questions.isNotEmpty) {
+        print("Sample questions found:");
+        for (int i = 0; i < questions.length && i < 3; i++) {
+          print("  ${i + 1}. ${questions[i].question}");
+        }
+      } else {
+        print("No questions found in path: $collectionPath");
+
+        // Try to debug by checking if collection exists
+        final collectionSnapshot =
+            await _firestore.collection(collectionPath).limit(1).get();
+        print("Collection exists: ${collectionSnapshot.docs.isNotEmpty}");
+
+        if (collectionSnapshot.docs.isNotEmpty) {
+          final firstDoc = collectionSnapshot.docs.first;
+          print("First document data: ${firstDoc.data()}");
+        }
+      }
+
+      return questions;
+    } catch (e) {
+      print('Error getting questions for path: $e');
+      print('Stack trace: ${StackTrace.current}');
+      return [];
+    }
+  }
+
+  // Debug method to check database structure
+  Future<void> debugDatabaseStructure() async {
+    try {
+      print("=== DEBUG DATABASE STRUCTURE ===");
+
+      // Check main categories
+      final mainCategories = await getMainCategories();
+      print("Main categories found: ${mainCategories.length}");
+      for (var category in mainCategories) {
+        print("  - ${category.id}: ${category.name}");
+
+        // Check subcategories for this main category
+        final subcategories = await getSubcategories(category.id);
+        print("    Subcategories: ${subcategories.length}");
+        for (var subcategory in subcategories) {
+          print("      - ${subcategory.id}: ${subcategory.name}");
+
+          // Try to get questions directly from subcategory
+          final directQuestions = await getQuestionsForPath(
+            mainCategory: category.id,
+            subcategory: subcategory.id,
+          );
+          if (directQuestions.isNotEmpty) {
+            print("        Direct questions: ${directQuestions.length}");
+            for (var q in directQuestions.take(2)) {
+              print("          * ${q.question}");
+            }
+          }
+
+          // Check gender categories
+          final genderCategories = await getGenderCategories(
+            category.id,
+            subcategory.id,
+          );
+          if (genderCategories.isNotEmpty) {
+            print("        Gender categories: ${genderCategories.length}");
+            for (var gender in genderCategories) {
+              print("          - ${gender.id}: ${gender.name}");
+
+              // Check sections
+              final sections = await getSections(
+                category.id,
+                subcategory.id,
+                gender.id,
+              );
+              if (sections.isNotEmpty) {
+                print("            Sections: ${sections.length}");
+                for (var section in sections.take(2)) {
+                  print("              - ${section.id}: ${section.name}");
+
+                  // Check questions in section
+                  final sectionQuestions = await getQuestionsForPath(
+                    mainCategory: category.id,
+                    subcategory: subcategory.id,
+                    gender: gender.id,
+                    section: section.id,
+                  );
+                  if (sectionQuestions.isNotEmpty) {
+                    print(
+                      "                Questions: ${sectionQuestions.length}",
+                    );
+                    for (var q in sectionQuestions.take(1)) {
+                      print("                  * ${q.question}");
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if (mainCategories.indexOf(category) >= 2) break; // Limit debug output
+      }
+
+      print("=== END DEBUG ===");
+    } catch (e) {
+      print("Error in debug: $e");
+    }
+  }
+
+  // Simplified method to get any questions from a category (for testing)
+  Future<List<ChecklistItem>> getAnyQuestionsFromCategory(
+    String categoryId,
+  ) async {
+    try {
+      print("Looking for any questions in category: $categoryId");
+
+      List<ChecklistItem> allQuestions = [];
+
+      // First try direct questions
+      final directQuestions = await getQuestionsForPath(
+        mainCategory: categoryId,
+      );
+      allQuestions.addAll(directQuestions);
+      print("Found ${directQuestions.length} direct questions");
+
+      // Then try subcategories
+      final subcategories = await getSubcategories(categoryId);
+      for (var subcategory in subcategories) {
+        final subcatQuestions = await getAllQuestionsForSubcategory(
+          mainCategory: categoryId,
+          subcategory: subcategory.id,
+        );
+        allQuestions.addAll(subcatQuestions);
+        print(
+          "Found ${subcatQuestions.length} questions in subcategory ${subcategory.name}",
+        );
+      }
+
+      print("Total questions found: ${allQuestions.length}");
+      return allQuestions;
+    } catch (e) {
+      print("Error getting questions from category: $e");
+      return [];
+    }
+  }
+
+  // Method untuk inisialisasi data test sederhana
+  Future<void> initializeTestData() async {
+    try {
+      print("Initializing test data...");
+
+      // Reset database first
+      await resetAndFixDatabase();
+
+      // Add some test questions to customer service
+      await addQuestion(
+        mainCategory: 'customer_service',
+        subcategory: 'terampil',
+        questionText: 'Karyawan menguasai produk dan layanan bank dengan baik',
+      );
+
+      await addQuestion(
+        mainCategory: 'customer_service',
+        subcategory: 'terampil',
+        questionText: 'Karyawan dapat menjelaskan prosedur dengan jelas',
+      );
+
+      // Add some test questions to teller grooming
+      await addQuestion(
+        mainCategory: 'teller',
+        subcategory: 'grooming',
+        questionText: 'Penampilan rapi dan profesional',
+      );
+
+      await addQuestion(
+        mainCategory: 'satpam',
+        subcategory: 'grooming',
+        questionText: 'Seragam bersih dan lengkap',
+      );
+
+      print("Test data initialized successfully!");
+    } catch (e) {
+      print("Error initializing test data: $e");
+      throw e;
     }
   }
 }
