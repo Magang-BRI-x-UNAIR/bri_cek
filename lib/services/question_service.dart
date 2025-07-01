@@ -1796,7 +1796,7 @@ class QuestionService {
     try {
       final snapshot =
           await _firestore
-              .collection('categories')
+              .collection('assessment_categories')
               .doc(mainCategoryId)
               .collection('subcategories')
               .doc(subcategoryId)
@@ -1828,7 +1828,7 @@ class QuestionService {
     try {
       final snapshot =
           await _firestore
-              .collection('categories')
+              .collection('assessment_categories')
               .doc(mainCategoryId)
               .collection('subcategories')
               .doc(subcategoryId)

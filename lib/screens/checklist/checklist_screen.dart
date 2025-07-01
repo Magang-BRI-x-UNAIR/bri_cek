@@ -170,24 +170,155 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                 "=== PROCESSING SUBCATEGORY: ${subcategory.name} (${subcategory.id}) ===",
               );
 
-              final subcategoryItems = await _questionService
+              // Coba ambil pertanyaan langsung dari subcategory level
+              final directSubcategoryItems = await _questionService
                   .getQuestionsForPath(
                     mainCategory: categoryId,
                     subcategory: subcategory.id,
                   );
 
               print(
-                "Questions found for ${subcategory.name}: ${subcategoryItems.length}",
+                "Direct questions found for ${subcategory.name}: ${directSubcategoryItems.length}",
+              );
+
+              List<ChecklistItem> allSubcategoryItems = [
+                ...directSubcategoryItems,
+              ];
+
+              // Untuk kategori person-based seperti Satpam, jelajahi gender_categories
+              if (widget.employeeData != null) {
+                try {
+                  final genderCategories = await _questionService
+                      .getGenderCategories(categoryId, subcategory.id);
+
+                  print(
+                    "Gender categories found: ${genderCategories.map((g) => g.name).toList()}",
+                  );
+
+                  // Ambil gender dari employee data
+                  String? employeeGender =
+                      widget.employeeData!['gender']?.toString();
+                  print("Employee gender: $employeeGender");
+
+                  // Convert gender nama ke ID yang digunakan di database
+                  String? employeeGenderId;
+                  if (employeeGender != null) {
+                    if (employeeGender.toLowerCase() == 'pria') {
+                      employeeGenderId = 'pria';
+                    } else if (employeeGender.toLowerCase() == 'wanita') {
+                      employeeGenderId = 'wanita';
+                    }
+                  }
+                  print("Employee gender ID for database: $employeeGenderId");
+
+                  for (var gender in genderCategories) {
+                    // Filter gender berdasarkan employee data jika ada
+                    if (employeeGenderId != null &&
+                        gender.id.toLowerCase() != employeeGenderId) {
+                      continue;
+                    }
+
+                    print(
+                      "=== PROCESSING GENDER: ${gender.name} (${gender.id}) ===",
+                    );
+
+                    // Coba ambil pertanyaan langsung dari gender level
+                    final directGenderItems = await _questionService
+                        .getQuestionsForPath(
+                          mainCategory: categoryId,
+                          subcategory: subcategory.id,
+                          gender: gender.id,
+                        );
+
+                    print(
+                      "Direct questions found for gender ${gender.name}: ${directGenderItems.length}",
+                    );
+
+                    allSubcategoryItems.addAll(directGenderItems);
+
+                    // Jelajahi sections dalam gender category
+                    try {
+                      final sections = await _questionService.getSections(
+                        categoryId,
+                        subcategory.id,
+                        gender.id,
+                      );
+
+                      print(
+                        "Sections found for ${gender.name}: ${sections.map((s) => s.name).toList()}",
+                      );
+
+                      for (var section in sections) {
+                        print(
+                          "=== PROCESSING SECTION: ${section.name} (${section.id}) ===",
+                        );
+
+                        final sectionItems = await _questionService
+                            .getQuestionsForPath(
+                              mainCategory: categoryId,
+                              subcategory: subcategory.id,
+                              gender: gender.id,
+                              section: section.id,
+                            );
+
+                        print(
+                          "Questions found for section ${section.name}: ${sectionItems.length}",
+                        );
+
+                        // Update section name in the questions to use the name from database
+                        final sectionItemsWithCorrectName =
+                            sectionItems.map((item) {
+                              return ChecklistItem(
+                                id: item.id,
+                                question: item.question,
+                                category: item.category,
+                                subcategory: item.subcategory,
+                                gender: item.gender,
+                                section:
+                                    section
+                                        .name, // Use name from database instead of ID
+                                uniformType: item.uniformType,
+                                forHijab: item.forHijab,
+                                order: item.order,
+                                options: item.options,
+                                isRequired: item.isRequired,
+                                allowsNote: item.allowsNote,
+                                answerValue: item.answerValue,
+                                note: item.note,
+                                skipped: item.skipped,
+                                createdAt: item.createdAt,
+                                updatedAt: item.updatedAt,
+                                isActive: item.isActive,
+                              );
+                            }).toList();
+
+                        allSubcategoryItems.addAll(sectionItemsWithCorrectName);
+                      }
+                    } catch (e) {
+                      print(
+                        "Error getting sections for gender ${gender.name}: $e",
+                      );
+                    }
+                  }
+                } catch (e) {
+                  print(
+                    "Error getting gender categories for subcategory ${subcategory.name}: $e",
+                  );
+                }
+              }
+
+              print(
+                "Total questions found for ${subcategory.name}: ${allSubcategoryItems.length}",
               );
 
               // Create new ChecklistItem objects with corrected subcategory name from database
               final correctedItems =
-                  subcategoryItems.map((item) {
+                  allSubcategoryItems.map((item) {
                     // Use the name from database only
                     final subcategoryDisplayName = subcategory.name;
 
                     print(
-                      "Item: ${item.question} -> Category: ${item.category}, Subcategory: $subcategoryDisplayName",
+                      "Item: ${item.question} -> Category: ${item.category}, Subcategory: $subcategoryDisplayName, Gender: ${item.gender}, Section: ${item.section}",
                     );
 
                     // Section names are already set from database in the new method
