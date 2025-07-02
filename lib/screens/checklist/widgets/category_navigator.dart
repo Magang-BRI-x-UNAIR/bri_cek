@@ -149,7 +149,10 @@ class CategoryNavigator extends StatelessWidget {
                 if (index < subcategories.length - 1)
                   Expanded(
                     child: Container(
-                      height: 2,
+                      height: 3,
+                      margin: EdgeInsets.symmetric(
+                        horizontal: AppSize.widthPercent(1),
+                      ),
                       color:
                           isCompleted
                               ? Colors.green.shade500
@@ -175,7 +178,7 @@ class CategoryNavigator extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
-                maxLines: 2,
+                maxLines: 1,
               ),
             ),
           ],
@@ -230,8 +233,8 @@ class CategoryNavigator extends StatelessWidget {
                 ),
                 if (index < subcategories.length - 1)
                   Container(
-                    width: AppSize.widthPercent(10),
-                    height: 2,
+                    width: AppSize.widthPercent(15),
+                    height: 3,
                     color:
                         isCompleted
                             ? Colors.green.shade500
@@ -256,7 +259,7 @@ class CategoryNavigator extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
-                maxLines: 2,
+                maxLines: 1,
               ),
             ),
           ],
