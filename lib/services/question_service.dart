@@ -1863,7 +1863,7 @@ class QuestionService {
     try {
       final snapshot =
           await _firestore
-              .collection('categories')
+              .collection('assessment_categories')
               .doc(mainCategoryId)
               .collection('subcategories')
               .doc(subcategoryId)
@@ -2053,6 +2053,286 @@ class QuestionService {
     } catch (e) {
       print('Error deleting question: $e');
       throw e;
+    }
+  }
+
+  // Method untuk inisialisasi pertanyaan Atribut & Aksesoris untuk Teller (tanpa uniform types)
+  Future<void> initializeCustomerServiceRambutWanitaQuestions() async {
+    try {
+      print("Initializing Customer Service Rambut Wanita questions...");
+
+      final categoryId = 'teller';
+      final subcategoryId = 'grooming';
+      final genderCategoryId = 'wanita';
+      final sectionId = 'rambut';
+      final Timestamp now = Timestamp.now();
+
+      // Pastikan section Rambut ada
+      await _firestore
+          .collection('assessment_categories')
+          .doc(categoryId)
+          .collection('subcategories')
+          .doc(subcategoryId)
+          .collection('gender_categories')
+          .doc(genderCategoryId)
+          .collection('sections')
+          .doc(sectionId)
+          .set({
+            'name': 'Rambut',
+            'order': 2,
+            'isActive': true,
+            'createdAt': now,
+            'updatedAt': now,
+          }, SetOptions(merge: true));
+
+      // Tambahkan pertanyaan untuk uniform type Korporat
+      await _addCustomerServiceRambutWanitaQuestionsForType(
+        categoryId: categoryId,
+        subcategoryId: subcategoryId,
+        genderCategoryId: genderCategoryId,
+        sectionId: sectionId,
+        uniformType: 'korporat',
+        uniformTypeName: 'Seragam Korporat',
+        questions: [
+          {
+            'text':
+                'Rambut harus tertata rapi, warna rambut harus terlihat alami (hitam/cokelat tua) dan tidak diperkenankan warna highlight/ombre, mencolok seperti cokelat terang, merah, blonde, neon, dsb',
+            'order': 1,
+          },
+          {
+            'text':
+                'Tidak diperkenankan menggunakan aksesoris rambut warna-warni/ikat rambut karet/jedai',
+            'order': 2,
+          },
+          {
+            'text':
+                'Rambut yang menyentuh bahu harus dicepol & poni dijepit dengan penjepit bobby pin warna hitam',
+            'order': 3,
+          },
+        ],
+        now: now,
+      );
+
+      // Tambahkan pertanyaan untuk uniform type Batik
+      await _addCustomerServiceRambutWanitaQuestionsForType(
+        categoryId: categoryId,
+        subcategoryId: subcategoryId,
+        genderCategoryId: genderCategoryId,
+        sectionId: sectionId,
+        uniformType: 'batik',
+        uniformTypeName: 'Seragam Batik',
+        questions: [
+          {
+            'text':
+                'Rambut harus tertata rapi, warna rambut harus terlihat alami (hitam/cokelat tua) dan tidak diperkenankan warna highlight/ombre, mencolok seperti cokelat terang, merah, blonde, neon, dsb',
+            'order': 1,
+          },
+          {
+            'text':
+                'Tidak diperkenankan menggunakan aksesoris rambut warna-warni/ikat rambut karet/jedai',
+            'order': 2,
+          },
+          {
+            'text':
+                'Rambut yang menyentuh bahu harus dicepol & poni dijepit dengan penjepit bobby pin warna hitam',
+            'order': 3,
+          },
+        ],
+        now: now,
+      );
+
+      // Tambahkan pertanyaan untuk uniform type Kasual
+      await _addCustomerServiceRambutWanitaQuestionsForType(
+        categoryId: categoryId,
+        subcategoryId: subcategoryId,
+        genderCategoryId: genderCategoryId,
+        sectionId: sectionId,
+        uniformType: 'kasual',
+        uniformTypeName: 'Pakaian Kasual',
+        questions: [
+          {
+            'text':
+                'Rambut harus tertata rapi, warna rambut harus terlihat alami (hitam/cokelat tua) dan tidak diperkenankan warna highlight/ombre, mencolok seperti cokelat terang, merah, blonde, neon, dsb',
+            'order': 1,
+          },
+          {
+            'text':
+                'Tidak diperkenankan menggunakan aksesoris rambut warna-warni/ikat rambut karet/jedai',
+            'order': 2,
+          },
+          {
+            'text':
+                'Rambut diperkenankan dicepol/digerai rapi & poni yang menghalangi mata di jepit menggunakan bobby pin',
+            'order': 3,
+          },
+        ],
+        now: now,
+      );
+
+      print("Added all Customer Service Rambut Wanita questions successfully!");
+    } catch (e) {
+      print("Error initializing Customer Service Rambut Wanita questions: $e");
+      throw e;
+    }
+  }
+
+  Future<void> _addCustomerServiceRambutWanitaQuestionsForType({
+    required String categoryId,
+    required String subcategoryId,
+    required String genderCategoryId,
+    required String sectionId,
+    required String uniformType,
+    required String uniformTypeName,
+    required List<Map<String, dynamic>> questions,
+    required Timestamp now,
+  }) async {
+    // Pastikan uniform type ada
+    await _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('gender_categories')
+        .doc(genderCategoryId)
+        .collection('sections')
+        .doc(sectionId)
+        .collection('uniform_types')
+        .doc(uniformType)
+        .set({
+          'name': uniformTypeName,
+          'order': _getUniformTypeOrder(uniformType),
+          'isActive': true,
+          'createdAt': now,
+          'updatedAt': now,
+        }, SetOptions(merge: true));
+
+    // Path ke collection questions untuk uniform type ini
+    final questionsCollection = _firestore
+        .collection('assessment_categories')
+        .doc(categoryId)
+        .collection('subcategories')
+        .doc(subcategoryId)
+        .collection('gender_categories')
+        .doc(genderCategoryId)
+        .collection('sections')
+        .doc(sectionId)
+        .collection('uniform_types')
+        .doc(uniformType)
+        .collection('questions');
+
+    // Hapus pertanyaan yang mungkin sudah ada sebelumnya
+    final existingQuestions = await questionsCollection.get();
+    final batch = _firestore.batch();
+
+    for (var doc in existingQuestions.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+
+    // Tambahkan pertanyaan baru
+    for (var question in questions) {
+      await questionsCollection.add({
+        'text': question['text'],
+        'order': question['order'],
+        'isActive': true,
+        'createdAt': now,
+        'updatedAt': now,
+      });
+    }
+
+    print(
+      "Added ${questions.length} Rambut ${uniformTypeName} questions for Customer Service successfully!",
+    );
+  }
+
+  Future<void> _ensureCustomerServiceGroomingWanitaStructure() async {
+    final now = Timestamp.now();
+
+    // Pastikan kategori Customer Service ada
+    await _firestore
+        .collection('assessment_categories')
+        .doc('customer_service')
+        .set({
+          'name': 'Customer Service',
+          'order': 1,
+          'icon': 'support_agent',
+          'isActive': true,
+          'isPersonBased': true,
+          'createdAt': now,
+          'updatedAt': now,
+        }, SetOptions(merge: true));
+
+    // Pastikan subcategory Grooming ada
+    await _firestore
+        .collection('assessment_categories')
+        .doc('customer_service')
+        .collection('subcategories')
+        .doc('grooming')
+        .set({
+          'name': 'Grooming',
+          'order': 1,
+          'isActive': true,
+          'createdAt': now,
+          'updatedAt': now,
+        }, SetOptions(merge: true));
+
+    // Pastikan gender category Wanita ada
+    await _firestore
+        .collection('assessment_categories')
+        .doc('customer_service')
+        .collection('subcategories')
+        .doc('grooming')
+        .collection('gender_categories')
+        .doc('wanita')
+        .set({
+          'name': 'Wanita',
+          'order': 2,
+          'isActive': true,
+          'createdAt': now,
+          'updatedAt': now,
+        }, SetOptions(merge: true));
+
+    print("Customer Service Grooming Wanita structure ensured successfully!");
+  }
+
+  Future<void> initializeAllCustomerServiceGroomingWanitaQuestions() async {
+    try {
+      print("Initializing all Customer Service Grooming Wanita questions...");
+
+      // Pastikan struktur dasar ada
+      await _ensureCustomerServiceGroomingWanitaStructure();
+
+      // Tambahkan pertanyaan Rambut (dengan uniform types)
+      await initializeCustomerServiceRambutWanitaQuestions();
+
+      print(
+        "All Customer Service Grooming Wanita questions initialized successfully!",
+      );
+    } catch (e) {
+      print(
+        "Error initializing all Customer Service Grooming Wanita questions: $e",
+      );
+      throw e;
+    }
+  }
+
+  int _getUniformTypeOrder(String uniformType) {
+    switch (uniformType.toLowerCase()) {
+      case 'korporat':
+        return 1;
+      case 'batik':
+        return 2;
+      case 'kasual':
+        return 3;
+      case 'pdh':
+        return 1;
+      case 'pdl':
+        return 2;
+      case 'korporat_batik':
+        return 1;
+      default:
+        return 1;
     }
   }
 }

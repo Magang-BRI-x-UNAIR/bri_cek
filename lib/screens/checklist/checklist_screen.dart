@@ -236,235 +236,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
                     allSubcategoryItems.addAll(directGenderItems);
 
-                    for (var gender in genderCategories) {
-                      // Filter gender berdasarkan employee data jika ada
-                      if (employeeGenderId != null &&
-                          gender.id.toLowerCase() != employeeGenderId) {
-                        continue;
-                      }
-
-                      print(
-                        "=== PROCESSING GENDER: ${gender.name} (${gender.id}) ===",
-                      );
-
-                      // Coba ambil pertanyaan langsung dari gender level
-                      final directGenderItems = await _questionService
-                          .getQuestionsForPath(
-                            mainCategory: categoryId,
-                            subcategory: subcategory.id,
-                            gender: gender.id,
-                          );
-
-                      print(
-                        "Direct questions found for gender ${gender.name}: ${directGenderItems.length}",
-                      );
-
-                      allSubcategoryItems.addAll(directGenderItems);
-
-                      // Jelajahi sections dalam gender category
-                      try {
-                        final sections = await _questionService.getSections(
-                          categoryId,
-                          subcategory.id,
-                          gender.id,
-                        );
-
-                        print(
-                          "Sections found for ${gender.name}: ${sections.map((s) => s.name).toList()}",
-                        );
-
-                        for (var section in sections) {
-                          print(
-                            "=== PROCESSING SECTION: ${section.name} (${section.id}) ===",
-                          );
-
-                          // Coba ambil pertanyaan langsung dari section level dulu
-                          final sectionItems = await _questionService
-                              .getQuestionsForPath(
-                                mainCategory: categoryId,
-                                subcategory: subcategory.id,
-                                gender: gender.id,
-                                section: section.id,
-                              );
-
-                          print(
-                            "Direct questions found for section ${section.name}: ${sectionItems.length}",
-                          );
-
-                          List<ChecklistItem> allSectionItems = [
-                            ...sectionItems,
-                          ];
-
-                          // Jika tidak ada pertanyaan langsung di section, coba cari di uniform_types
-                          if (sectionItems.isEmpty ||
-                              section.id == 'pakaian' ||
-                              section.id == 'sepatu') {
-                            try {
-                              // Get uniform types untuk section ini
-                              final uniformTypes = await _questionService
-                                  .getUniformTypes(
-                                    categoryId,
-                                    subcategory.id,
-                                    gender.id,
-                                    section.id,
-                                  );
-
-                              print(
-                                "Uniform types found for section ${section.name}: ${uniformTypes.map((u) => u.name).toList()}",
-                              );
-
-                              // Filter uniform types berdasarkan employee data jika ada
-                              List<String> allowedUniformTypes = [];
-                              if (widget.employeeData != null &&
-                                  widget.employeeData!['uniformType'] != null) {
-                                String employeeUniformType =
-                                    widget.employeeData!['uniformType']
-                                        .toString();
-                                print(
-                                  "Employee uniform type: $employeeUniformType",
-                                );
-
-                                // Map employee uniform type ke database ID dengan lebih spesifik
-                                String normalizedEmployeeType =
-                                    employeeUniformType.toLowerCase();
-
-                                if (normalizedEmployeeType == 'pdh') {
-                                  allowedUniformTypes = ['pdh'];
-                                } else if (normalizedEmployeeType == 'pdl') {
-                                  allowedUniformTypes = ['pdl'];
-                                } else if (normalizedEmployeeType == 'batik') {
-                                  allowedUniformTypes = ['batik'];
-                                } else if (normalizedEmployeeType == 'kasual') {
-                                  allowedUniformTypes = ['kasual'];
-                                } else if (normalizedEmployeeType ==
-                                    'korporat') {
-                                  allowedUniformTypes = ['korporat'];
-                                } else {
-                                  // Jika tidak ada match atau tidak diketahui, ambil semua
-                                  allowedUniformTypes =
-                                      uniformTypes.map((u) => u.id).toList();
-                                }
-
-                                print(
-                                  "Allowed uniform types: $allowedUniformTypes",
-                                );
-                              } else {
-                                // Jika tidak ada employee data, ambil semua uniform types
-                                allowedUniformTypes =
-                                    uniformTypes.map((u) => u.id).toList();
-                              }
-
-                              for (var uniformType in uniformTypes) {
-                                // Skip uniform type yang tidak sesuai dengan employee data
-                                if (allowedUniformTypes.isNotEmpty &&
-                                    !allowedUniformTypes.contains(
-                                      uniformType.id.toLowerCase(),
-                                    )) {
-                                  print(
-                                    "Skipping uniform type ${uniformType.name} (${uniformType.id}) - not in allowed types",
-                                  );
-                                  continue;
-                                }
-
-                                print(
-                                  "=== PROCESSING UNIFORM TYPE: ${uniformType.name} (${uniformType.id}) ===",
-                                );
-
-                                final uniformTypeItems = await _questionService
-                                    .getQuestionsForPath(
-                                      mainCategory: categoryId,
-                                      subcategory: subcategory.id,
-                                      gender: gender.id,
-                                      section: section.id,
-                                      uniformType: uniformType.id,
-                                    );
-
-                                print(
-                                  "Questions found for uniform type ${uniformType.name}: ${uniformTypeItems.length}",
-                                );
-
-                                // Update uniform type name in the questions
-                                final uniformTypeItemsWithCorrectName =
-                                    uniformTypeItems.map((item) {
-                                      return ChecklistItem(
-                                        id: item.id,
-                                        question: item.question,
-                                        category: item.category,
-                                        subcategory: item.subcategory,
-                                        gender: item.gender,
-                                        section:
-                                            section
-                                                .name, // Use section name from database
-                                        uniformType:
-                                            uniformType
-                                                .name, // Use uniform type name from database
-                                        forHijab: item.forHijab,
-                                        order: item.order,
-                                        options: item.options,
-                                        isRequired: item.isRequired,
-                                        allowsNote: item.allowsNote,
-                                        answerValue: item.answerValue,
-                                        note: item.note,
-                                        skipped: item.skipped,
-                                        createdAt: item.createdAt,
-                                        updatedAt: item.updatedAt,
-                                        isActive: item.isActive,
-                                      );
-                                    }).toList();
-
-                                allSectionItems.addAll(
-                                  uniformTypeItemsWithCorrectName,
-                                );
-                              }
-                            } catch (e) {
-                              print(
-                                "Error getting uniform types for section ${section.name}: $e",
-                              );
-                            }
-                          }
-
-                          // Update section name in all items
-                          final sectionItemsWithCorrectName =
-                              allSectionItems.map((item) {
-                                return ChecklistItem(
-                                  id: item.id,
-                                  question: item.question,
-                                  category: item.category,
-                                  subcategory: item.subcategory,
-                                  gender: item.gender,
-                                  section:
-                                      section
-                                          .name, // Use name from database instead of ID
-                                  uniformType: item.uniformType,
-                                  forHijab: item.forHijab,
-                                  order: item.order,
-                                  options: item.options,
-                                  isRequired: item.isRequired,
-                                  allowsNote: item.allowsNote,
-                                  answerValue: item.answerValue,
-                                  note: item.note,
-                                  skipped: item.skipped,
-                                  createdAt: item.createdAt,
-                                  updatedAt: item.updatedAt,
-                                  isActive: item.isActive,
-                                );
-                              }).toList();
-
-                          allSubcategoryItems.addAll(
-                            sectionItemsWithCorrectName,
-                          );
-
-                          print(
-                            "Total items added for section ${section.name}: ${sectionItemsWithCorrectName.length}",
-                          );
-                        }
-                      } catch (e) {
-                        print(
-                          "Error getting sections for gender ${gender.name}: $e",
-                        );
-                      }
-                    }
-
                     // Jelajahi sections dalam gender category
                     try {
                       final sections = await _questionService.getSections(
@@ -482,6 +253,7 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                           "=== PROCESSING SECTION: ${section.name} (${section.id}) ===",
                         );
 
+                        // Coba ambil pertanyaan langsung dari section level dulu
                         final sectionItems = await _questionService
                             .getQuestionsForPath(
                               mainCategory: categoryId,
@@ -491,12 +263,159 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                             );
 
                         print(
-                          "Questions found for section ${section.name}: ${sectionItems.length}",
+                          "Direct questions found for section ${section.name}: ${sectionItems.length}",
                         );
 
-                        // Update section name in the questions to use the name from database
+                        List<ChecklistItem> allSectionItems = [...sectionItems];
+
+                        // Jika tidak ada pertanyaan langsung di section, coba cari di uniform_types
+                        // Khusus untuk section yang memiliki uniform types
+                        if ((sectionItems.isEmpty &&
+                                (section.id == 'pakaian' ||
+                                    section.id == 'sepatu' ||
+                                    section.id == 'jilbab' ||
+                                    section.id == 'rambut')) ||
+                            // Atau jika section memiliki uniform types meskipun ada pertanyaan langsung
+                            (section.id == 'pakaian' ||
+                                section.id == 'sepatu' ||
+                                section.id == 'jilbab' ||
+                                section.id == 'rambut')) {
+                          try {
+                            // Get uniform types untuk section ini
+                            final uniformTypes = await _questionService
+                                .getUniformTypes(
+                                  categoryId,
+                                  subcategory.id,
+                                  gender.id,
+                                  section.id,
+                                );
+
+                            print(
+                              "Uniform types found for section ${section.name}: ${uniformTypes.map((u) => u.name).toList()}",
+                            );
+
+                            // Filter uniform types berdasarkan employee data jika ada
+                            List<String> allowedUniformTypes = [];
+                            if (widget.employeeData != null &&
+                                widget.employeeData!['uniformType'] != null) {
+                              String employeeUniformType =
+                                  widget.employeeData!['uniformType']
+                                      .toString();
+                              print(
+                                "Employee uniform type: $employeeUniformType",
+                              );
+
+                              // Map employee uniform type ke database ID dengan lebih spesifik
+                              String normalizedEmployeeType =
+                                  employeeUniformType.toLowerCase();
+
+                              if (normalizedEmployeeType == 'pdh') {
+                                allowedUniformTypes = ['pdh'];
+                              } else if (normalizedEmployeeType == 'pdl') {
+                                allowedUniformTypes = ['pdl'];
+                              } else if (normalizedEmployeeType == 'batik') {
+                                allowedUniformTypes = ['batik'];
+                              } else if (normalizedEmployeeType == 'kasual' ||
+                                  normalizedEmployeeType == 'casual') {
+                                allowedUniformTypes = ['kasual', 'casual'];
+                              } else if (normalizedEmployeeType == 'korporat') {
+                                allowedUniformTypes = ['korporat'];
+                              } else {
+                                // Jika tidak ada match atau tidak diketahui, ambil semua
+                                allowedUniformTypes =
+                                    uniformTypes
+                                        .map((u) => u.id.toLowerCase())
+                                        .toList();
+                              }
+
+                              print(
+                                "Allowed uniform types: $allowedUniformTypes",
+                              );
+                            } else {
+                              // Jika tidak ada employee data, ambil semua uniform types
+                              allowedUniformTypes =
+                                  uniformTypes
+                                      .map((u) => u.id.toLowerCase())
+                                      .toList();
+                            }
+
+                            for (var uniformType in uniformTypes) {
+                              print(
+                                "Checking uniform type: ${uniformType.name} (ID: ${uniformType.id})",
+                              );
+
+                              // Skip uniform type yang tidak sesuai dengan employee data
+                              // Normalize both for case-insensitive comparison
+                              if (allowedUniformTypes.isNotEmpty &&
+                                  !allowedUniformTypes.contains(
+                                    uniformType.id.toLowerCase(),
+                                  )) {
+                                print(
+                                  "Skipping uniform type ${uniformType.name} (${uniformType.id}) - not in allowed types: $allowedUniformTypes",
+                                );
+                                continue;
+                              }
+
+                              print(
+                                "=== PROCESSING UNIFORM TYPE: ${uniformType.name} (${uniformType.id}) ===",
+                              );
+
+                              final uniformTypeItems = await _questionService
+                                  .getQuestionsForPath(
+                                    mainCategory: categoryId,
+                                    subcategory: subcategory.id,
+                                    gender: gender.id,
+                                    section: section.id,
+                                    uniformType: uniformType.id,
+                                  );
+
+                              print(
+                                "Questions found for uniform type ${uniformType.name}: ${uniformTypeItems.length}",
+                              );
+
+                              // Update uniform type name in the questions
+                              final uniformTypeItemsWithCorrectName =
+                                  uniformTypeItems.map((item) {
+                                    return ChecklistItem(
+                                      id: item.id,
+                                      question: item.question,
+                                      category: item.category,
+                                      subcategory: item.subcategory,
+                                      gender: item.gender,
+                                      section:
+                                          section
+                                              .name, // Use section name from database
+                                      uniformType:
+                                          uniformType
+                                              .name, // Use uniform type name from database
+                                      forHijab: item.forHijab,
+                                      order: item.order,
+                                      options: item.options,
+                                      isRequired: item.isRequired,
+                                      allowsNote: item.allowsNote,
+                                      answerValue: item.answerValue,
+                                      note: item.note,
+                                      skipped: item.skipped,
+                                      createdAt: item.createdAt,
+                                      updatedAt: item.updatedAt,
+                                      isActive: item.isActive,
+                                    );
+                                  }).toList();
+
+                              allSectionItems.addAll(
+                                uniformTypeItemsWithCorrectName,
+                              );
+                            }
+                          } catch (e) {
+                            print(
+                              "Error getting uniform types for section ${section.name}: $e",
+                            );
+                          }
+                        }
+
+                        // Update section name in all items
                         final sectionItemsWithCorrectName =
-                            sectionItems.map((item) {
+                            allSectionItems.map((item) {
                               return ChecklistItem(
                                 id: item.id,
                                 question: item.question,
@@ -522,6 +441,10 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                             }).toList();
 
                         allSubcategoryItems.addAll(sectionItemsWithCorrectName);
+
+                        print(
+                          "Total items added for section ${section.name}: ${sectionItemsWithCorrectName.length}",
+                        );
                       }
                     } catch (e) {
                       print(

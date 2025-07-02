@@ -63,7 +63,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                   Navigator.of(context).pop();
                   try {
                     await _questionService
-                        .initializeSatpamPakaianWanitaQuestions();
+                        .initializeCustomerServiceRambutWanitaQuestions();
                     _showSuccessSnackbar(
                       'Data Fasad Gedung berhasil diinisialisasi',
                     );
