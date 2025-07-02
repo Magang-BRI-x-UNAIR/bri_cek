@@ -375,12 +375,23 @@ class _SurveyHistoryScreenState extends State<SurveyHistoryScreen> {
                     ),
                   ],
                   Spacer(),
-                  Text(
-                    '${statistics['totalQuestions'] ?? 0} pertanyaan',
-                    style: AppSize.getTextStyle(
-                      fontSize: AppSize.captionFontSize,
-                      color: Colors.grey.shade600,
-                    ),
+                  // Display surveyor name instead of question count
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person,
+                        size: AppSize.iconSize * 0.7,
+                        color: Colors.grey.shade600,
+                      ),
+                      SizedBox(width: AppSize.paddingXS),
+                      Text(
+                        'Surveyor: ${result['userName'] ?? 'Unknown'}',
+                        style: AppSize.getTextStyle(
+                          fontSize: AppSize.captionFontSize,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -665,11 +676,6 @@ class _SurveyDetailScreenState extends State<SurveyDetailScreen> {
                     // Statistics
                     Row(
                       children: [
-                        _buildStatChip(
-                          'Total',
-                          displayStats['totalQuestions']?.toString() ?? '0',
-                        ),
-                        SizedBox(width: AppSize.paddingS),
                         _buildStatChip(
                           'Benar',
                           displayStats['passedQuestions']?.toString() ?? '0',

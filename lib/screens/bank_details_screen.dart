@@ -649,11 +649,16 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     final statistics = survey['statistics'] as Map<String, dynamic>? ?? {};
     final score = statistics['score'] ?? 0;
     final statusColor = _getScoreColor(score);
-    final isCompleted =
-        (statistics['answeredQuestions'] ?? 0) ==
-        (statistics['totalQuestions'] ?? 0);
-    final statusText = isCompleted ? 'Completed' : 'Incomplete';
     final categories = List<String>.from(survey['categories'] ?? []);
+
+    // Check if all questions in the selected categories have been answered
+    final answeredQuestions = statistics['answeredQuestions'] ?? 0;
+    // Check completion status without relying on totalQuestions
+    final isCompleted = answeredQuestions > 0 && categories.isNotEmpty;
+
+    // Status text shows categories completed without question count
+    final statusText =
+        isCompleted ? '${categories.length} Categories Done' : 'Incomplete';
 
     return Container(
       margin: EdgeInsets.only(bottom: AppSize.heightPercent(1)),
@@ -737,13 +742,20 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                             color: statusColor,
                           ),
                           SizedBox(width: 4),
-                          Text(
-                            statusText,
-                            style: AppSize.getTextStyle(
-                              fontSize: AppSize.smallFontSize * 0.9,
-                              color: statusColor,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                statusText,
+                                style: AppSize.getTextStyle(
+                                  fontSize: AppSize.smallFontSize * 0.9,
+                                  color: statusColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              // Question count removed as requested
+                            ],
                           ),
                         ],
                       ),

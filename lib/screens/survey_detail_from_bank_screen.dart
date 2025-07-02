@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bri_cek/services/survey_result_service.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SurveyDetailFromBankScreen extends StatefulWidget {
   final String surveyId;
@@ -24,12 +25,34 @@ class _SurveyDetailFromBankScreenState
     extends State<SurveyDetailFromBankScreen> {
   final SurveyResultService _surveyResultService = SurveyResultService();
   List<Map<String, dynamic>> _answers = [];
+  List<Map<String, dynamic>> _filteredAnswers = [];
+  List<String> _subcategories = [];
+  String? _selectedSubcategory;
   bool _isLoading = true;
   String? _error;
+
+  // Mapping untuk mengatasi variasi penulisan subcategory
+  final Map<String, List<String>> _subcategoryVariations = {
+    'akurat': ['akurat', 'accurate', 'accurat', 'akurasi', 'accuracy', 'tepat'],
+    'sigap': ['sigap', 'cepat', 'responsive', 'tanggap', 'responsif'],
+    'grooming': ['grooming', 'groming', 'penampilan', 'appearance'],
+    'ramah': ['ramah', 'friendly', 'sopan', 'santun', 'polite'],
+    'mudah': ['mudah', 'easy', 'simple', 'sederhana'],
+  };
 
   @override
   void initState() {
     super.initState();
+    // Debug print survey data
+    print('Survey ID: ${widget.surveyId}');
+    print('Selected Category: ${widget.selectedCategory}');
+    print('Survey Data: ${widget.surveyData.keys.toList()}');
+    if (widget.surveyData['selectedDate'] != null) {
+      print('Selected Date: ${widget.surveyData['selectedDate']}');
+    }
+    if (widget.surveyData['categories'] != null) {
+      print('Categories: ${widget.surveyData['categories']}');
+    }
     _loadAnswers();
   }
 
@@ -40,24 +63,155 @@ class _SurveyDetailFromBankScreenState
         _error = null;
       });
 
-      List<Map<String, dynamic>> answers;
+      List<Map<String, dynamic>> answers = [];
 
-      if (widget.selectedCategory != null) {
-        // Load jawaban untuk kategori tertentu
-        answers = await _surveyResultService.getSurveyAnswersByCategory(
+      // Debug print for tracking
+      print(
+        'Loading answers for category: ${widget.selectedCategory ?? "all"}',
+      );
+
+      try {
+        if (widget.selectedCategory != null) {
+          // Load jawaban untuk kategori tertentu
+          answers = await _surveyResultService.getSurveyAnswersByCategory(
+            widget.surveyId,
+            widget.selectedCategory!,
+          );
+        } else {
+          // Load semua jawaban
+          answers = await _surveyResultService.getSurveyAnswers(
+            widget.surveyId,
+          );
+        }
+      } catch (specificError) {
+        print('First attempt failed: $specificError');
+
+        // Fallback method: get all answers and filter manually if category-specific query fails
+        final allAnswers = await _surveyResultService.getSurveyAnswers(
           widget.surveyId,
-          widget.selectedCategory!,
         );
-      } else {
-        // Load semua jawaban
-        answers = await _surveyResultService.getSurveyAnswers(widget.surveyId);
+
+        if (widget.selectedCategory != null) {
+          print(
+            'Trying client-side filtering for category: ${widget.selectedCategory}',
+          );
+
+          // Enhanced filtering with multiple strategies
+
+          // 1. First try exact match
+          answers =
+              allAnswers
+                  .where(
+                    (answer) => answer['category'] == widget.selectedCategory,
+                  )
+                  .toList();
+
+          // 2. If no results, try case insensitive match
+          if (answers.isEmpty) {
+            print('No exact matches, trying case-insensitive match');
+            answers =
+                allAnswers
+                    .where(
+                      (answer) =>
+                          answer['category'] != null &&
+                          answer['category'].toString().toLowerCase() ==
+                              widget.selectedCategory!.toLowerCase(),
+                    )
+                    .toList();
+          }
+
+          // 3. If still no results, try substring match
+          if (answers.isEmpty) {
+            print('No case-insensitive matches, trying substring match');
+            answers =
+                allAnswers
+                    .where(
+                      (answer) =>
+                          answer['category'] != null &&
+                          (answer['category'].toString().toLowerCase().contains(
+                                widget.selectedCategory!.toLowerCase(),
+                              ) ||
+                              widget.selectedCategory!.toLowerCase().contains(
+                                answer['category'].toString().toLowerCase(),
+                              )),
+                    )
+                    .toList();
+          }
+
+          // 4. Special handling for Satpam
+          if (answers.isEmpty &&
+              (widget.selectedCategory!.toLowerCase() == 'satpam' ||
+                  widget.selectedCategory!.toLowerCase().contains('satpam'))) {
+            print('Trying special match for Satpam');
+            answers =
+                allAnswers
+                    .where(
+                      (answer) =>
+                          answer['category'] != null &&
+                          answer['category'].toString().toLowerCase().contains(
+                            'satpam',
+                          ),
+                    )
+                    .toList();
+
+            if (answers.isEmpty) {
+              // Try with any security related terms
+              print('Trying security related terms');
+              answers =
+                  allAnswers
+                      .where(
+                        (answer) =>
+                            answer['category'] != null &&
+                            (answer['category']
+                                    .toString()
+                                    .toLowerCase()
+                                    .contains('securit') ||
+                                answer['category']
+                                    .toString()
+                                    .toLowerCase()
+                                    .contains('keamanan')),
+                      )
+                      .toList();
+            }
+          }
+        } else {
+          // If no category selected, use all answers
+          answers = allAnswers;
+        }
+
+        // Print available categories for debugging
+        if (answers.isEmpty) {
+          final availableCategories =
+              allAnswers
+                  .map((a) => a['category']?.toString() ?? 'null')
+                  .toSet()
+                  .toList();
+          print('Available categories in answers: $availableCategories');
+        }
+
+        // Sort by order if present
+        answers.sort((a, b) {
+          final orderA = a['order'] as num? ?? 0;
+          final orderB = b['order'] as num? ?? 0;
+          return orderA.compareTo(orderB);
+        });
       }
+
+      print('Found ${answers.length} answers for display');
+
+      // Extract unique subcategories for filtering
+      _subcategories = _extractSubcategories(answers);
+      print('Found subcategories: $_subcategories');
+
+      // Apply initial filtering (no filter)
+      _updateFilteredAnswers(answers);
 
       setState(() {
         _answers = answers;
         _isLoading = false;
       });
     } catch (e) {
+      print('Error loading answers: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -65,17 +219,188 @@ class _SurveyDetailFromBankScreenState
     }
   }
 
+  // Extract all unique subcategories from answers
+  List<String> _extractSubcategories(List<Map<String, dynamic>> answers) {
+    final subcategories = <String>{};
+    final Map<String, int> subcategoryCount = {};
+
+    for (var answer in answers) {
+      if (answer['subcategory'] != null &&
+          answer['subcategory'].toString().isNotEmpty) {
+        // Normalisasi subcategory untuk menghindari perbedaan penulisan
+        String originalSubcategory = answer['subcategory'].toString();
+        String normalizedSubcategory = _normalizeSubcategoryName(
+          originalSubcategory,
+        );
+
+        // Jika sudah ada, pertahankan yang asli dengan jumlah tertinggi
+        if (subcategoryCount.containsKey(normalizedSubcategory)) {
+          subcategoryCount[normalizedSubcategory] =
+              subcategoryCount[normalizedSubcategory]! + 1;
+        } else {
+          subcategoryCount[normalizedSubcategory] = 1;
+          subcategories.add(originalSubcategory);
+        }
+      }
+    }
+
+    // Print subcategory counts for debugging
+    subcategoryCount.forEach((key, value) {
+      print('Subcategory: $key, Count: $value');
+    });
+
+    return ['Semua', ...subcategories.toList()..sort()];
+  }
+
+  // Helper method untuk normalisasi nama subcategory
+  String _normalizeSubcategoryName(String subcategory) {
+    return subcategory.toLowerCase().trim();
+  }
+
+  // Filter answers based on selected subcategory
+  void _updateFilteredAnswers(List<Map<String, dynamic>> answers) {
+    if (_selectedSubcategory == null || _selectedSubcategory == 'Semua') {
+      _filteredAnswers = answers;
+    } else {
+      print('Filtering for subcategory: $_selectedSubcategory');
+
+      // Normalized case-insensitive filtering with variation handling
+      String normalizedTarget = _selectedSubcategory!.toLowerCase().trim();
+
+      // Get all possible variations for the selected subcategory
+      List<String> possibleVariations = [];
+
+      // Cari key yang sesuai dengan target subcategory
+      for (var key in _subcategoryVariations.keys) {
+        if (normalizedTarget.contains(key) || key.contains(normalizedTarget)) {
+          possibleVariations.addAll(_subcategoryVariations[key]!);
+          break;
+        }
+      }
+
+      // Jika tidak ada variasi yang ditemukan, gunakan subcategory asli
+      if (possibleVariations.isEmpty) {
+        possibleVariations = [normalizedTarget];
+      }
+
+      print('Looking for these variations: $possibleVariations');
+
+      // Debug: print all subcategories for inspection
+      print('All available subcategories in answers:');
+      final uniqueSubcats =
+          answers
+              .map((a) => a['subcategory']?.toString())
+              .where((s) => s != null && s.isNotEmpty)
+              .toSet()
+              .toList();
+      print(uniqueSubcats);
+
+      // Filter dengan memeriksa semua kemungkinan variasi
+      _filteredAnswers =
+          answers.where((answer) {
+            if (answer['subcategory'] == null) return false;
+
+            String answerSubcategory =
+                answer['subcategory'].toString().toLowerCase().trim();
+
+            // Periksa kecocokan dengan semua variasi yang mungkin
+            for (var variation in possibleVariations) {
+              if (answerSubcategory == variation ||
+                  answerSubcategory.contains(variation) ||
+                  variation.contains(answerSubcategory)) {
+                return true;
+              }
+            }
+
+            return false;
+          }).toList();
+
+      // Sort by order if present
+      _filteredAnswers.sort((a, b) {
+        final orderA = a['order'] as num? ?? 0;
+        final orderB = b['order'] as num? ?? 0;
+        return orderA.compareTo(orderB);
+      });
+
+      print(
+        'Found ${_filteredAnswers.length} answers after filtering for $_selectedSubcategory',
+      );
+
+      // Debug: print questions found for "Akurat"
+      if (normalizedTarget == 'akurat') {
+        print('Questions matching "Akurat":');
+        for (var answer in _filteredAnswers) {
+          print(
+            '- ${answer['question']} (subcategory: ${answer['subcategory']})',
+          );
+        }
+      }
+    }
+  }
+
+  // Handle subcategory filter change
+  void _onSubcategoryChanged(String? subcategory) {
+    setState(() {
+      _selectedSubcategory = subcategory;
+      _updateFilteredAnswers(_answers);
+
+      // Debug: when filtering for "Akurat", let's print more details
+      if (subcategory?.toLowerCase() == 'akurat') {
+        print('=== DEBUG FOR AKURAT FILTER ===');
+        print('Selected subcategory: $subcategory');
+        print('Total answers before filter: ${_answers.length}');
+        print('Total answers after filter: ${_filteredAnswers.length}');
+
+        // Check for similar subcategories
+        final possibleMatches =
+            _answers
+                .where(
+                  (a) =>
+                      a['subcategory'] != null &&
+                      (a['subcategory'].toString().toLowerCase().contains(
+                            'akur',
+                          ) ||
+                          a['subcategory'].toString().toLowerCase().contains(
+                            'accur',
+                          )),
+                )
+                .map((a) => '${a['subcategory']} (${a['question']})')
+                .toSet()
+                .toList();
+
+        print('Possible similar subcategories: $possibleMatches');
+        print('==============================');
+      }
+    });
+  }
+
   String _formatDate(dynamic timestamp) {
     if (timestamp == null) return 'Tanggal tidak tersedia';
 
-    DateTime date;
-    if (timestamp is DateTime) {
-      date = timestamp;
-    } else {
-      date = timestamp.toDate();
-    }
+    try {
+      DateTime date;
+      if (timestamp is DateTime) {
+        date = timestamp;
+      } else if (timestamp is Timestamp) {
+        date = timestamp.toDate();
+      } else if (timestamp is String) {
+        // Try to parse the string as a date
+        date = DateTime.parse(timestamp);
+      } else {
+        // Try to use toDate() method if available
+        try {
+          date = timestamp.toDate();
+        } catch (e) {
+          print('Error converting timestamp to date: $e');
+          return 'Tanggal: ${timestamp.toString()}';
+        }
+      }
 
-    return DateFormat('dd MMMM yyyy, HH:mm').format(date);
+      return DateFormat('dd MMMM yyyy').format(date);
+    } catch (e) {
+      print('Error formatting date: $e');
+      return 'Tanggal survey: ${timestamp.toString()}';
+    }
   }
 
   @override
@@ -109,8 +434,24 @@ class _SurveyDetailFromBankScreenState
   }
 
   Widget _buildHeaderCard(Map<String, dynamic> statistics) {
-    final score = statistics['score'] ?? 0;
-    final scoreColor = _getScoreColor(score);
+    // Start with overall statistics
+    num score = statistics['score'] ?? 0;
+    Color scoreColor = _getScoreColor(score);
+
+    // If we have category statistics for the selected category, use those instead
+    if (widget.selectedCategory != null &&
+        widget.surveyData['categoryStatistics'] != null) {
+      final categoryStats =
+          (widget.surveyData['categoryStatistics']
+              as Map<String, dynamic>?)?[widget.selectedCategory];
+      if (categoryStats != null) {
+        final categoryScore = (categoryStats as Map<String, dynamic>)['score'];
+        if (categoryScore != null) {
+          score = categoryScore;
+          scoreColor = _getScoreColor(score);
+        }
+      }
+    }
 
     return Card(
       elevation: 3,
@@ -143,8 +484,14 @@ class _SurveyDetailFromBankScreenState
                         ),
                       ),
                       Text(
-                        widget.surveyData['selectedCategory'] ??
-                            'Kategori tidak diketahui',
+                        widget.selectedCategory ??
+                            (widget.surveyData['categories'] != null &&
+                                    (widget.surveyData['categories'] as List)
+                                        .isNotEmpty
+                                ? (widget.surveyData['categories'] as List)
+                                    .first
+                                    .toString()
+                                : 'Kategori tidak diketahui'),
                         style: AppSize.getTextStyle(
                           fontSize: AppSize.bodyFontSize,
                           color: Colors.grey.shade600,
@@ -158,12 +505,37 @@ class _SurveyDetailFromBankScreenState
 
             SizedBox(height: AppSize.heightPercent(1)),
 
+            // Date display
             Text(
-              _formatDate(widget.surveyData['submittedAt']),
+              _formatDate(
+                widget.surveyData['selectedDate'] ??
+                    widget.surveyData['submittedAt'] ??
+                    widget.surveyData['createdAt'],
+              ),
               style: AppSize.getTextStyle(
                 fontSize: AppSize.smallFontSize,
                 color: Colors.grey.shade600,
               ),
+            ),
+
+            // User name display
+            SizedBox(height: AppSize.heightPercent(0.5)),
+            Row(
+              children: [
+                Icon(
+                  Icons.person,
+                  size: AppSize.iconSize * 0.8,
+                  color: Colors.grey.shade600,
+                ),
+                SizedBox(width: AppSize.paddingXS),
+                Text(
+                  'Surveyor: ${widget.surveyData['userName'] ?? 'Unknown'}',
+                  style: AppSize.getTextStyle(
+                    fontSize: AppSize.smallFontSize,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
 
             SizedBox(height: AppSize.heightPercent(2)),
@@ -200,7 +572,7 @@ class _SurveyDetailFromBankScreenState
                   ),
                   SizedBox(height: AppSize.heightPercent(1)),
                   Text(
-                    '${(score as num).toInt()}%',
+                    '${score.toInt()}%',
                     style: AppSize.getTextStyle(
                       fontSize: AppSize.titleFontSize * 1.5,
                       fontWeight: FontWeight.bold,
@@ -216,15 +588,7 @@ class _SurveyDetailFromBankScreenState
             // Statistics Grid
             Row(
               children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'Total',
-                    (statistics['totalQuestions'] ?? 0).toString(),
-                    Icons.quiz,
-                    Colors.blue,
-                  ),
-                ),
-                SizedBox(width: AppSize.widthPercent(2)),
+                // Total question stat removed as requested
                 Expanded(
                   child: _buildStatCard(
                     'Dijawab',
@@ -292,13 +656,165 @@ class _SurveyDetailFromBankScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Detail Jawaban',
-          style: AppSize.getTextStyle(
-            fontSize: AppSize.subtitleFontSize,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Detail Jawaban',
+                  style: AppSize.getTextStyle(
+                    fontSize: AppSize.subtitleFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            if (_subcategories.length > 1)
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.only(top: 10, bottom: 5),
+                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  border: Border.all(color: Colors.blue.shade200),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.filter_alt,
+                          size: 18,
+                          color: Colors.blue.shade700,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Filter Subcategory:',
+                          style: AppSize.getTextStyle(
+                            fontSize: AppSize.smallFontSize,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 5),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 15),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedSubcategory ?? 'Semua',
+                          icon: Icon(
+                            Icons.arrow_drop_down,
+                            color: Colors.blue.shade700,
+                          ),
+                          items:
+                              _subcategories.map((String subcategory) {
+                                // Hitung jumlah pertanyaan untuk subcategory ini
+                                int count = _countQuestionsForSubcategory(
+                                  subcategory,
+                                );
+                                bool isAkurat =
+                                    subcategory != 'Semua' &&
+                                    _isAkuratSubcategory(subcategory);
+
+                                return DropdownMenuItem<String>(
+                                  value: subcategory,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          if (isAkurat)
+                                            Padding(
+                                              padding: EdgeInsets.only(
+                                                right: 8,
+                                              ),
+                                              child: Icon(
+                                                Icons.check_circle_outline,
+                                                size: 16,
+                                                color: Colors.green.shade700,
+                                              ),
+                                            ),
+                                          Text(
+                                            subcategory,
+                                            style: AppSize.getTextStyle(
+                                              fontSize: AppSize.bodyFontSize,
+                                              color:
+                                                  subcategory ==
+                                                          _selectedSubcategory
+                                                      ? Colors.blue.shade700
+                                                      : (isAkurat
+                                                          ? Colors
+                                                              .green
+                                                              .shade700
+                                                          : Colors.black87),
+                                              fontWeight:
+                                                  subcategory ==
+                                                              _selectedSubcategory ||
+                                                          isAkurat
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              subcategory ==
+                                                      _selectedSubcategory
+                                                  ? Colors.blue.shade100
+                                                  : (isAkurat
+                                                      ? Colors.green.shade100
+                                                      : Colors.grey.shade200),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          count.toString(),
+                                          style: AppSize.getTextStyle(
+                                            fontSize: AppSize.smallFontSize - 1,
+                                            color:
+                                                subcategory ==
+                                                        _selectedSubcategory
+                                                    ? Colors.blue.shade700
+                                                    : (isAkurat
+                                                        ? Colors.green.shade700
+                                                        : Colors.grey.shade700),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                          onChanged: _onSubcategoryChanged,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         SizedBox(height: AppSize.heightPercent(1.5)),
 
@@ -329,17 +845,48 @@ class _SurveyDetailFromBankScreenState
                 Icon(Icons.error_outline, size: 48, color: Colors.red),
                 SizedBox(height: AppSize.heightPercent(1)),
                 Text(
-                  'Error: $_error',
+                  'Terjadi kesalahan saat memuat detail jawaban',
                   style: AppSize.getTextStyle(
                     fontSize: AppSize.bodyFontSize,
-                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade700,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: AppSize.heightPercent(1)),
-                ElevatedButton(
+                SizedBox(height: AppSize.heightPercent(0.5)),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  margin: EdgeInsets.symmetric(
+                    horizontal: AppSize.paddingHorizontal,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _error!.contains('index')
+                        ? 'Diperlukan pengaturan tambahan di Firebase. Silakan hubungi administrator sistem.'
+                        : _error!,
+                    style: AppSize.getTextStyle(
+                      fontSize: AppSize.smallFontSize,
+                      color: Colors.grey.shade800,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                SizedBox(height: AppSize.heightPercent(2)),
+                ElevatedButton.icon(
                   onPressed: _loadAnswers,
-                  child: Text('Coba Lagi'),
+                  icon: Icon(Icons.refresh),
+                  label: Text('Coba Lagi'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSize.paddingHorizontal,
+                      vertical: 12,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -355,24 +902,238 @@ class _SurveyDetailFromBankScreenState
                 ),
                 SizedBox(height: AppSize.heightPercent(1)),
                 Text(
-                  'Tidak ada jawaban ditemukan',
+                  widget.selectedCategory != null
+                      ? 'Tidak ada jawaban untuk kategori "${widget.selectedCategory}"'
+                      : 'Tidak ada jawaban ditemukan',
                   style: AppSize.getTextStyle(
                     fontSize: AppSize.bodyFontSize,
+                    fontWeight: FontWeight.bold,
                     color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: AppSize.heightPercent(1)),
+                Container(
+                  padding: EdgeInsets.all(16),
+                  margin: EdgeInsets.symmetric(
+                    horizontal: AppSize.paddingHorizontal,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Kemungkinan penyebab:',
+                        style: AppSize.getTextStyle(
+                          fontSize: AppSize.smallFontSize,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        widget.selectedCategory != null
+                            ? '• Kategori "${widget.selectedCategory}" mungkin memiliki nama yang berbeda di sistem\n'
+                                '• Data untuk kategori ini belum disimpan\n'
+                                '• Adanya ketidakcocokan dalam penulisan nama kategori'
+                            : '• Survey belum memiliki data jawaban\n'
+                                '• Data mungkin belum disimpan dengan benar',
+                        style: AppSize.getTextStyle(
+                          fontSize: AppSize.smallFontSize,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: AppSize.heightPercent(2)),
+                ElevatedButton.icon(
+                  onPressed: _loadAnswers,
+                  icon: Icon(Icons.refresh),
+                  label: Text('Coba Lagi'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSize.paddingHorizontal,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (_filteredAnswers.isEmpty &&
+            _selectedSubcategory != null &&
+            _selectedSubcategory != 'Semua')
+          Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.filter_alt_off,
+                  size: 64,
+                  color: Colors.grey.shade400,
+                ),
+                SizedBox(height: AppSize.heightPercent(1)),
+                Text(
+                  'Tidak ada jawaban untuk subkategori "$_selectedSubcategory"',
+                  style: AppSize.getTextStyle(
+                    fontSize: AppSize.bodyFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: AppSize.heightPercent(1.5)),
+                ElevatedButton.icon(
+                  onPressed: () => _onSubcategoryChanged('Semua'),
+                  icon: Icon(Icons.filter_list_off),
+                  label: Text('Tampilkan Semua'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ],
             ),
           )
         else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: _answers.length,
-            itemBuilder: (context, index) {
-              final answer = _answers[index];
-              return _buildAnswerCard(answer, index + 1);
-            },
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child:
+                    _selectedSubcategory != null &&
+                            _selectedSubcategory != 'Semua'
+                        ? Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.filter_alt,
+                                    size: 16,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Filter: $_selectedSubcategory',
+                                      style: AppSize.getTextStyle(
+                                        fontSize: AppSize.smallFontSize,
+                                        color: Colors.blue.shade700,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => _onSubcategoryChanged('Semua'),
+                                    child: Container(
+                                      padding: EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.blue.shade300,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.close,
+                                            size: 12,
+                                            color: Colors.blue.shade700,
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Reset Filter',
+                                            style: AppSize.getTextStyle(
+                                              fontSize:
+                                                  AppSize.smallFontSize - 1,
+                                              color: Colors.blue.shade700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 5),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Menampilkan ${_filteredAnswers.length} jawaban',
+                                    style: AppSize.getTextStyle(
+                                      fontSize: AppSize.smallFontSize - 1,
+                                      color: Colors.blue.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        )
+                        : (_subcategories.length >
+                            2) // More than just "Semua" and one other option
+                        ? Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 16,
+                                color: Colors.grey.shade700,
+                              ),
+                              SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Menampilkan semua ${_filteredAnswers.length} jawaban. Gunakan filter untuk melihat berdasarkan subcategory.',
+                                  style: AppSize.getTextStyle(
+                                    fontSize: AppSize.smallFontSize,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        : SizedBox(), // No info needed if there aren't multiple subcategories
+              ),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                itemCount: _filteredAnswers.length,
+                itemBuilder: (context, index) {
+                  final answer = _filteredAnswers[index];
+                  return _buildAnswerCard(answer, index + 1);
+                },
+              ),
+            ],
           ),
       ],
     );
@@ -462,12 +1223,122 @@ class _SurveyDetailFromBankScreenState
                       SizedBox(height: AppSize.heightPercent(0.5)),
                       if (answer['category'] != null ||
                           answer['subcategory'] != null)
-                        Text(
-                          '${answer['category'] ?? ''} ${answer['subcategory'] != null ? '• ${answer['subcategory']}' : ''}',
-                          style: AppSize.getTextStyle(
-                            fontSize: AppSize.smallFontSize,
-                            color: Colors.grey.shade600,
-                          ),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (answer['category'] != null)
+                              Text(
+                                answer['category'].toString(),
+                                style: AppSize.getTextStyle(
+                                  fontSize: AppSize.smallFontSize,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            if (answer['category'] != null &&
+                                answer['subcategory'] != null)
+                              Text(
+                                ' • ',
+                                style: AppSize.getTextStyle(
+                                  fontSize: AppSize.smallFontSize,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            if (answer['subcategory'] != null)
+                              GestureDetector(
+                                onTap: () {
+                                  final subcategory =
+                                      answer['subcategory'].toString();
+                                  // If already selected, clear filter. Otherwise, apply filter
+                                  _onSubcategoryChanged(
+                                    _selectedSubcategory == subcategory
+                                        ? 'Semua'
+                                        : subcategory,
+                                  );
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  margin: EdgeInsets.only(right: 4),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        _isAkuratSubcategory(
+                                              answer['subcategory'],
+                                            )
+                                            ? Colors.green.shade50
+                                            : (_selectedSubcategory ==
+                                                    answer['subcategory']
+                                                ? Colors.blue.shade50
+                                                : Colors.grey.shade100),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color:
+                                          _isAkuratSubcategory(
+                                                answer['subcategory'],
+                                              )
+                                              ? Colors.green.shade400
+                                              : (_selectedSubcategory ==
+                                                      answer['subcategory']
+                                                  ? Colors.blue.shade300
+                                                  : Colors.grey.shade300),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (_isAkuratSubcategory(
+                                        answer['subcategory'],
+                                      ))
+                                        Padding(
+                                          padding: EdgeInsets.only(right: 4),
+                                          child: Icon(
+                                            Icons.check_circle_outline,
+                                            size: 12,
+                                            color: Colors.green.shade700,
+                                          ),
+                                        ),
+                                      Text(
+                                        answer['subcategory'].toString(),
+                                        style: AppSize.getTextStyle(
+                                          fontSize: AppSize.smallFontSize - 1,
+                                          fontWeight:
+                                              _selectedSubcategory ==
+                                                          answer['subcategory'] ||
+                                                      _isAkuratSubcategory(
+                                                        answer['subcategory'],
+                                                      )
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                          color:
+                                              _isAkuratSubcategory(
+                                                    answer['subcategory'],
+                                                  )
+                                                  ? Colors.green.shade700
+                                                  : (_selectedSubcategory ==
+                                                          answer['subcategory']
+                                                      ? Colors.blue.shade700
+                                                      : Colors.grey.shade700),
+                                        ),
+                                      ),
+                                      if (_selectedSubcategory ==
+                                              answer['subcategory'] &&
+                                          !_isAkuratSubcategory(
+                                            answer['subcategory'],
+                                          ))
+                                        Padding(
+                                          padding: EdgeInsets.only(left: 3),
+                                          child: Icon(
+                                            Icons.check_circle,
+                                            size: 12,
+                                            color: Colors.blue.shade700,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                     ],
                   ),
@@ -537,11 +1408,67 @@ class _SurveyDetailFromBankScreenState
     );
   }
 
+  // Helper method untuk mengecek apakah subcategory termasuk "Akurat"
+  bool _isAkuratSubcategory(dynamic subcategory) {
+    if (subcategory == null) return false;
+
+    String normalized = subcategory.toString().toLowerCase().trim();
+
+    // Cek apakah subcategory termasuk variasi "Akurat"
+    List<String> akuratVariations = _subcategoryVariations['akurat'] ?? [];
+
+    return akuratVariations.any(
+      (variation) =>
+          normalized == variation ||
+          normalized.contains(variation) ||
+          variation.contains(normalized),
+    );
+  }
+
   Color _getScoreColor(dynamic score) {
     if (score == null) return Colors.grey;
     final scoreValue = (score as num).toDouble();
     if (scoreValue >= 80) return Colors.green;
     if (scoreValue >= 60) return Colors.orange;
     return Colors.red;
+  }
+
+  // Menghitung jumlah pertanyaan untuk subcategory tertentu
+  int _countQuestionsForSubcategory(String subcategory) {
+    if (subcategory == 'Semua') return _answers.length;
+
+    String normalized = subcategory.toLowerCase().trim();
+
+    // Cek apakah subcategory termasuk variasi yang diketahui
+    for (var key in _subcategoryVariations.keys) {
+      List<String> variations = _subcategoryVariations[key] ?? [];
+      if (variations.any(
+        (v) =>
+            normalized == v || normalized.contains(v) || v.contains(normalized),
+      )) {
+        // Hitung pertanyaan yang cocok dengan semua variasi ini
+        return _answers.where((answer) {
+          if (answer['subcategory'] == null) return false;
+          String answerSub =
+              answer['subcategory'].toString().toLowerCase().trim();
+          return variations.any(
+            (v) =>
+                answerSub == v ||
+                answerSub.contains(v) ||
+                v.contains(answerSub),
+          );
+        }).length;
+      }
+    }
+
+    // Fallback ke pencocokan langsung
+    return _answers
+        .where(
+          (answer) =>
+              answer['subcategory'] != null &&
+              answer['subcategory'].toString().toLowerCase().trim() ==
+                  normalized,
+        )
+        .length;
   }
 }

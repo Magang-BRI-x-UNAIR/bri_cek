@@ -106,6 +106,21 @@ class SurveyResultService {
             existingData['categoryStatistics'] as Map<String, dynamic>? ?? {};
         categoryStatistics[selectedCategory] = categoryStats;
 
+        // Preserve or update userName if missing
+        String userName = existingData['userName'] ?? '';
+        if (userName.isEmpty) {
+          try {
+            final userDoc =
+                await _firestore.collection('users').doc(user.uid).get();
+            if (userDoc.exists) {
+              final userData = userDoc.data() as Map<String, dynamic>;
+              userName = userData['fullName'] ?? '';
+            }
+          } catch (e) {
+            print('Error retrieving user name: $e');
+          }
+        }
+
         surveyData = {
           'categories': existingCategories,
           'statistics': combinedStats,
@@ -113,13 +128,28 @@ class SurveyResultService {
           'lastUpdatedAt': FieldValue.serverTimestamp(),
           'sessionId': sessionId, // Update session ID yang terakhir
           'isActive': true, // Pastikan isActive tetap true
+          'userName': userName, // Ensure userName is included
         };
       } else {
         // Survey baru
+        // Get user's full name
+        String userName = '';
+        try {
+          final userDoc =
+              await _firestore.collection('users').doc(user.uid).get();
+          if (userDoc.exists) {
+            final userData = userDoc.data() as Map<String, dynamic>;
+            userName = userData['fullName'] ?? '';
+          }
+        } catch (e) {
+          print('Error retrieving user name: $e');
+        }
+
         surveyData = {
           'id': surveyResultId,
           'userId': user.uid,
           'userEmail': user.email ?? '',
+          'userName': userName, // Add user's full name
           'selectedBank': selectedBank,
           'selectedDate': Timestamp.fromDate(selectedDate),
           'bankBranchId': bankBranchId,
@@ -361,23 +391,198 @@ class SurveyResultService {
     String category,
   ) async {
     try {
+      print(
+        'Getting answers for surveyId: $surveyResultId, category: $category',
+      );
+
+      // Get all answers first, then filter by category client-side to avoid needing a composite index
       final snapshot =
           await _firestore
               .collection('survey_results')
               .doc(surveyResultId)
               .collection('answers')
-              .where('category', isEqualTo: category)
-              .orderBy('order')
               .get();
 
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      print('Found ${snapshot.docs.length} total answers');
+
+      // Process all docs once to avoid multiple iterations
+      final allAnswersData =
+          snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+
+      // Print all unique categories for debugging
+      final allCategories =
+          allAnswersData
+              .map((doc) => doc['category']?.toString() ?? 'null')
+              .toSet()
+              .toList();
+      print('Available categories in answers: $allCategories');
+
+      // Normalize the search category
+      final normalizedSearchCategory = _normalizeCategory(category);
+      print('Normalized search category: "$normalizedSearchCategory"');
+
+      // Enhanced matching algorithm with normalization
+      List<Map<String, dynamic>> results = [];
+
+      // 1. First try exact match
+      results =
+          allAnswersData.where((data) => data['category'] == category).toList();
+
+      // 2. If no results, try normalized match
+      if (results.isEmpty) {
+        print('No exact matches, trying normalized match');
+        results =
+            allAnswersData
+                .where(
+                  (data) =>
+                      data['category'] != null &&
+                      _normalizeCategory(data['category'].toString()) ==
+                          normalizedSearchCategory,
+                )
+                .toList();
+      }
+
+      // 3. If still no results, try substring match (for "Satpam" specifically)
+      if (results.isEmpty &&
+          (normalizedSearchCategory == 'satpam' ||
+              category.toLowerCase().contains('satpam'))) {
+        print('No normalized matches, trying substring match for Satpam');
+        results =
+            allAnswersData
+                .where(
+                  (data) =>
+                      data['category'] != null &&
+                      (data['category'].toString().toLowerCase().contains(
+                            'satpam',
+                          ) ||
+                          (data['id'] != null &&
+                              data['id'].toString().toLowerCase().contains(
+                                'satpam',
+                              ))),
+                )
+                .toList();
+      }
+
+      // 4. Special handling for specific categories with known variations
+      if (results.isEmpty) {
+        print('Trying special handling for common variations');
+        Map<String, List<String>> knownVariations = {
+          'satpam': ['satpam', 'security', 'sekuriti', 'scurity', 'keamanan'],
+          'pramuniaga': [
+            'pramuniaga',
+            'penjaga toko',
+            'spg',
+            'sales',
+            'sales promotion',
+          ],
+          'cs': ['cs', 'customer service', 'pelayanan', 'layanan'],
+          'teller': ['teller', 'kasir'],
+        };
+
+        // Check if our category might match any of the known variations
+        for (var key in knownVariations.keys) {
+          if (knownVariations[key]!.any(
+            (v) =>
+                normalizedSearchCategory.contains(v) ||
+                v.contains(normalizedSearchCategory),
+          )) {
+            // Try all variations of this category
+            for (var variation in knownVariations[key]!) {
+              final tempResults =
+                  allAnswersData
+                      .where(
+                        (data) =>
+                            data['category'] != null &&
+                            data['category'].toString().toLowerCase().contains(
+                              variation,
+                            ),
+                      )
+                      .toList();
+
+              if (tempResults.isNotEmpty) {
+                results = tempResults;
+                print('Found matches using variation: "$variation"');
+                break;
+              }
+            }
+
+            if (results.isNotEmpty) break;
+          }
+        }
+      }
+
+      // 5. If still no results, try partial match with any category
+      if (results.isEmpty) {
+        print('No specific matches found, trying partial match with any word');
+        final searchWords = normalizedSearchCategory.split(' ');
+
+        for (var word in searchWords) {
+          if (word.length > 2) {
+            // Only use words with 3+ characters
+            results =
+                allAnswersData
+                    .where(
+                      (data) =>
+                          data['category'] != null &&
+                          data['category'].toString().toLowerCase().contains(
+                            word,
+                          ),
+                    )
+                    .toList();
+
+            if (results.isNotEmpty) {
+              print('Found matches containing word: "$word"');
+              break;
+            }
+          }
+        }
+      }
+
+      print('Found ${results.length} answers for category "$category"');
+
+      // Debug printout of all matched categories
+      if (results.isNotEmpty) {
+        final matchedCategories =
+            results
+                .map((doc) => doc['category']?.toString() ?? 'null')
+                .toSet()
+                .toList();
+        print('Matched categories: $matchedCategories');
+      }
+
+      // Sort by order
+      results.sort((a, b) {
+        final orderA = a['order'] as num? ?? 0;
+        final orderB = b['order'] as num? ?? 0;
+        return orderA.compareTo(orderB);
+      });
+
+      return results;
     } catch (e) {
+      print('Error in getSurveyAnswersByCategory: $e');
       throw Exception('Gagal mengambil detail jawaban: $e');
     }
+  }
+
+  /// Helper method to normalize category names for better matching
+  String _normalizeCategory(String? category) {
+    if (category == null) return '';
+
+    // Convert to lowercase
+    String normalized = category.toLowerCase();
+
+    // Remove common punctuation and trim whitespace
+    normalized =
+        normalized
+            .replaceAll(RegExp(r'[^\w\s]'), '') // Remove punctuation
+            .replaceAll(RegExp(r'\s+'), ' ') // Replace multiple spaces with one
+            .trim(); // Trim whitespace
+
+    return normalized;
   }
 
   /// Mendapatkan statistik survey untuk dashboard
