@@ -7,6 +7,7 @@ import 'package:bri_cek/screens/checklist/widgets/navigation_controls.dart';
 import 'package:bri_cek/screens/checklist/widgets/subcategory_questions.dart';
 import 'package:bri_cek/services/checklist_service.dart';
 import 'package:bri_cek/services/question_service.dart';
+import 'package:bri_cek/services/survey_result_service.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -65,24 +66,16 @@ class _ChecklistScreenState extends State<ChecklistScreen>
   String _currentSubcategory = '';
 
   final QuestionService _questionService = QuestionService();
+  final SurveyResultService _surveyResultService = SurveyResultService();
   @override
   void initState() {
     super.initState();
     _setupAnimations();
 
-    print("InitState - Selected category: ${widget.selectedCategory}");
-    print("InitState - fetchFromDatabase: ${widget.fetchFromDatabase}");
-
     // Selalu ambil dari database untuk kategori Toilet
     if (widget.selectedCategory == "Toilet" || widget.fetchFromDatabase) {
-      print(
-        "Calling _fetchChecklistItems for category: ${widget.selectedCategory}",
-      );
       _fetchChecklistItems();
     } else {
-      print(
-        "Calling _loadDefaultChecklistItems for category: ${widget.selectedCategory}",
-      );
       _loadDefaultChecklistItems();
     }
   }
@@ -107,8 +100,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
       // Khusus untuk kategori "toilet"
       if (categoryId == "toilet") {
-        print("Mengambil data pertanyaan toilet dari database...");
-
         // Gunakan path khusus untuk toilet
         final QuerySnapshot snapshot =
             await FirebaseFirestore.instance
@@ -119,10 +110,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                 .collection('questions')
                 .orderBy('order')
                 .get();
-
-        print(
-          "Database mengembalikan ${snapshot.docs.length} pertanyaan toilet",
-        );
 
         if (snapshot.docs.isNotEmpty) {
           items =
@@ -136,21 +123,11 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                   order: data['order'] ?? 0,
                 );
               }).toList();
-
-          print(
-            "Berhasil memuat ${items.length} pertanyaan toilet dari database",
-          );
         } else {
-          print(
-            "Tidak ada pertanyaan toilet di database. Menggunakan data default.",
-          );
           items = _getDefaultChecklistItems();
-          print("Default toilet items count: ${items.length}");
         }
       } else {
         // Untuk kategori lain, ambil semua subcategory dari kategori tersebut
-        print("=== FETCHING DATA FOR CATEGORY: $categoryId ===");
-        print("Employee data: ${widget.employeeData}");
 
         try {
           // Ambil semua subcategory dari kategori ini
@@ -158,28 +135,15 @@ class _ChecklistScreenState extends State<ChecklistScreen>
             categoryId,
           );
 
-          print("=== SUBCATEGORIES FOUND ===");
-          print("Count: ${subcategories.length}");
-          print("Names: ${subcategories.map((s) => s.name).toList()}");
-          print("IDs: ${subcategories.map((s) => s.id).toList()}");
-
           if (subcategories.isNotEmpty) {
             // Ambil pertanyaan dari semua subcategory
             for (var subcategory in subcategories) {
-              print(
-                "=== PROCESSING SUBCATEGORY: ${subcategory.name} (${subcategory.id}) ===",
-              );
-
               // Coba ambil pertanyaan langsung dari subcategory level
               final directSubcategoryItems = await _questionService
                   .getQuestionsForPath(
                     mainCategory: categoryId,
                     subcategory: subcategory.id,
                   );
-
-              print(
-                "Direct questions found for ${subcategory.name}: ${directSubcategoryItems.length}",
-              );
 
               List<ChecklistItem> allSubcategoryItems = [
                 ...directSubcategoryItems,
@@ -191,14 +155,9 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                   final genderCategories = await _questionService
                       .getGenderCategories(categoryId, subcategory.id);
 
-                  print(
-                    "Gender categories found: ${genderCategories.map((g) => g.name).toList()}",
-                  );
-
                   // Ambil gender dari employee data
                   String? employeeGender =
                       widget.employeeData!['gender']?.toString();
-                  print("Employee gender: $employeeGender");
 
                   // Convert gender nama ke ID yang digunakan di database
                   String? employeeGenderId;
@@ -209,7 +168,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                       employeeGenderId = 'wanita';
                     }
                   }
-                  print("Employee gender ID for database: $employeeGenderId");
 
                   for (var gender in genderCategories) {
                     // Filter gender berdasarkan employee data jika ada
@@ -218,10 +176,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                       continue;
                     }
 
-                    print(
-                      "=== PROCESSING GENDER: ${gender.name} (${gender.id}) ===",
-                    );
-
                     // Coba ambil pertanyaan langsung dari gender level
                     final directGenderItems = await _questionService
                         .getQuestionsForPath(
@@ -229,10 +183,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                           subcategory: subcategory.id,
                           gender: gender.id,
                         );
-
-                    print(
-                      "Direct questions found for gender ${gender.name}: ${directGenderItems.length}",
-                    );
 
                     allSubcategoryItems.addAll(directGenderItems);
 
@@ -244,15 +194,7 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                         gender.id,
                       );
 
-                      print(
-                        "Sections found for ${gender.name}: ${sections.map((s) => s.name).toList()}",
-                      );
-
                       for (var section in sections) {
-                        print(
-                          "=== PROCESSING SECTION: ${section.name} (${section.id}) ===",
-                        );
-
                         // Coba ambil pertanyaan langsung dari section level dulu
                         final sectionItems = await _questionService
                             .getQuestionsForPath(
@@ -261,10 +203,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                               gender: gender.id,
                               section: section.id,
                             );
-
-                        print(
-                          "Direct questions found for section ${section.name}: ${sectionItems.length}",
-                        );
 
                         List<ChecklistItem> allSectionItems = [...sectionItems];
 
@@ -290,10 +228,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                                   section.id,
                                 );
 
-                            print(
-                              "Uniform types found for section ${section.name}: ${uniformTypes.map((u) => u.name).toList()}",
-                            );
-
                             // Filter uniform types berdasarkan employee data jika ada
                             List<String> allowedUniformTypes = [];
                             if (widget.employeeData != null &&
@@ -301,9 +235,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                               String employeeUniformType =
                                   widget.employeeData!['uniformType']
                                       .toString();
-                              print(
-                                "Employee uniform type: $employeeUniformType",
-                              );
 
                               // Map employee uniform type ke database ID dengan lebih spesifik
                               String normalizedEmployeeType =
@@ -327,10 +258,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                                         .map((u) => u.id.toLowerCase())
                                         .toList();
                               }
-
-                              print(
-                                "Allowed uniform types: $allowedUniformTypes",
-                              );
                             } else {
                               // Jika tidak ada employee data, ambil semua uniform types
                               allowedUniformTypes =
@@ -340,25 +267,14 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                             }
 
                             for (var uniformType in uniformTypes) {
-                              print(
-                                "Checking uniform type: ${uniformType.name} (ID: ${uniformType.id})",
-                              );
-
                               // Skip uniform type yang tidak sesuai dengan employee data
                               // Normalize both for case-insensitive comparison
                               if (allowedUniformTypes.isNotEmpty &&
                                   !allowedUniformTypes.contains(
                                     uniformType.id.toLowerCase(),
                                   )) {
-                                print(
-                                  "Skipping uniform type ${uniformType.name} (${uniformType.id}) - not in allowed types: $allowedUniformTypes",
-                                );
                                 continue;
                               }
-
-                              print(
-                                "=== PROCESSING UNIFORM TYPE: ${uniformType.name} (${uniformType.id}) ===",
-                              );
 
                               final uniformTypeItems = await _questionService
                                   .getQuestionsForPath(
@@ -368,10 +284,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                                     section: section.id,
                                     uniformType: uniformType.id,
                                   );
-
-                              print(
-                                "Questions found for uniform type ${uniformType.name}: ${uniformTypeItems.length}",
-                              );
 
                               // Update uniform type name in the questions
                               final uniformTypeItemsWithCorrectName =
@@ -407,9 +319,7 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                               );
                             }
                           } catch (e) {
-                            print(
-                              "Error getting uniform types for section ${section.name}: $e",
-                            );
+                            // Error handling for uniform types
                           }
                         }
 
@@ -441,37 +351,21 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                             }).toList();
 
                         allSubcategoryItems.addAll(sectionItemsWithCorrectName);
-
-                        print(
-                          "Total items added for section ${section.name}: ${sectionItemsWithCorrectName.length}",
-                        );
                       }
                     } catch (e) {
-                      print(
-                        "Error getting sections for gender ${gender.name}: $e",
-                      );
+                      // Handle section errors silently
                     }
                   }
                 } catch (e) {
-                  print(
-                    "Error getting gender categories for subcategory ${subcategory.name}: $e",
-                  );
+                  // Handle gender category errors silently
                 }
               }
-
-              print(
-                "Total questions found for ${subcategory.name}: ${allSubcategoryItems.length}",
-              );
 
               // Create new ChecklistItem objects with corrected subcategory name from database
               final correctedItems =
                   allSubcategoryItems.map((item) {
                     // Use the name from database only
                     final subcategoryDisplayName = subcategory.name;
-
-                    print(
-                      "Item: ${item.question} -> Category: ${item.category}, Subcategory: $subcategoryDisplayName, Gender: ${item.gender}, Section: ${item.section}",
-                    );
 
                     // Section names are already set from database in the new method
                     return ChecklistItem(
@@ -499,15 +393,9 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                   }).toList();
 
               items.addAll(correctedItems);
-              print(
-                "Added ${correctedItems.length} questions from subcategory ${subcategory.name}",
-              );
             }
-            print(
-              "=== TOTAL QUESTIONS LOADED: ${items.length} from ${subcategories.length} subcategories ===",
-            );
           } else {
-            print("=== NO SUBCATEGORIES FOUND FOR $categoryId ===");
+            // No subcategories found
           }
 
           // Coba juga ambil pertanyaan langsung dari level kategori (jika ada)
@@ -517,18 +405,11 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                 // subcategory: null, jadi ambil langsung dari kategori
               );
           items.addAll(directCategoryItems);
-
-          if (directCategoryItems.isNotEmpty) {
-            print(
-              "Berhasil memuat ${directCategoryItems.length} pertanyaan langsung dari kategori",
-            );
-          }
         } catch (e) {
-          print("Error mengambil pertanyaan: $e");
+          // Error handling for questions
         }
 
         if (items.isEmpty) {
-          print("Tidak ada pertanyaan ditemukan, menggunakan data default");
           items = _getDefaultChecklistItems();
         }
       }
@@ -536,7 +417,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       // Organize items into categories and subcategories
       _organizeChecklistItems(items);
     } catch (e) {
-      print('Error loading checklist items: $e');
       // Fallback ke data statis jika terjadi error
       final items = _getDefaultChecklistItems();
       _organizeChecklistItems(items);
@@ -567,24 +447,10 @@ class _ChecklistScreenState extends State<ChecklistScreen>
             .where((item) => item.answerValue != null || item.skipped == true)
             .length;
 
-    print(
-      "Organizing ${items.length} checklist items for category: ${widget.selectedCategory}",
-    );
-
-    // Debug: Print all items to see their subcategory values
-    for (var item in items) {
-      print(
-        "Item: ${item.question} | Category: ${item.category} | Subcategory: ${item.subcategory} | Section: ${item.section}",
-      );
-    }
-
     // Case khusus untuk Toilet atau kategori sederhana lainnya
     if (widget.selectedCategory == "Toilet") {
-      print("Processing Toilet category with ${items.length} items");
-
       // Jika tidak ada item, gunakan kategori default
       if (items.isEmpty) {
-        print("No toilet items found, using default");
         _categoryNames = ["Toilet"];
         _subcategoryNames = [
           ["Toilet"],
@@ -616,16 +482,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       _currentCategory = "Toilet";
       _currentSubcategory = "Toilet";
 
-      print("Toilet setup complete:");
-      print("- _categoryNames: $_categoryNames");
-      print("- _subcategoryNames: $_subcategoryNames");
-      print(
-        "- _currentSubcategoryItems count: ${_currentSubcategoryItems.length}",
-      );
-      print(
-        "- Items: ${_currentSubcategoryItems.map((e) => e.question).toList()}",
-      );
-
       // Update completion status
       _updateCompletionStatus();
 
@@ -656,13 +512,9 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       subcategoryMap[subcategory]![section]!.add(item);
     }
 
-    print("Subcategory map keys: ${subcategoryMap.keys.toList()}");
-
     // Bentuk struktur data yang dibutuhkan untuk CategoryNavigator
     // _categoryNames akan berisi subcategories (pintu_masuk, ruang_atm, atm_dan_rm untuk Gallery E-Channel)
     _categoryNames = subcategoryMap.keys.toList();
-
-    print("_categoryNames (subcategories): $_categoryNames");
 
     // Update _groupedChecklistItems untuk kompatibilitas dengan fungsi navigasi
     _groupedChecklistItems = subcategoryMap;
@@ -671,7 +523,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     for (var subcategory in _categoryNames) {
       List<String> sections = subcategoryMap[subcategory]!.keys.toList();
       _subcategoryNames.add(sections);
-      print("Subcategory '$subcategory' has sections: $sections");
 
       List<ChecklistItem> subcategoryItems = [];
       for (var section in sections) {
@@ -680,8 +531,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
 
       _checklist.add(subcategoryItems);
     }
-
-    print("Final _subcategoryNames (sections): $_subcategoryNames");
 
     // Set indeks awal jika ada data
     if (_categoryNames.isNotEmpty) {
@@ -693,13 +542,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
           _subcategoryNames.isNotEmpty && _subcategoryNames[0].isNotEmpty
               ? _subcategoryNames[0][0]
               : '';
-
-      print(
-        "Initial setup - Category: $_currentCategory, Subcategory: $_currentSubcategory",
-      );
-      print(
-        "Initial _currentSubcategoryItems count: ${_currentSubcategoryItems.length}",
-      );
 
       // Initialize completion status arrays
       _categoryCompletionStatus = List<bool>.filled(
@@ -824,7 +666,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
       // Organize items into categories and subcategories
       _organizeChecklistItems(items);
     } catch (e) {
-      print('Error loading default checklist items: $e');
       // Jika terjadi error, inisialisasi list kosong
       _checklistItems = [];
       _categoryNames = [];
@@ -912,13 +753,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         _currentSubcategory = "Toilet";
       });
 
-      print(
-        "Toilet navigation - showing ${_currentSubcategoryItems.length} items",
-      );
-      print(
-        "Items: ${_currentSubcategoryItems.map((e) => e.question).toList()}",
-      );
-
       _animationController.reset();
       _animationController.forward();
       return;
@@ -960,15 +794,9 @@ class _ChecklistScreenState extends State<ChecklistScreen>
           _groupedChecklistItems.containsKey(category) &&
           _groupedChecklistItems[category]!.containsKey(subcategory)) {
         items = _groupedChecklistItems[category]![subcategory]!;
-        print(
-          "Using grouped items for $category -> $subcategory: ${items.length} items",
-        );
       } else {
         // Fallback: use all items from this subcategory
         items = allSubcategoryItems;
-        print(
-          "Using all subcategory items for $category: ${items.length} items",
-        );
       }
     }
 
@@ -986,9 +814,6 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                 (item.section == subcategory ||
                     (item.section?.isEmpty ?? true && subcategory == "Umum"));
           }).toList();
-      print(
-        "Fallback filter found ${items.length} items for $category -> $subcategory",
-      );
     }
 
     // Scroll back to top when changing subcategories
@@ -1105,7 +930,7 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     _navigateToSubcategory(_currentCategoryIndex, index);
   }
 
-  void _handleSaveChecklist() {
+  void _handleSaveChecklist() async {
     // Ubah pengecekan untuk menerima pertanyaan yang di-skip
     final allAnswered = _checklistItems.every(
       (item) => item.answerValue != null || item.skipped == true,
@@ -1128,26 +953,72 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         _checklistItems.where((item) => item.skipped == true).length;
     final score = _checklistService.calculateScore(_checklistItems);
 
+    // Tampilkan loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
       builder:
-          (context) => CompletionDialog(
-            score: score,
-            categoryName: widget.selectedCategory,
-            hasEmployeeData: widget.employeeData != null,
-            skippedCount: skippedCount, // Kirimkan jumlah yang di-skip
-            onBackToDetails: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Return to previous screen
-            },
-            onFinish: () {
-              // Save checklist results then return to home
-              // In a real app, you would save to local storage or API here
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
+          (context) => AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text('Menyimpan hasil survey...'),
+              ],
+            ),
           ),
     );
+
+    try {
+      // Simpan hasil survey ke database
+      await _surveyResultService.saveSurveyResult(
+        selectedBank: widget.selectedBank,
+        selectedCategory: widget.selectedCategory,
+        selectedDate: widget.selectedDate,
+        bankBranchId: widget.bankBranchId,
+        sessionId: widget.sessionId,
+        checklistItems: _checklistItems,
+        score: score,
+        skippedCount: skippedCount,
+        employeeData: widget.employeeData,
+      );
+
+      // Tutup loading dialog
+      Navigator.pop(context);
+
+      // Tampilkan dialog completion dengan hasil yang tersimpan
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => CompletionDialog(
+              score: score,
+              categoryName: widget.selectedCategory,
+              hasEmployeeData: widget.employeeData != null,
+              skippedCount: skippedCount,
+              onBackToDetails: () {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Return to previous screen
+              },
+              onFinish: () {
+                // Return to home screen
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+            ),
+      );
+    } catch (e) {
+      // Tutup loading dialog
+      Navigator.pop(context);
+
+      // Tampilkan error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menyimpan hasil survey: $e'),
+          backgroundColor: Colors.red.shade700,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   @override

@@ -44,6 +44,13 @@ class AppSize {
   static late double cardBorderRadius;
   static late double buttonHeight;
 
+  // Padding constants
+  static late double paddingXS;
+  static late double paddingS;
+  static late double paddingM;
+  static late double paddingL;
+  static late double paddingXL;
+
   // Font sizes
   static late double titleFontSize;
   static late double subtitleFontSize;
@@ -87,15 +94,23 @@ class AppSize {
     isPhone = screenWidth < 600;
 
     // Set default size based on device type and orientation
-    defaultSize = orientation == Orientation.landscape
-        ? screenHeight * 0.024
-        : screenWidth * 0.024;
+    defaultSize =
+        orientation == Orientation.landscape
+            ? screenHeight * 0.024
+            : screenWidth * 0.024;
 
     // Common UI elements sizing
     paddingHorizontal = _getResponsiveSize(15.0, 20.0, 24.0);
     paddingVertical = _getResponsiveSize(12.0, 16.0, 20.0);
     cardBorderRadius = _getResponsiveSize(12.0, 15.0, 18.0);
     buttonHeight = _getResponsiveSize(44.0, 48.0, 56.0);
+
+    // Padding constants
+    paddingXS = _getResponsiveSize(4.0, 6.0, 8.0);
+    paddingS = _getResponsiveSize(8.0, 12.0, 16.0);
+    paddingM = _getResponsiveSize(16.0, 20.0, 24.0);
+    paddingL = _getResponsiveSize(24.0, 28.0, 32.0);
+    paddingXL = _getResponsiveSize(32.0, 36.0, 40.0);
 
     // Font sizes
     titleFontSize = _getResponsiveSize(20.0, 24.0, 28.0);
@@ -171,8 +186,10 @@ class AppSize {
   }
 
   /// Returns a responsive title style
-  static TextStyle titleStyle(
-      {Color color = Colors.black, required double fontSize}) {
+  static TextStyle titleStyle({
+    Color color = Colors.black,
+    required double fontSize,
+  }) {
     return getTextStyle(
       fontSize: titleFontSize,
       fontWeight: FontWeight.bold,
@@ -183,10 +200,6 @@ class AppSize {
 
   /// Returns a responsive body text style
   static TextStyle bodyStyle({Color color = Colors.black}) {
-    return getTextStyle(
-      fontSize: bodyFontSize,
-      color: color,
-      height: 1.5,
-    );
+    return getTextStyle(fontSize: bodyFontSize, color: color, height: 1.5);
   }
 }

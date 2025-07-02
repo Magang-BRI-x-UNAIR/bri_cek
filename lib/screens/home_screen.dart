@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:bri_cek/screens/manage_users_screen.dart';
 import 'package:bri_cek/screens/choose_bank_screen.dart';
+import 'package:bri_cek/screens/survey_history_screen.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:bri_cek/widgets/burger_menu.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -103,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   _buildHeader(),
                   _buildInfoSection(),
+                  _buildQuickMenuSection(),
                   _buildPerformanceChart(),
                   _buildAssessmentAspects(),
                   _buildUsageInstructions(),
@@ -466,6 +468,117 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             color: Colors.black87,
             height: 1.5,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickMenuSection() {
+    return AnimatedBuilder(
+      animation: _contentAnimation,
+      builder: (context, child) {
+        return Opacity(opacity: _contentAnimation.value, child: child);
+      },
+      child: Padding(
+        padding: EdgeInsets.all(AppSize.paddingHorizontal),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: AppSize.heightPercent(2)),
+            Text(
+              'Menu Cepat',
+              style: AppSize.getTextStyle(
+                fontSize: AppSize.subtitleFontSize,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: AppSize.heightPercent(1.5)),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildQuickMenuItem(
+                    'Mulai Penilaian',
+                    Icons.assessment,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ChooseBankScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(width: AppSize.widthPercent(4)),
+                Expanded(
+                  child: _buildQuickMenuItem(
+                    'Riwayat Survey',
+                    Icons.history,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SurveyHistoryScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: AppSize.heightPercent(2)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickMenuItem(String title, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(AppSize.paddingHorizontal),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              spreadRadius: 1,
+              offset: Offset(0, 3),
+            ),
+          ],
+          border: Border.all(color: Colors.blue.withOpacity(0.2), width: 1),
+        ),
+        child: Column(
+          children: [
+            SizedBox(height: AppSize.heightPercent(0.5)),
+            Container(
+              padding: EdgeInsets.all(AppSize.paddingHorizontal * 0.8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: Icon(
+                icon,
+                color: Colors.blue.shade700,
+                size: AppSize.iconSize * 1.2,
+              ),
+            ),
+            SizedBox(height: AppSize.heightPercent(1)),
+            Text(
+              title,
+              style: AppSize.getTextStyle(
+                fontSize: AppSize.bodyFontSize,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppSize.heightPercent(0.5)),
+          ],
         ),
       ),
     );

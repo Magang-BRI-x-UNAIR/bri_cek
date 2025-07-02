@@ -1738,14 +1738,11 @@ class QuestionService {
   // Mendapatkan semua kategori utama
   Future<List<Category>> getMainCategories() async {
     try {
-      print("Accessing Firestore for categories");
       final snapshot =
           await _firestore
               .collection('assessment_categories')
               .orderBy('order')
               .get();
-
-      print("Firestore returned ${snapshot.docs.length} categories");
 
       return snapshot.docs.map((doc) {
         return Category(
@@ -1755,7 +1752,6 @@ class QuestionService {
         );
       }).toList();
     } catch (e) {
-      print('Error getting main categories: $e');
       return [];
     }
   }
@@ -1763,8 +1759,6 @@ class QuestionService {
   // Mendapatkan subkategori
   Future<List<Category>> getSubcategories(String mainCategoryId) async {
     try {
-      print("Getting subcategories for $mainCategoryId");
-
       final snapshot =
           await _firestore
               .collection('assessment_categories')
@@ -1773,8 +1767,6 @@ class QuestionService {
               .orderBy('order')
               .get();
 
-      print("Found ${snapshot.docs.length} subcategories");
-
       return snapshot.docs.map((doc) {
         return Category(
           id: doc.id,
@@ -1783,7 +1775,6 @@ class QuestionService {
         );
       }).toList();
     } catch (e) {
-      print('Error getting subcategories: $e');
       return [];
     }
   }
@@ -1814,7 +1805,6 @@ class QuestionService {
           )
           .toList();
     } catch (e) {
-      print('Error getting gender categories: $e');
       return [];
     }
   }
@@ -1848,7 +1838,6 @@ class QuestionService {
           )
           .toList();
     } catch (e) {
-      print('Error getting sections: $e');
       return [];
     }
   }
@@ -1885,7 +1874,6 @@ class QuestionService {
           )
           .toList();
     } catch (e) {
-      print('Error getting uniform types: $e');
       return [];
     }
   }
@@ -1900,13 +1888,6 @@ class QuestionService {
     String? uniformType,
   }) async {
     try {
-      print("Getting questions for path with parameters:");
-      print("- mainCategory: $mainCategory");
-      print("- subcategory: $subcategory");
-      print("- gender: $gender");
-      print("- section: $section");
-      print("- uniformType: $uniformType");
-
       String path =
           'assessment_categories/$mainCategory'; // Sesuaikan dengan struktur saat menambah!
 
@@ -1928,16 +1909,11 @@ class QuestionService {
 
       path += '/questions';
 
-      print("Final query path: $path");
-
       final snapshot = await _firestore.collection(path).orderBy('order').get();
-
-      print("Firestore returned ${snapshot.docs.length} questions");
 
       List<ChecklistItem> questions = [];
 
       for (var doc in snapshot.docs) {
-        print("Processing question ${doc.id}: ${doc.data()}");
         questions.add(
           ChecklistItem(
             id: doc.id,
@@ -1954,7 +1930,6 @@ class QuestionService {
 
       return questions;
     } catch (e) {
-      print("Error getting questions: $e");
       return [];
     }
   }
@@ -1990,18 +1965,13 @@ class QuestionService {
 
       path += '/questions';
 
-      print("Adding question to path: $path");
-
       await _firestore.collection(path).add({
         'text': questionText,
         'order': await _getNextQuestionOrder(path),
         'isActive': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
-
-      print("Question added successfully");
     } catch (e) {
-      print('Error adding question: $e');
       throw e;
     }
   }
@@ -2038,7 +2008,6 @@ class QuestionService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error editing question: $e');
       throw e;
     }
   }
@@ -2051,7 +2020,6 @@ class QuestionService {
     try {
       await _firestore.collection(path).doc(questionId).delete();
     } catch (e) {
-      print('Error deleting question: $e');
       throw e;
     }
   }
