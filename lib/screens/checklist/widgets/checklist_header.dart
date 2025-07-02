@@ -26,9 +26,15 @@ class ChecklistHeader extends StatelessWidget {
     final String employeeName = employeeData?['name'] ?? '';
     final String employeeId = employeeData?['id'] ?? '';
 
+    // Adjust height based on employee info availability
+    final bool hasEmployeeInfo =
+        employeeName.isNotEmpty && employeeId.isNotEmpty;
+    final double headerHeight =
+        hasEmployeeInfo ? AppSize.heightPercent(24) : AppSize.heightPercent(20);
+
     return Container(
       width: double.infinity,
-      height: AppSize.heightPercent(24),
+      height: headerHeight,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.bottomLeft,
