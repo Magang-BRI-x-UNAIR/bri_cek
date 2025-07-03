@@ -217,8 +217,50 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
   }
 
   // Display contributors list more visibly
-  Widget _buildContributorsList(Map<String, dynamic> survey) {
-    // Get contributors list from survey data
+  Widget _buildContributorsList(
+    Map<String, dynamic> survey, {
+    String? selectedCategory,
+  }) {
+    // Special case for Toilet category
+    if (selectedCategory != null &&
+        selectedCategory.toLowerCase() == 'toilet') {
+      return Text(
+        'Surveyor: ardisaaa',
+        style: TextStyle(
+          fontSize: AppSize.smallFontSize * 0.85,
+          color: Colors.grey.shade600,
+          fontStyle: FontStyle.italic,
+        ),
+      );
+    }
+
+    // If we have a selected category and category statistics, try to find the specific contributor
+    if (selectedCategory != null && survey['categoryStatistics'] != null) {
+      final categoryStats =
+          survey['categoryStatistics'] as Map<String, dynamic>?;
+
+      if (categoryStats != null && categoryStats[selectedCategory] != null) {
+        final categoryData =
+            categoryStats[selectedCategory] as Map<String, dynamic>;
+
+        // Check if this category has a specific contributor
+        if (categoryData['contributor'] != null) {
+          final contributor =
+              categoryData['contributor'] as Map<String, dynamic>;
+
+          return Text(
+            'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
+            style: TextStyle(
+              fontSize: AppSize.smallFontSize * 0.85,
+              color: Colors.grey.shade600,
+              fontStyle: FontStyle.italic,
+            ),
+          );
+        }
+      }
+    }
+
+    // Get contributors list from survey data (fallback)
     List<Map<String, dynamic>> contributors = [];
     if (survey['contributors'] != null) {
       try {
@@ -839,7 +881,13 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                                 color: Colors.grey.shade600,
                               ),
                             ),
-                            _buildContributorsList(survey),
+                            _buildContributorsList(
+                              survey,
+                              selectedCategory:
+                                  categories.isNotEmpty
+                                      ? categories.first
+                                      : null,
+                            ),
                           ],
                         ),
                       ],

@@ -52,6 +52,26 @@ class SurveyResultService {
       final failedQuestions =
           checklistItems.where((item) => item.answerValue == false).length;
 
+      // Get user's full name for this category
+      String userName = '';
+      try {
+        final userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          userName = userData['fullName'] ?? '';
+        }
+      } catch (e) {
+        print('Error retrieving user name: $e');
+      }
+
+      // Create category contributor info
+      Map<String, dynamic> categoryContributor = {
+        'userId': user.uid,
+        'userName': userName,
+        'timestamp': Timestamp.now(),
+      };
+
       // Buat statistik kategori dengan informasi karyawan
       Map<String, dynamic> categoryStats = {
         'totalQuestions': totalQuestions,
@@ -60,21 +80,8 @@ class SurveyResultService {
         'passedQuestions': passedQuestions,
         'failedQuestions': failedQuestions,
         'score': score,
+        'contributor': categoryContributor, // Add category-specific contributor
       };
-
-      // Tambahkan informasi karyawan jika tersedia
-      if (employeeData != null && employeeData.isNotEmpty) {
-        categoryStats['employeeInfo'] = {
-          'name': employeeData['name'] ?? '',
-          'employeeId':
-              employeeData['id'] ?? '', // 'id' dari EmployeeInfoScreen
-          'gender': employeeData['gender'] ?? '',
-          'position': employeeData['position'] ?? '',
-          'uniformType': employeeData['uniformType'] ?? '',
-          'hasHijab': employeeData['hasHijab'] ?? false,
-          'surveyedAt': FieldValue.serverTimestamp(),
-        };
-      }
 
       Map<String, dynamic> surveyData;
       Map<String, dynamic> existingStats = {};

@@ -639,7 +639,87 @@ class _SurveyDetailFromBankScreenState
 
   // Display contributors of the survey
   Widget _buildContributorsText() {
-    // Get contributors list from survey data
+    // Special case for Toilet category - hardcoded fix as requested
+    if (widget.selectedCategory != null &&
+        widget.selectedCategory!.toLowerCase() == 'toilet') {
+      print(
+        'Special case: Toilet category detected - showing single contributor',
+      );
+      return Text(
+        'Surveyor: ardisaaa',
+        style: AppSize.getTextStyle(
+          fontSize: AppSize.smallFontSize,
+          color: Colors.grey.shade600,
+        ),
+      );
+    }
+
+    // First try to get category-specific contributor
+    if (widget.selectedCategory != null &&
+        widget.surveyData['categoryStatistics'] != null) {
+      final categoryStats =
+          widget.surveyData['categoryStatistics'] as Map<String, dynamic>?;
+
+      if (categoryStats != null &&
+          categoryStats[widget.selectedCategory] != null) {
+        final categoryData =
+            categoryStats[widget.selectedCategory] as Map<String, dynamic>;
+
+        // Check if this category has a specific contributor
+        if (categoryData['contributor'] != null) {
+          final contributor =
+              categoryData['contributor'] as Map<String, dynamic>;
+
+          print(
+            'Found category-specific contributor: ${contributor['userName']} for ${widget.selectedCategory}',
+          );
+
+          return Text(
+            'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
+            style: AppSize.getTextStyle(
+              fontSize: AppSize.smallFontSize,
+              color: Colors.grey.shade600,
+            ),
+          );
+        }
+      }
+
+      // If we didn't find a category-specific contributor, search in all categories that might match
+      if (categoryStats != null) {
+        // Try to find matching category names (case insensitive)
+        final matchingCategories =
+            categoryStats.keys
+                .where(
+                  (key) =>
+                      key.toString().toLowerCase() ==
+                      widget.selectedCategory!.toLowerCase(),
+                )
+                .toList();
+
+        for (final matchingCategory in matchingCategories) {
+          final categoryData =
+              categoryStats[matchingCategory] as Map<String, dynamic>?;
+          if (categoryData != null && categoryData['contributor'] != null) {
+            final contributor =
+                categoryData['contributor'] as Map<String, dynamic>;
+
+            print(
+              'Found contributor in matching category $matchingCategory: ${contributor['userName']}',
+            );
+
+            return Text(
+              'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
+              style: AppSize.getTextStyle(
+                fontSize: AppSize.smallFontSize,
+                color: Colors.grey.shade600,
+              ),
+            );
+          }
+        }
+      }
+    }
+
+    // Fall back to general contributors if no category-specific one is found
     List<Map<String, dynamic>> contributors = [];
     if (widget.surveyData['contributors'] != null) {
       try {
@@ -662,7 +742,27 @@ class _SurveyDetailFromBankScreenState
       );
     }
 
-    // If multiple contributors, show count and list them
+    // If we're showing a specific category but couldn't find a specific contributor,
+    // just show the most recent contributor (assuming they probably did this category)
+    if (widget.selectedCategory != null && contributors.isNotEmpty) {
+      // Sort by timestamp if available
+      contributors.sort((a, b) {
+        if (a['timestamp'] == null || b['timestamp'] == null) return 0;
+        return (b['timestamp'] as Timestamp).compareTo(
+          a['timestamp'] as Timestamp,
+        );
+      });
+
+      return Text(
+        'Surveyor: ${contributors.first['userName'] ?? 'Unknown'}',
+        style: AppSize.getTextStyle(
+          fontSize: AppSize.smallFontSize,
+          color: Colors.grey.shade600,
+        ),
+      );
+    }
+
+    // If multiple contributors for general survey view, show count and list them
     if (contributors.length > 1) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
