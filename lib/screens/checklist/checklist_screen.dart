@@ -930,6 +930,278 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     _navigateToSubcategory(_currentCategoryIndex, index);
   }
 
+  /// Handles back button press with confirmation dialog
+  Future<void> _handleBackConfirmation() async {
+    // Check if user has made any progress (answered any questions)
+    final hasAnsweredQuestions = _checklistItems.any(
+      (item) => item.answerValue != null || item.skipped == true,
+    );
+
+    // If no progress made, just go back
+    if (!hasAnsweredQuestions) {
+      Navigator.pop(context);
+      return;
+    }
+
+    // Show confirmation dialog
+    final bool? shouldSave = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.save_outlined,
+                color: Colors.orange.shade600,
+                size: 28,
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Simpan Progress?',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ),
+              // Cancel button in top-right corner
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                icon: Icon(
+                  Icons.close,
+                  color: Colors.grey.shade600,
+                ),
+                tooltip: 'Batal',
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Anda telah menjawab beberapa pertanyaan. Pilih tindakan yang ingin Anda lakukan:',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+              SizedBox(height: 16),
+              
+              // Option info cards
+              _buildOptionCard(
+                icon: Icons.save_outlined,
+                title: 'Simpan Progress',
+                description: 'Simpan jawaban dan kembali ke pilih kategori',
+                color: Colors.blue,
+              ),
+              SizedBox(height: 8),
+              
+              _buildOptionCard(
+                icon: Icons.exit_to_app,
+                title: 'Keluar Tanpa Simpan',
+                description: 'Buang semua jawaban dan kembali ke pilih kategori',
+                color: Colors.red,
+              ),
+              SizedBox(height: 8),
+              
+              _buildOptionCard(
+                icon: Icons.cancel_outlined,
+                title: 'Batal',
+                description: 'Tetap di halaman ini dan lanjutkan survey',
+                color: Colors.grey,
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              children: [
+                // Don't save, just exit
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text(
+                      'Tidak, Keluar',
+                      style: TextStyle(
+                        color: Colors.red.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                
+                SizedBox(width: 16),
+                
+                // Save and exit
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Ya, Simpan',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSave == true) {
+      // Save progress and return to choose category
+      await _saveProgressAndReturn();
+    } else if (shouldSave == false) {
+      // Just go back without saving
+      Navigator.pop(context);
+    }
+    // If shouldSave is null (user chose "Batal"), do nothing - stay on current screen
+  }
+
+  /// Saves current progress and returns to choose category
+  Future<void> _saveProgressAndReturn() async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 16),
+                  Text('Menyimpan progress...'),
+                ],
+              ),
+            ),
+      );
+
+      // Calculate current progress
+      final skippedCount =
+          _checklistItems.where((item) => item.skipped == true).length;
+      final score = _checklistService.calculateScore(_checklistItems);
+
+      // Save progress to Firestore
+      await _surveyResultService.saveSurveyResult(
+        selectedBank: widget.selectedBank,
+        selectedCategory: widget.selectedCategory,
+        selectedDate: widget.selectedDate,
+        bankBranchId: widget.bankBranchId,
+        sessionId: widget.sessionId,
+        checklistItems: _checklistItems,
+        score: score,
+        skippedCount: skippedCount,
+        employeeData: widget.employeeData,
+      );
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Progress berhasil disimpan! Anda dapat melanjutkan kapan saja.',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green.shade600,
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      // Return to choose category screen
+      Navigator.pop(context);
+    } catch (e) {
+      // Close loading dialog if still open
+      Navigator.pop(context);
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(child: Text('Gagal menyimpan progress: $e')),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          duration: Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  /// Helper method to build option card for confirmation dialog
+  Widget _buildOptionCard({
+    required IconData icon,
+    required String title,
+    required String description,
+    required MaterialColor color,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: color.shade600,
+            size: 20,
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: color.shade700,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: color.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _handleSaveChecklist() async {
     // Ubah pengecekan untuk menerima pertanyaan yang di-skip
     final allAnswered = _checklistItems.every(
@@ -1059,154 +1331,165 @@ class _ChecklistScreenState extends State<ChecklistScreen>
             (_categoryNames.length == 1 &&
                 _categoryNames[0] != 'Uncategorized'));
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Updated Header section
-              ChecklistHeader(
-                bankName: widget.selectedBank,
-                categoryName: widget.selectedCategory,
-                date: widget.selectedDate,
-                employeeData: widget.employeeData,
-                progress: progress,
-                onBackPressed: () => Navigator.pop(context),
-              ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          await _handleBackConfirmation();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade100,
+        body: SafeArea(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                // Updated Header section
+                ChecklistHeader(
+                  bankName: widget.selectedBank,
+                  categoryName: widget.selectedCategory,
+                  date: widget.selectedDate,
+                  employeeData: widget.employeeData,
+                  progress: progress,
+                  onBackPressed: _handleBackConfirmation,
+                ),
 
-              // Show empty state if no checklist items
-              if (_checklistItems.isEmpty)
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.assessment_outlined,
-                          size: AppSize.iconSize * 2,
-                          color: Colors.grey.shade400,
-                        ),
-                        SizedBox(height: AppSize.heightPercent(2)),
-                        Text(
-                          'Tidak ada checklist untuk kategori ini',
-                          style: AppSize.getTextStyle(
-                            fontSize: AppSize.subtitleFontSize,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
+                // Show empty state if no checklist items
+                if (_checklistItems.isEmpty)
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.assessment_outlined,
+                            size: AppSize.iconSize * 2,
+                            color: Colors.grey.shade400,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: AppSize.heightPercent(1)),
-                        Text(
-                          'Silahkan pilih kategori lain atau hubungi administrator',
-                          style: AppSize.getTextStyle(
-                            fontSize: AppSize.bodyFontSize,
-                            color: Colors.grey.shade500,
+                          SizedBox(height: AppSize.heightPercent(2)),
+                          Text(
+                            'Tidak ada checklist untuk kategori ini',
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.subtitleFontSize,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: AppSize.heightPercent(4)),
-                        ElevatedButton.icon(
-                          onPressed: () => Navigator.pop(context),
-                          icon: Icon(Icons.arrow_back),
-                          label: Text('Kembali'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade700,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppSize.widthPercent(5),
-                              vertical: AppSize.heightPercent(1.5),
+                          SizedBox(height: AppSize.heightPercent(1)),
+                          Text(
+                            'Silahkan pilih kategori lain atau hubungi administrator',
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.bodyFontSize,
+                              color: Colors.grey.shade500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: AppSize.heightPercent(4)),
+                          ElevatedButton.icon(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(Icons.arrow_back),
+                            label: Text('Kembali'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade700,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSize.widthPercent(5),
+                                vertical: AppSize.heightPercent(1.5),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                )
-              else ...[
-                // CategoryNavigator: maps internal variables to correct database structure
-                if (showCategoryNavigator)
-                  CategoryNavigator(
-                    subcategories:
-                        _categoryNames, // _categoryNames actually contains subcategories from database
-                    sections:
-                        _subcategoryNames, // _subcategoryNames actually contains sections from database
-                    currentSubcategoryIndex:
-                        _currentCategoryIndex, // Maps to current subcategory in database
-                    currentSectionIndex:
-                        _currentSubcategoryIndex, // Maps to current section in database
-                    onSubcategorySelected:
-                        _handleCategorySelected, // Handler for subcategory selection
-                    onSectionSelected:
-                        _handleSubcategorySelected, // Handler for section selection
-                    subcategoryCompletionStatus:
-                        _categoryCompletionStatus, // Subcategory completion status
-                    sectionCompletionStatus:
-                        _subcategoryCompletionStatus, // Section completion status
-                  ),
 
-                // Questions list
-                Expanded(
-                  child: AnimatedBuilder(
-                    animation: _animationController,
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: _fadeAnimation.value,
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          child:
-                              _currentSubcategoryItems.isNotEmpty
-                                  ? SubcategoryQuestions(
-                                    key: ValueKey(
-                                      '${_currentCategoryIndex}_${_currentSubcategoryIndex}_${_currentSubcategoryItems.length}',
-                                    ),
-                                    categoryName:
-                                        widget.selectedCategory.toLowerCase() ==
-                                                "toilet"
-                                            ? "Toilet"
-                                            : (showCategoryNavigator
-                                                ? _currentCategory
-                                                : ''),
-                                    subcategoryName: _currentSubcategory,
-                                    questions: _currentSubcategoryItems,
-                                    onAnswerChanged: _handleAnswerChanged,
-                                    onNoteChanged: _handleNoteChanged,
-                                  )
-                                  : Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(
-                                        AppSize.widthPercent(8),
+                // Category Navigator and Questions for non-empty checklist
+                if (_checklistItems.isNotEmpty) ...[
+                  // CategoryNavigator: maps internal variables to correct database structure
+                  if (showCategoryNavigator)
+                    CategoryNavigator(
+                      subcategories:
+                          _categoryNames, // _categoryNames actually contains subcategories from database
+                      sections:
+                          _subcategoryNames, // _subcategoryNames actually contains sections from database
+                      currentSubcategoryIndex:
+                          _currentCategoryIndex, // Maps to current subcategory in database
+                      currentSectionIndex:
+                          _currentSubcategoryIndex, // Maps to current section in database
+                      onSubcategorySelected:
+                          _handleCategorySelected, // Handler for subcategory selection
+                      onSectionSelected:
+                          _handleSubcategorySelected, // Handler for section selection
+                      subcategoryCompletionStatus:
+                          _categoryCompletionStatus, // Subcategory completion status
+                      sectionCompletionStatus:
+                          _subcategoryCompletionStatus, // Section completion status
+                    ),
+
+                  // Questions list
+                  Expanded(
+                    child: AnimatedBuilder(
+                      animation: _animationController,
+                      builder: (context, child) {
+                        return Opacity(
+                          opacity: _fadeAnimation.value,
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            child:
+                                _currentSubcategoryItems.isNotEmpty
+                                    ? SubcategoryQuestions(
+                                      key: ValueKey(
+                                        '${_currentCategoryIndex}_${_currentSubcategoryIndex}_${_currentSubcategoryItems.length}',
                                       ),
-                                      child: Text(
-                                        'Tidak ada pertanyaan untuk subkategori ini.',
-                                        style: AppSize.getTextStyle(
-                                          fontSize: AppSize.bodyFontSize,
-                                          color: Colors.grey.shade600,
+                                      categoryName:
+                                          widget.selectedCategory
+                                                      .toLowerCase() ==
+                                                  "toilet"
+                                              ? "Toilet"
+                                              : (showCategoryNavigator
+                                                  ? _currentCategory
+                                                  : ''),
+                                      subcategoryName: _currentSubcategory,
+                                      questions: _currentSubcategoryItems,
+                                      onAnswerChanged: _handleAnswerChanged,
+                                      onNoteChanged: _handleNoteChanged,
+                                    )
+                                    : Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(
+                                          AppSize.widthPercent(8),
                                         ),
-                                        textAlign: TextAlign.center,
+                                        child: Text(
+                                          'Tidak ada pertanyaan untuk subkategori ini.',
+                                          style: AppSize.getTextStyle(
+                                            fontSize: AppSize.bodyFontSize,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                        ),
-                      );
-                    },
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
 
-                // Navigation controls
-                NavigationControls(
-                  isFirstItem: isFirstItem,
-                  isLastItem: isLastItem,
-                  isValid: isValid,
-                  isAnimating: _animationController.isAnimating,
-                  onPrevious: _handlePrevious,
-                  onNext: _handleNext,
-                  onSave: _handleSaveChecklist,
-                ),
+                  // Navigation controls
+                  NavigationControls(
+                    isFirstItem: isFirstItem,
+                    isLastItem: isLastItem,
+                    isValid: isValid,
+                    isAnimating: _animationController.isAnimating,
+                    onPrevious: _handlePrevious,
+                    onNext: _handleNext,
+                    onSave: _handleSaveChecklist,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
