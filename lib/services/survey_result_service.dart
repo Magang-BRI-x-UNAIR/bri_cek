@@ -673,6 +673,99 @@ class SurveyResultService {
     }
   }
 
+  /// Mendapatkan status kategori untuk tanggal dan bank tertentu
+  Future<Map<String, String>> getCategoryStatusForDate({
+    required String bankName,
+    required DateTime selectedDate,
+    required List<String> categories,
+    String? userId,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      final targetUserId = userId ?? user?.uid;
+
+      if (targetUserId == null) {
+        throw Exception('User ID tidak ditemukan');
+      }
+
+      // Buat ID yang konsisten
+      final dateStr =
+          '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+      final surveyResultId =
+          '${targetUserId}_${bankName.replaceAll(' ', '_')}_$dateStr';
+
+      print('Checking category status for survey ID: $surveyResultId');
+
+      final doc =
+          await _firestore
+              .collection('survey_results')
+              .doc(surveyResultId)
+              .get();
+
+      Map<String, String> categoryStatus = {};
+
+      // Initialize all categories as 'default' (not started)
+      for (String category in categories) {
+        categoryStatus[category] = 'default';
+      }
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final completedCategories = List<String>.from(data['categories'] ?? []);
+        final categoryStatistics =
+            data['categoryStatistics'] as Map<String, dynamic>? ?? {};
+
+        print('Found completed categories: $completedCategories');
+        print('Category statistics: $categoryStatistics');
+
+        for (String category in categories) {
+          if (completedCategories.contains(category)) {
+            // Category has been attempted, check if it's complete
+            final categoryStats =
+                categoryStatistics[category] as Map<String, dynamic>?;
+
+            if (categoryStats != null) {
+              final totalQuestions =
+                  categoryStats['totalQuestions'] as int? ?? 0;
+              final answeredQuestions =
+                  categoryStats['answeredQuestions'] as int? ?? 0;
+              final skippedQuestions =
+                  categoryStats['skippedQuestions'] as int? ?? 0;
+
+              print(
+                'Category $category: total=$totalQuestions, answered=$answeredQuestions, skipped=$skippedQuestions',
+              );
+
+              // Check if survey is complete (all questions answered or skipped)
+              if (totalQuestions > 0 &&
+                  (answeredQuestions + skippedQuestions) >= totalQuestions) {
+                categoryStatus[category] = 'completed'; // Green
+              } else if (answeredQuestions > 0) {
+                categoryStatus[category] = 'partial'; // Yellow
+              } else {
+                categoryStatus[category] = 'default'; // Default color
+              }
+            } else {
+              // Category exists but no stats, means partial
+              categoryStatus[category] = 'partial';
+            }
+          }
+        }
+      }
+
+      print('Final category status: $categoryStatus');
+      return categoryStatus;
+    } catch (e) {
+      print('Error getting category status: $e');
+      // Return default status for all categories on error
+      Map<String, String> defaultStatus = {};
+      for (String category in categories) {
+        defaultStatus[category] = 'default';
+      }
+      return defaultStatus;
+    }
+  }
+
   /// Menghapus hasil survey (soft delete)
   Future<void> deleteSurveyResult(String surveyResultId) async {
     try {

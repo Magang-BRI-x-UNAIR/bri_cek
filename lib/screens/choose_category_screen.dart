@@ -1,5 +1,6 @@
 import 'package:bri_cek/screens/checklist/checklist_screen.dart';
 import 'package:bri_cek/screens/employee_info_screen.dart';
+import 'package:bri_cek/services/survey_result_service.dart';
 import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:intl/intl.dart';
@@ -24,7 +25,10 @@ class ChooseCategoryScreen extends StatefulWidget {
 
 class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy');
+  final SurveyResultService _surveyResultService = SurveyResultService();
   String? _selectedCategory;
+  Map<String, String> _categoryStatus = {};
+  bool _isLoadingStatus = true;
 
   // Define the categories
   final List<Map<String, dynamic>> _categories = [
@@ -37,6 +41,166 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
     {'name': 'Ruang BRIMEN', 'icon': Icons.meeting_room},
     {'name': 'Toilet', 'icon': Icons.wc},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategoryStatus();
+  }
+
+  Future<void> _loadCategoryStatus() async {
+    try {
+      setState(() {
+        _isLoadingStatus = true;
+      });
+
+      final categoryNames =
+          _categories.map((cat) => cat['name'] as String).toList();
+
+      final status = await _surveyResultService.getCategoryStatusForDate(
+        bankName: widget.selectedBank,
+        selectedDate: widget.selectedDate,
+        categories: categoryNames,
+      );
+
+      setState(() {
+        _categoryStatus = status;
+        _isLoadingStatus = false;
+      });
+    } catch (e) {
+      print('Error loading category status: $e');
+      setState(() {
+        _isLoadingStatus = false;
+        // Set all categories to default status on error
+        for (var category in _categories) {
+          _categoryStatus[category['name']] = 'default';
+        }
+      });
+    }
+  }
+
+  Color _getCategoryBackgroundColor(String categoryName, bool isSelected) {
+    if (isSelected) {
+      return Colors.blue.shade50;
+    }
+
+    final status = _categoryStatus[categoryName] ?? 'default';
+    switch (status) {
+      case 'completed':
+        return Colors.green.shade50;
+      case 'partial':
+        return Colors.yellow.shade50;
+      default:
+        return Colors.white;
+    }
+  }
+
+  Color _getCategoryBorderColor(String categoryName, bool isSelected) {
+    if (isSelected) {
+      return Colors.blue.shade400;
+    }
+
+    final status = _categoryStatus[categoryName] ?? 'default';
+    switch (status) {
+      case 'completed':
+        return Colors.green.shade400;
+      case 'partial':
+        return Colors.yellow.shade600;
+      default:
+        return Colors.grey.shade300;
+    }
+  }
+
+  Color _getCategoryIconColor(String categoryName, bool isSelected) {
+    if (isSelected) {
+      return Colors.blue.shade600;
+    }
+
+    final status = _categoryStatus[categoryName] ?? 'default';
+    switch (status) {
+      case 'completed':
+        return Colors.green.shade600;
+      case 'partial':
+        return Colors.yellow.shade700;
+      default:
+        return Colors.grey.shade700;
+    }
+  }
+
+  Color _getCategoryTextColor(String categoryName, bool isSelected) {
+    if (isSelected) {
+      return Colors.blue.shade700;
+    }
+
+    final status = _categoryStatus[categoryName] ?? 'default';
+    switch (status) {
+      case 'completed':
+        return Colors.green.shade700;
+      case 'partial':
+        return Colors.yellow.shade800;
+      default:
+        return Colors.grey.shade800;
+    }
+  }
+
+  Widget _buildStatusIndicator(String categoryName) {
+    final status = _categoryStatus[categoryName] ?? 'default';
+
+    switch (status) {
+      case 'completed':
+        return Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.green,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.check, color: Colors.white, size: 16),
+          ),
+        );
+      case 'partial':
+        return Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.orange,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.access_time, color: Colors.white, size: 16),
+          ),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+        SizedBox(width: AppSize.widthPercent(1)),
+        Text(
+          label,
+          style: AppSize.getTextStyle(
+            fontSize: AppSize.bodyFontSize * 0.8,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,204 +367,377 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                 ),
                 child: Column(
                   children: [
+                    // Legend section
+                    Container(
+                      margin: EdgeInsets.only(bottom: AppSize.heightPercent(1)),
+                      padding: EdgeInsets.all(AppSize.widthPercent(3)),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Status Survey:',
+                            style: AppSize.getTextStyle(
+                              fontSize: AppSize.bodyFontSize * 0.9,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          SizedBox(height: AppSize.heightPercent(0.5)),
+                          Row(
+                            children: [
+                              _buildLegendItem(
+                                Colors.green.shade600,
+                                'Selesai',
+                              ),
+                              SizedBox(width: AppSize.widthPercent(4)),
+                              _buildLegendItem(
+                                Colors.orange.shade600,
+                                'Sebagian',
+                              ),
+                              SizedBox(width: AppSize.widthPercent(4)),
+                              _buildLegendItem(
+                                Colors.grey.shade600,
+                                'Belum Mulai',
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
                     // Categories grid
                     Expanded(
-                      child: GridView.builder(
-                        padding: EdgeInsets.symmetric(
-                          vertical: AppSize.heightPercent(1),
-                        ),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: AppSize.widthPercent(4),
-                          mainAxisSpacing: AppSize.heightPercent(2),
-                          childAspectRatio: 1.2,
-                        ),
-                        itemCount: _categories.length,
-                        itemBuilder: (context, index) {
-                          final category = _categories[index];
-                          final isSelected =
-                              _selectedCategory == category['name'];
+                      child:
+                          _isLoadingStatus
+                              ? const Center(child: CircularProgressIndicator())
+                              : RefreshIndicator(
+                                onRefresh: _loadCategoryStatus,
+                                child: GridView.builder(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: AppSize.heightPercent(1),
+                                  ),
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: AppSize.widthPercent(
+                                          4,
+                                        ),
+                                        mainAxisSpacing: AppSize.heightPercent(
+                                          2,
+                                        ),
+                                        childAspectRatio: 1.2,
+                                      ),
+                                  itemCount: _categories.length,
+                                  itemBuilder: (context, index) {
+                                    final category = _categories[index];
+                                    final categoryName =
+                                        category['name'] as String;
+                                    final isSelected =
+                                        _selectedCategory == categoryName;
 
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedCategory = category['name'];
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              decoration: BoxDecoration(
-                                color:
-                                    isSelected
-                                        ? Colors.blue.shade50
-                                        : Colors.white,
-                                borderRadius: BorderRadius.circular(15),
-                                border: Border.all(
-                                  color:
-                                      isSelected
-                                          ? Colors.blue.shade400
-                                          : Colors.grey.shade300,
-                                  width: isSelected ? 2 : 1,
+                                    return GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedCategory = categoryName;
+                                        });
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _getCategoryBackgroundColor(
+                                            categoryName,
+                                            isSelected,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            15,
+                                          ),
+                                          border: Border.all(
+                                            color: _getCategoryBorderColor(
+                                              categoryName,
+                                              isSelected,
+                                            ),
+                                            width: isSelected ? 2 : 1,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  isSelected
+                                                      ? Colors.blue.withOpacity(
+                                                        0.2,
+                                                      )
+                                                      : _getCategoryBorderColor(
+                                                        categoryName,
+                                                        false,
+                                                      ).withOpacity(0.1),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  category['icon'],
+                                                  color: _getCategoryIconColor(
+                                                    categoryName,
+                                                    isSelected,
+                                                  ),
+                                                  size: AppSize.iconSize * 1.2,
+                                                ),
+                                                SizedBox(
+                                                  height: AppSize.heightPercent(
+                                                    1,
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8.0,
+                                                      ),
+                                                  child: Text(
+                                                    categoryName,
+                                                    style: AppSize.getTextStyle(
+                                                      fontSize:
+                                                          AppSize
+                                                              .subtitleFontSize *
+                                                          0.85,
+                                                      fontWeight:
+                                                          isSelected
+                                                              ? FontWeight.bold
+                                                              : FontWeight.w500,
+                                                      color:
+                                                          _getCategoryTextColor(
+                                                            categoryName,
+                                                            isSelected,
+                                                          ),
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            _buildStatusIndicator(categoryName),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color:
-                                        isSelected
-                                            ? Colors.blue.withOpacity(0.2)
-                                            : Colors.grey.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    category['icon'],
-                                    color:
-                                        isSelected
-                                            ? Colors.blue.shade600
-                                            : Colors.grey.shade700,
-                                    size: AppSize.iconSize * 1.2,
-                                  ),
-                                  SizedBox(height: AppSize.heightPercent(1)),
-                                  Text(
-                                    category['name'],
-                                    style: AppSize.getTextStyle(
-                                      fontSize: AppSize.subtitleFontSize * 0.85,
-                                      fontWeight:
-                                          isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.w500,
-                                      color:
-                                          isSelected
-                                              ? Colors.blue.shade700
-                                              : Colors.grey.shade800,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
                     ),
 
                     SizedBox(height: AppSize.heightPercent(2)),
 
-                    // Continue button
-                    Container(
-                      width: double.infinity,
-                      height: AppSize.heightPercent(7),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                _selectedCategory != null
-                                    ? Colors.blue.withOpacity(0.3)
-                                    : Colors.transparent,
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap:
-                              _selectedCategory != null
-                                  ? () {
-                                    // Check which category was selected
-                                    if ([
-                                      'Satpam',
-                                      'Teller',
-                                      'Customer Service',
-                                    ].contains(_selectedCategory)) {
-                                      // Navigate to employee info screen for people-related categories
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) => EmployeeInfoScreen(
-                                                selectedBank:
-                                                    widget.selectedBank,
-                                                selectedDate:
-                                                    widget.selectedDate,
-                                                selectedCategory:
-                                                    _selectedCategory!,
-                                                bankBranchId:
-                                                    widget
-                                                        .bankBranchId, // Teruskan dari widget
-                                                sessionId: widget.sessionId,
-                                              ),
-                                        ),
-                                      );
-                                    } else {
-                                      // Navigate directly to checklist screen for location-based categories
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) => ChecklistScreen(
-                                                selectedBank:
-                                                    widget.selectedBank,
-                                                selectedDate:
-                                                    widget.selectedDate,
-                                                selectedCategory:
-                                                    _selectedCategory!,
-                                                bankBranchId:
-                                                    widget
-                                                        .bankBranchId, // Tambahkan ini
-                                                sessionId:
-                                                    widget
-                                                        .sessionId, // Tambahkan ini
-                                                // Employee data is null for non-people categories
-                                                employeeData: null,
-                                                fetchFromDatabase: true,
-                                              ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                  : null, // Disable if no category selected
-                          borderRadius: BorderRadius.circular(15),
-                          child: Ink(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors:
-                                    _selectedCategory != null
-                                        ? [
-                                          Colors.blue.shade500,
-                                          Colors.blue.shade700,
-                                        ]
-                                        : [
-                                          Colors.grey.shade300,
-                                          Colors.grey.shade400,
-                                        ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
+                    // Navigation buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Back Button with improved styling
+                        Expanded(
+                          flex: 2,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.pop(context);
+                              },
+                              borderRadius: BorderRadius.circular(
+                                AppSize.cardBorderRadius,
                               ),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'Lanjutkan',
-                                style: AppSize.getTextStyle(
-                                  fontSize: AppSize.subtitleFontSize,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      _selectedCategory != null
-                                          ? Colors.white
-                                          : Colors.grey.shade600,
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.grey.shade700,
+                                      Colors.grey.shade600,
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSize.cardBorderRadius,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.3),
+                                      offset: const Offset(0, 2),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: AppSize.heightPercent(2),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.arrow_back_rounded,
+                                        size: AppSize.iconSize * 0.8,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(
+                                        width: AppSize.widthPercent(1.5),
+                                      ),
+                                      Text(
+                                        'Kembali',
+                                        style: AppSize.getTextStyle(
+                                          fontSize: AppSize.bodyFontSize,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
+
+                        SizedBox(width: AppSize.widthPercent(4)),
+
+                        // Continue Button with improved styling
+                        Expanded(
+                          flex: 3,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap:
+                                  _selectedCategory != null
+                                      ? () {
+                                        // Check which category was selected
+                                        if ([
+                                          'Satpam',
+                                          'Teller',
+                                          'Customer Service',
+                                        ].contains(_selectedCategory)) {
+                                          // Navigate to employee info screen for people-related categories
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (
+                                                    context,
+                                                  ) => EmployeeInfoScreen(
+                                                    selectedBank:
+                                                        widget.selectedBank,
+                                                    selectedDate:
+                                                        widget.selectedDate,
+                                                    selectedCategory:
+                                                        _selectedCategory!,
+                                                    bankBranchId:
+                                                        widget
+                                                            .bankBranchId, // Teruskan dari widget
+                                                    sessionId: widget.sessionId,
+                                                  ),
+                                            ),
+                                          );
+                                        } else {
+                                          // Navigate directly to checklist screen for location-based categories
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (context) => ChecklistScreen(
+                                                    selectedBank:
+                                                        widget.selectedBank,
+                                                    selectedDate:
+                                                        widget.selectedDate,
+                                                    selectedCategory:
+                                                        _selectedCategory!,
+                                                    bankBranchId:
+                                                        widget
+                                                            .bankBranchId, // Tambahkan ini
+                                                    sessionId:
+                                                        widget
+                                                            .sessionId, // Tambahkan ini
+                                                    // Employee data is null for non-people categories
+                                                    employeeData: null,
+                                                    fetchFromDatabase: true,
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                      : null, // Disable if no category selected
+                              borderRadius: BorderRadius.circular(
+                                AppSize.cardBorderRadius,
+                              ),
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors:
+                                        _selectedCategory != null
+                                            ? [
+                                              Colors.blue.shade500,
+                                              Colors.blue.shade700,
+                                            ]
+                                            : [
+                                              Colors.grey.shade400,
+                                              Colors.grey.shade500,
+                                            ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSize.cardBorderRadius,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          _selectedCategory != null
+                                              ? Colors.blue.withOpacity(0.3)
+                                              : Colors.grey.withOpacity(0.2),
+                                      offset: const Offset(0, 2),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: AppSize.heightPercent(2),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Lanjutkan',
+                                        style: AppSize.getTextStyle(
+                                          fontSize: AppSize.bodyFontSize,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: AppSize.widthPercent(1.5),
+                                      ),
+                                      Icon(
+                                        Icons.arrow_forward_rounded,
+                                        size: AppSize.iconSize * 0.8,
+                                        color: Colors.white,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
