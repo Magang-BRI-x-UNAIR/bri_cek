@@ -31,7 +31,9 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
   // Temporary debug method to check all survey data
   Future<void> _debugCheckAllSurveyData() async {
     try {
-      final allHistory = await _surveyResultService.getUserSurveyResults();
+      final allHistory = await _surveyResultService.getUserSurveyResults(
+        userId: null,
+      );
       print('=== DEBUG: All user survey results ===');
       print('Total: ${allHistory.length}');
 
@@ -78,6 +80,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     print('Loading survey history for bank: ${widget.branch.name}');
     try {
       final history = await _surveyResultService.getUserSurveyResults(
+        userId: null, // Show all users' survey results, not just current user's
         limit: 10, // Limit to recent 10 results
       );
 
@@ -552,8 +555,8 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
               SizedBox(width: 10),
               ElevatedButton(
                 onPressed: () async {
-                  final allHistory =
-                      await _surveyResultService.getUserSurveyResults();
+                  final allHistory = await _surveyResultService
+                      .getUserSurveyResults(userId: null);
                   final bankNames =
                       allHistory
                           .map((result) => result['selectedBank'])
@@ -715,6 +718,14 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                               style: AppSize.getTextStyle(
                                 fontSize: AppSize.smallFontSize * 0.85,
                                 color: Colors.grey.shade600,
+                              ),
+                            ),
+                            Text(
+                              'Surveyor: ${survey['userName'] ?? 'Unknown'}',
+                              style: TextStyle(
+                                fontSize: AppSize.smallFontSize * 0.85,
+                                color: Colors.grey.shade600,
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
                           ],

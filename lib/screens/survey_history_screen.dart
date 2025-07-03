@@ -40,7 +40,9 @@ class _SurveyHistoryScreenState extends State<SurveyHistoryScreen> {
     });
 
     try {
+      // Pass null as userId to get all survey results from all users
       final results = await _surveyResultService.getUserSurveyResults(
+        userId: null, // Show all survey results, not just current user's
         category: _selectedCategory == 'Semua' ? null : _selectedCategory,
         limit: 50,
       );

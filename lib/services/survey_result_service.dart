@@ -252,7 +252,9 @@ class SurveyResultService {
     }
   }
 
-  /// Mendapatkan hasil survey berdasarkan user
+  /// Mendapatkan hasil survey
+  /// Jika userId disediakan, hanya mengembalikan survey dari user tersebut
+  /// Jika tidak, mengembalikan semua survey dari semua users
   Future<List<Map<String, dynamic>>> getUserSurveyResults({
     String? userId,
     String? category,
@@ -264,17 +266,20 @@ class SurveyResultService {
       final user = _auth.currentUser;
       final targetUserId = userId ?? user?.uid;
 
-      if (targetUserId == null) {
-        throw Exception('User ID tidak ditemukan');
+      print(
+        'Getting survey results' +
+            (userId != null ? ' for user: $targetUserId' : ' for all users'),
+      );
+
+      // Dapatkan semua hasil survey
+      // Jika targetUserId disediakan, filter by userId
+      // Kalau tidak, tampilkan semua survey
+      Query query = _firestore.collection('survey_results');
+
+      // Filter by userId hanya jika userId disediakan
+      if (userId != null) {
+        query = query.where('userId', isEqualTo: targetUserId);
       }
-
-      print('Getting survey results for user: $targetUserId');
-
-      // Dapatkan semua hasil survey untuk user ini
-      // Kita akan filter lebih lanjut di client side untuk lebih fleksibel
-      Query query = _firestore
-          .collection('survey_results')
-          .where('userId', isEqualTo: targetUserId);
 
       // Limit hasil jika ada
       if (limit != null) {
