@@ -639,20 +639,8 @@ class _SurveyDetailFromBankScreenState
 
   // Display contributors of the survey
   Widget _buildContributorsText() {
-    // Special case for Toilet category - hardcoded fix as requested
-    if (widget.selectedCategory != null &&
-        widget.selectedCategory!.toLowerCase() == 'toilet') {
-      print(
-        'Special case: Toilet category detected - showing single contributor',
-      );
-      return Text(
-        'Surveyor: ardisaaa',
-        style: AppSize.getTextStyle(
-          fontSize: AppSize.smallFontSize,
-          color: Colors.grey.shade600,
-        ),
-      );
-    }
+    // We will get the actual contributor from the database
+    // No more hardcoded values
 
     // First try to get category-specific contributor
     if (widget.selectedCategory != null &&
@@ -660,6 +648,7 @@ class _SurveyDetailFromBankScreenState
       final categoryStats =
           widget.surveyData['categoryStatistics'] as Map<String, dynamic>?;
 
+      // Try exact match first
       if (categoryStats != null &&
           categoryStats[widget.selectedCategory] != null) {
         final categoryData =
@@ -671,7 +660,7 @@ class _SurveyDetailFromBankScreenState
               categoryData['contributor'] as Map<String, dynamic>;
 
           print(
-            'Found category-specific contributor: ${contributor['userName']} for ${widget.selectedCategory}',
+            'Found exact match for category contributor: ${contributor['userName']} for ${widget.selectedCategory}',
           );
 
           return Text(
@@ -684,27 +673,24 @@ class _SurveyDetailFromBankScreenState
         }
       }
 
-      // If we didn't find a category-specific contributor, search in all categories that might match
+      // Try case insensitive match if exact match failed
       if (categoryStats != null) {
-        // Try to find matching category names (case insensitive)
-        final matchingCategories =
-            categoryStats.keys
-                .where(
-                  (key) =>
-                      key.toString().toLowerCase() ==
-                      widget.selectedCategory!.toLowerCase(),
-                )
-                .toList();
+        final matchingCategoryKey = categoryStats.keys.firstWhere(
+          (key) =>
+              key.toString().toLowerCase() ==
+              widget.selectedCategory!.toLowerCase(),
+          orElse: () => '',
+        );
 
-        for (final matchingCategory in matchingCategories) {
+        if (matchingCategoryKey.isNotEmpty) {
           final categoryData =
-              categoryStats[matchingCategory] as Map<String, dynamic>?;
-          if (categoryData != null && categoryData['contributor'] != null) {
+              categoryStats[matchingCategoryKey] as Map<String, dynamic>;
+          if (categoryData['contributor'] != null) {
             final contributor =
                 categoryData['contributor'] as Map<String, dynamic>;
 
             print(
-              'Found contributor in matching category $matchingCategory: ${contributor['userName']}',
+              'Found case-insensitive match for category contributor: ${contributor['userName']} for ${widget.selectedCategory}',
             );
 
             return Text(
@@ -714,6 +700,34 @@ class _SurveyDetailFromBankScreenState
                 color: Colors.grey.shade600,
               ),
             );
+          }
+        }
+
+        // If still no match, try to find matching category names with substring
+        for (final catKey in categoryStats.keys) {
+          if (catKey.toString().toLowerCase().contains(
+                widget.selectedCategory!.toLowerCase(),
+              ) ||
+              widget.selectedCategory!.toLowerCase().contains(
+                catKey.toString().toLowerCase(),
+              )) {
+            final categoryData = categoryStats[catKey] as Map<String, dynamic>?;
+            if (categoryData != null && categoryData['contributor'] != null) {
+              final contributor =
+                  categoryData['contributor'] as Map<String, dynamic>;
+
+              print(
+                'Found substring match for category contributor: ${contributor['userName']} from $catKey for ${widget.selectedCategory}',
+              );
+
+              return Text(
+                'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
+                style: AppSize.getTextStyle(
+                  fontSize: AppSize.smallFontSize,
+                  color: Colors.grey.shade600,
+                ),
+              );
+            }
           }
         }
       }

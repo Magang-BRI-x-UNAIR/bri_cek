@@ -221,24 +221,15 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     Map<String, dynamic> survey, {
     String? selectedCategory,
   }) {
-    // Special case for Toilet category
-    if (selectedCategory != null &&
-        selectedCategory.toLowerCase() == 'toilet') {
-      return Text(
-        'Surveyor: ardisaaa',
-        style: TextStyle(
-          fontSize: AppSize.smallFontSize * 0.85,
-          color: Colors.grey.shade600,
-          fontStyle: FontStyle.italic,
-        ),
-      );
-    }
+    // We will find the actual contributor for any category from the database
+    // No more hardcoded values
 
     // If we have a selected category and category statistics, try to find the specific contributor
     if (selectedCategory != null && survey['categoryStatistics'] != null) {
       final categoryStats =
           survey['categoryStatistics'] as Map<String, dynamic>?;
 
+      // Try to find exact match first
       if (categoryStats != null && categoryStats[selectedCategory] != null) {
         final categoryData =
             categoryStats[selectedCategory] as Map<String, dynamic>;
@@ -248,14 +239,49 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
           final contributor =
               categoryData['contributor'] as Map<String, dynamic>;
 
+          print(
+            'Found exact match for category contributor: ${contributor['userName']} for $selectedCategory',
+          );
+
           return Text(
-            'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
+            'Initiator: ${contributor['userName'] ?? 'Unknown'}',
             style: TextStyle(
               fontSize: AppSize.smallFontSize * 0.85,
               color: Colors.grey.shade600,
               fontStyle: FontStyle.italic,
             ),
           );
+        }
+      }
+
+      // Try case insensitive match if exact match failed
+      if (categoryStats != null) {
+        final matchingCategoryKey = categoryStats.keys.firstWhere(
+          (key) =>
+              key.toString().toLowerCase() == selectedCategory.toLowerCase(),
+          orElse: () => '',
+        );
+
+        if (matchingCategoryKey.isNotEmpty) {
+          final categoryData =
+              categoryStats[matchingCategoryKey] as Map<String, dynamic>;
+          if (categoryData['contributor'] != null) {
+            final contributor =
+                categoryData['contributor'] as Map<String, dynamic>;
+
+            print(
+              'Found case-insensitive match for category contributor: ${contributor['userName']} for $selectedCategory',
+            );
+
+            return Text(
+              'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
+              style: TextStyle(
+                fontSize: AppSize.smallFontSize * 0.85,
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+              ),
+            );
+          }
         }
       }
     }
