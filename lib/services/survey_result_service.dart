@@ -53,7 +53,8 @@ class SurveyResultService {
       final failedQuestions =
           checklistItems.where((item) => item.answerValue == false).length;
 
-      final categoryStats = {
+      // Buat statistik kategori dengan informasi karyawan
+      Map<String, dynamic> categoryStats = {
         'totalQuestions': totalQuestions,
         'answeredQuestions': answeredQuestions,
         'skippedQuestions': skippedCount,
@@ -61,6 +62,20 @@ class SurveyResultService {
         'failedQuestions': failedQuestions,
         'score': score,
       };
+
+      // Tambahkan informasi karyawan jika tersedia
+      if (employeeData != null && employeeData.isNotEmpty) {
+        categoryStats['employeeInfo'] = {
+          'name': employeeData['name'] ?? '',
+          'employeeId':
+              employeeData['id'] ?? '', // 'id' dari EmployeeInfoScreen
+          'gender': employeeData['gender'] ?? '',
+          'position': employeeData['position'] ?? '',
+          'uniformType': employeeData['uniformType'] ?? '',
+          'hasHijab': employeeData['hasHijab'] ?? false,
+          'surveyedAt': FieldValue.serverTimestamp(),
+        };
+      }
 
       Map<String, dynamic> surveyData;
       Map<String, dynamic> existingStats = {};
