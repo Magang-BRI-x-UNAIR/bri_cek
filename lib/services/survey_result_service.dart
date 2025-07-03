@@ -192,8 +192,45 @@ class SurveyResultService {
           'answeredAt': FieldValue.serverTimestamp(),
         };
 
-        // Gunakan ID yang unik untuk setiap jawaban berdasarkan kategori dan order
-        final answerId = '${selectedCategory}_${item.order}';
+        // Gunakan ID yang unik untuk setiap jawaban berdasarkan kategori, subcategory, section, dan order
+        // Ini akan mencegah jawaban tertimpa ketika ada multiple subcategories
+        String answerId;
+
+        if (item.subcategory.isNotEmpty && item.section?.isNotEmpty == true) {
+          // Format: "banking_hall_pintu_masuk_atm_area_1"
+          final normalizedCategory = selectedCategory.toLowerCase().replaceAll(
+            ' ',
+            '_',
+          );
+          final normalizedSubcategory = item.subcategory
+              .toLowerCase()
+              .replaceAll(' ', '_');
+          final normalizedSection = item.section!.toLowerCase().replaceAll(
+            ' ',
+            '_',
+          );
+          answerId =
+              '${normalizedCategory}_${normalizedSubcategory}_${normalizedSection}_${item.order}';
+        } else if (item.subcategory.isNotEmpty) {
+          // Format: "banking_hall_pintu_masuk_1"
+          final normalizedCategory = selectedCategory.toLowerCase().replaceAll(
+            ' ',
+            '_',
+          );
+          final normalizedSubcategory = item.subcategory
+              .toLowerCase()
+              .replaceAll(' ', '_');
+          answerId =
+              '${normalizedCategory}_${normalizedSubcategory}_${item.order}';
+        } else {
+          // Fallback untuk kategori tanpa subcategory: "banking_hall_1"
+          final normalizedCategory = selectedCategory.toLowerCase().replaceAll(
+            ' ',
+            '_',
+          );
+          answerId = '${normalizedCategory}_${item.order}';
+        }
+
         final answerDoc = _firestore
             .collection('survey_results')
             .doc(surveyResultId)
@@ -428,13 +465,13 @@ class SurveyResultService {
       // Enhanced matching algorithm with normalization
       List<Map<String, dynamic>> results = [];
 
-      // 1. First try exact match
+      // 1. First try exact match on category field
       results =
           allAnswersData.where((data) => data['category'] == category).toList();
 
-      // 2. If no results, try normalized match
+      // 2. If no results, try normalized match on category field
       if (results.isEmpty) {
-        print('No exact matches, trying normalized match');
+        print('No exact matches, trying normalized match on category field');
         results =
             allAnswersData
                 .where(
@@ -446,23 +483,21 @@ class SurveyResultService {
                 .toList();
       }
 
-      // 3. If still no results, try substring match (for "Satpam" specifically)
-      if (results.isEmpty &&
-          (normalizedSearchCategory == 'satpam' ||
-              category.toLowerCase().contains('satpam'))) {
-        print('No normalized matches, trying substring match for Satpam');
+      // 3. If still no results, try matching by answer ID prefix (for backward compatibility)
+      if (results.isEmpty) {
+        print('No category field matches, trying answer ID prefix match');
+        final normalizedCategoryForId = category.toLowerCase().replaceAll(
+          ' ',
+          '_',
+        );
         results =
             allAnswersData
                 .where(
                   (data) =>
-                      data['category'] != null &&
-                      (data['category'].toString().toLowerCase().contains(
-                            'satpam',
-                          ) ||
-                          (data['id'] != null &&
-                              data['id'].toString().toLowerCase().contains(
-                                'satpam',
-                              ))),
+                      data['id'] != null &&
+                      data['id'].toString().toLowerCase().startsWith(
+                        normalizedCategoryForId,
+                      ),
                 )
                 .toList();
       }
@@ -481,6 +516,13 @@ class SurveyResultService {
           ],
           'cs': ['cs', 'customer service', 'pelayanan', 'layanan'],
           'teller': ['teller', 'kasir'],
+          'gallery e-channel': [
+            'gallery_e-channel',
+            'gallery_echannel',
+            'gallery',
+            'echannel',
+          ],
+          'banking hall': ['banking_hall', 'banking', 'hall'],
         };
 
         // Check if our category might match any of the known variations
@@ -496,10 +538,15 @@ class SurveyResultService {
                   allAnswersData
                       .where(
                         (data) =>
-                            data['category'] != null &&
-                            data['category'].toString().toLowerCase().contains(
-                              variation,
-                            ),
+                            (data['category'] != null &&
+                                data['category']
+                                    .toString()
+                                    .toLowerCase()
+                                    .contains(variation)) ||
+                            (data['id'] != null &&
+                                data['id'].toString().toLowerCase().contains(
+                                  variation,
+                                )),
                       )
                       .toList();
 
@@ -527,10 +574,15 @@ class SurveyResultService {
                 allAnswersData
                     .where(
                       (data) =>
-                          data['category'] != null &&
-                          data['category'].toString().toLowerCase().contains(
-                            word,
-                          ),
+                          (data['category'] != null &&
+                              data['category']
+                                  .toString()
+                                  .toLowerCase()
+                                  .contains(word)) ||
+                          (data['id'] != null &&
+                              data['id'].toString().toLowerCase().contains(
+                                word,
+                              )),
                     )
                     .toList();
 
@@ -544,14 +596,20 @@ class SurveyResultService {
 
       print('Found ${results.length} answers for category "$category"');
 
-      // Debug printout of all matched categories
+      // Debug printout of all matched categories and IDs
       if (results.isNotEmpty) {
         final matchedCategories =
             results
                 .map((doc) => doc['category']?.toString() ?? 'null')
                 .toSet()
                 .toList();
+        final matchedIds =
+            results
+                .map((doc) => doc['id']?.toString() ?? 'null')
+                .take(5) // Show first 5 IDs for debugging
+                .toList();
         print('Matched categories: $matchedCategories');
+        print('Sample matched IDs: $matchedIds');
       }
 
       // Sort by order
