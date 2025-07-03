@@ -29,13 +29,12 @@ class SurveyResultService {
         'Saving survey for bank: "$selectedBank", category: "$selectedCategory", date: $selectedDate',
       );
 
-      // Buat ID yang konsisten berdasarkan user, bank, dan tanggal
+      // Buat ID yang konsisten berdasarkan hanya bank dan tanggal (tanpa user ID)
       final dateStr =
           '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
-      final surveyResultId =
-          '${user.uid}_${selectedBank.replaceAll(' ', '_')}_$dateStr';
+      final surveyResultId = '${selectedBank.replaceAll(' ', '_')}_$dateStr';
 
-      print('Survey ID: $surveyResultId');
+      print('Survey ID (tanggal-based): $surveyResultId');
 
       // Cek apakah survey untuk tanggal ini sudah ada
       final existingDoc =
@@ -121,29 +120,55 @@ class SurveyResultService {
             existingData['categoryStatistics'] as Map<String, dynamic>? ?? {};
         categoryStatistics[selectedCategory] = categoryStats;
 
-        // Preserve or update userName if missing
-        String userName = existingData['userName'] ?? '';
-        if (userName.isEmpty) {
-          try {
-            final userDoc =
-                await _firestore.collection('users').doc(user.uid).get();
-            if (userDoc.exists) {
-              final userData = userDoc.data() as Map<String, dynamic>;
-              userName = userData['fullName'] ?? '';
-            }
-          } catch (e) {
-            print('Error retrieving user name: $e');
+        // Dapatkan daftar kontributor yang sudah ada
+        List<Map<String, dynamic>> contributors = [];
+        if (existingData['contributors'] != null) {
+          contributors = List<Map<String, dynamic>>.from(
+            existingData['contributors'],
+          );
+        }
+
+        // Dapatkan nama user saat ini
+        String userName = '';
+        try {
+          final userDoc =
+              await _firestore.collection('users').doc(user.uid).get();
+          if (userDoc.exists) {
+            final userData = userDoc.data() as Map<String, dynamic>;
+            userName = userData['fullName'] ?? '';
           }
+        } catch (e) {
+          print('Error retrieving user name: $e');
+        }
+
+        // Cek apakah user ini sudah ada dalam daftar kontributor
+        bool userAlreadyContributed = contributors.any(
+          (c) => c['userId'] == user.uid,
+        );
+
+        if (!userAlreadyContributed && userName.isNotEmpty) {
+          // Tambahkan user sebagai kontributor baru dengan timestamp manual
+          // Karena FieldValue.serverTimestamp() tidak didukung di dalam array
+          contributors.add({
+            'userId': user.uid,
+            'userName': userName,
+            'timestamp':
+                Timestamp.now(), // Gunakan Timestamp.now() sebagai pengganti serverTimestamp
+          });
         }
 
         surveyData = {
+          'selectedBank': selectedBank,
+          'selectedDate': Timestamp.fromDate(selectedDate),
           'categories': existingCategories,
           'statistics': combinedStats,
           'categoryStatistics': categoryStatistics,
           'lastUpdatedAt': FieldValue.serverTimestamp(),
           'sessionId': sessionId, // Update session ID yang terakhir
           'isActive': true, // Pastikan isActive tetap true
-          'userName': userName, // Ensure userName is included
+          'contributors':
+              contributors, // Gunakan daftar kontributor yang diperbarui
+          'bankBranchId': bankBranchId, // Pastikan bankBranchId tetap ada
         };
       } else {
         // Survey baru
@@ -160,6 +185,17 @@ class SurveyResultService {
           print('Error retrieving user name: $e');
         }
 
+        // Buat array kontributor dengan user saat ini
+        List<Map<String, dynamic>> contributors = [];
+        if (userName.isNotEmpty) {
+          contributors.add({
+            'userId': user.uid,
+            'userName': userName,
+            'timestamp':
+                Timestamp.now(), // Gunakan Timestamp.now() untuk menghindari error di array
+          });
+        }
+
         surveyData = {
           'id': surveyResultId,
           'userId': user.uid,
@@ -173,6 +209,7 @@ class SurveyResultService {
           'categories': [selectedCategory],
           'statistics': categoryStats,
           'categoryStatistics': {selectedCategory: categoryStats},
+          'contributors': contributors, // Tambahkan daftar kontributor
           'createdAt': FieldValue.serverTimestamp(),
           'lastUpdatedAt': FieldValue.serverTimestamp(),
           'isActive': true,
@@ -388,18 +425,12 @@ class SurveyResultService {
     String? userId,
   }) async {
     try {
-      final user = _auth.currentUser;
-      final targetUserId = userId ?? user?.uid;
-
-      if (targetUserId == null) {
-        throw Exception('User ID tidak ditemukan');
-      }
-
-      // Buat ID yang konsisten
+      // Buat ID yang konsisten berdasarkan hanya bank dan tanggal (tanpa user ID)
       final dateStr =
           '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
-      final surveyResultId =
-          '${targetUserId}_${bankName.replaceAll(' ', '_')}_$dateStr';
+      final surveyResultId = '${bankName.replaceAll(' ', '_')}_$dateStr';
+
+      print('Checking for survey with ID: $surveyResultId');
 
       final doc =
           await _firestore
@@ -759,18 +790,10 @@ class SurveyResultService {
     String? userId,
   }) async {
     try {
-      final user = _auth.currentUser;
-      final targetUserId = userId ?? user?.uid;
-
-      if (targetUserId == null) {
-        throw Exception('User ID tidak ditemukan');
-      }
-
-      // Buat ID yang konsisten
+      // Buat ID yang konsisten berdasarkan hanya bank dan tanggal (tanpa user ID)
       final dateStr =
           '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
-      final surveyResultId =
-          '${targetUserId}_${bankName.replaceAll(' ', '_')}_$dateStr';
+      final surveyResultId = '${bankName.replaceAll(' ', '_')}_$dateStr';
 
       print('Checking category status for survey ID: $surveyResultId');
 

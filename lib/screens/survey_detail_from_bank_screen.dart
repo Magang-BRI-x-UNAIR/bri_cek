@@ -497,6 +497,8 @@ class _SurveyDetailFromBankScreenState
                           color: Colors.grey.shade600,
                         ),
                       ),
+                      SizedBox(height: 4),
+                      _buildContributorsText(),
                     ],
                   ),
                 ),
@@ -518,25 +520,8 @@ class _SurveyDetailFromBankScreenState
               ),
             ),
 
-            // User name display
+            // Contributors are already shown above
             SizedBox(height: AppSize.heightPercent(0.5)),
-            Row(
-              children: [
-                Icon(
-                  Icons.person,
-                  size: AppSize.iconSize * 0.8,
-                  color: Colors.grey.shade600,
-                ),
-                SizedBox(width: AppSize.paddingXS),
-                Text(
-                  'Surveyor: ${widget.surveyData['userName'] ?? 'Unknown'}',
-                  style: AppSize.getTextStyle(
-                    fontSize: AppSize.smallFontSize,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
 
             SizedBox(height: AppSize.heightPercent(2)),
 
@@ -650,6 +635,71 @@ class _SurveyDetailFromBankScreenState
         ],
       ),
     );
+  }
+
+  // Display contributors of the survey
+  Widget _buildContributorsText() {
+    // Get contributors list from survey data
+    List<Map<String, dynamic>> contributors = [];
+    if (widget.surveyData['contributors'] != null) {
+      try {
+        contributors = List<Map<String, dynamic>>.from(
+          widget.surveyData['contributors'],
+        );
+      } catch (e) {
+        print('Error parsing contributors: $e');
+      }
+    }
+
+    // If no contributors field exists, use the old userName field
+    if (contributors.isEmpty && widget.surveyData['userName'] != null) {
+      return Text(
+        'Surveyor: ${widget.surveyData['userName']}',
+        style: AppSize.getTextStyle(
+          fontSize: AppSize.smallFontSize,
+          color: Colors.grey.shade600,
+        ),
+      );
+    }
+
+    // If multiple contributors, show count and list them
+    if (contributors.length > 1) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Surveyors: ${contributors.length} people',
+            style: AppSize.getTextStyle(
+              fontSize: AppSize.smallFontSize,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            contributors.map((c) => c['userName']).join(', '),
+            style: AppSize.getTextStyle(
+              fontSize: AppSize.smallFontSize,
+              color: Colors.grey.shade600,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      );
+    } else if (contributors.length == 1) {
+      // If only one contributor, show their name
+      return Text(
+        'Surveyor: ${contributors[0]['userName'] ?? 'Unknown'}',
+        style: AppSize.getTextStyle(
+          fontSize: AppSize.smallFontSize,
+          color: Colors.grey.shade600,
+        ),
+      );
+    } else {
+      // No contributor info available
+      return SizedBox.shrink();
+    }
   }
 
   Widget _buildAnswersSection() {
