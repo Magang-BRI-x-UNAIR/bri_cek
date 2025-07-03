@@ -998,11 +998,13 @@ class _ChecklistScreenState extends State<ChecklistScreen>
               skippedCount: skippedCount,
               onBackToDetails: () {
                 Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Return to previous screen
+                Navigator.pop(
+                  context,
+                ); // Return to previous screen (choose category)
               },
               onFinish: () {
-                // Return to home screen
-                Navigator.popUntil(context, (route) => route.isFirst);
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Return to choose category screen
               },
             ),
       );
