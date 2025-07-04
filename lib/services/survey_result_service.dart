@@ -1,6 +1,6 @@
+import 'package:bri_cek/models/checklist_item.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:bri_cek/models/checklist_item.dart';
 
 class SurveyResultService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -889,6 +889,58 @@ class SurveyResultService {
       });
     } catch (e) {
       throw Exception('Gagal menghapus hasil survey: $e');
+    }
+  }
+
+  /// Mendapatkan informasi kontributor untuk setiap kategori
+  Future<Map<String, Map<String, dynamic>>> getCategoryContributors({
+    required String bankName,
+    required DateTime selectedDate,
+    required List<String> categories,
+  }) async {
+    try {
+      // Buat ID yang konsisten berdasarkan hanya bank dan tanggal (tanpa user ID)
+      final dateStr =
+          '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+      final surveyResultId = '${bankName.replaceAll(' ', '_')}_$dateStr';
+
+      print('Getting category contributors for survey ID: $surveyResultId');
+
+      final doc =
+          await _firestore
+              .collection('survey_results')
+              .doc(surveyResultId)
+              .get();
+
+      Map<String, Map<String, dynamic>> categoryContributors = {};
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final categoryStatistics =
+            data['categoryStatistics'] as Map<String, dynamic>? ?? {};
+
+        for (String category in categories) {
+          if (categoryStatistics.containsKey(category)) {
+            final categoryStats =
+                categoryStatistics[category] as Map<String, dynamic>;
+            final contributor =
+                categoryStats['contributor'] as Map<String, dynamic>?;
+
+            if (contributor != null) {
+              categoryContributors[category] = {
+                'userId': contributor['userId'] ?? '',
+                'userName': contributor['userName'] ?? '',
+                'timestamp': contributor['timestamp'],
+              };
+            }
+          }
+        }
+      }
+
+      return categoryContributors;
+    } catch (e) {
+      print('Error getting category contributors: $e');
+      return {};
     }
   }
 }

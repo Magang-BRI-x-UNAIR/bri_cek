@@ -1,8 +1,8 @@
 import 'package:bri_cek/screens/checklist/checklist_screen.dart';
 import 'package:bri_cek/screens/employee_info_screen.dart';
 import 'package:bri_cek/services/survey_result_service.dart';
-import 'package:flutter/material.dart';
 import 'package:bri_cek/utils/app_size.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class ChooseCategoryScreen extends StatefulWidget {
@@ -28,6 +28,7 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
   final SurveyResultService _surveyResultService = SurveyResultService();
   String? _selectedCategory;
   Map<String, String> _categoryStatus = {};
+  Map<String, Map<String, dynamic>> _categoryContributors = {};
   bool _isLoadingStatus = true;
 
   // Define the categories
@@ -57,14 +58,28 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
       final categoryNames =
           _categories.map((cat) => cat['name'] as String).toList();
 
-      final status = await _surveyResultService.getCategoryStatusForDate(
-        bankName: widget.selectedBank,
-        selectedDate: widget.selectedDate,
-        categories: categoryNames,
-      );
+      // Load both status and contributors
+      final Future<Map<String, String>> statusFuture = _surveyResultService
+          .getCategoryStatusForDate(
+            bankName: widget.selectedBank,
+            selectedDate: widget.selectedDate,
+            categories: categoryNames,
+          );
+
+      final Future<Map<String, Map<String, dynamic>>> contributorsFuture =
+          _surveyResultService.getCategoryContributors(
+            bankName: widget.selectedBank,
+            selectedDate: widget.selectedDate,
+            categories: categoryNames,
+          );
+
+      final results = await Future.wait([statusFuture, contributorsFuture]);
+      final status = results[0] as Map<String, String>;
+      final contributors = results[1] as Map<String, Map<String, dynamic>>;
 
       setState(() {
         _categoryStatus = status;
+        _categoryContributors = contributors;
         _isLoadingStatus = false;
       });
     } catch (e) {
@@ -75,6 +90,7 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
         for (var category in _categories) {
           _categoryStatus[category['name']] = 'default';
         }
+        _categoryContributors = {};
       });
     }
   }
@@ -199,6 +215,31 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildContributorInfo(String categoryName) {
+    final contributor = _categoryContributors[categoryName];
+
+    if (contributor == null ||
+        contributor['userName'] == null ||
+        contributor['userName'].isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4.0),
+      child: Text(
+        'Diisi oleh: ${contributor['userName']}',
+        style: TextStyle(
+          fontSize: AppSize.bodyFontSize * 0.7,
+          color: Colors.grey.shade600,
+          fontStyle: FontStyle.italic,
+        ),
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 
@@ -525,6 +566,9 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                                                     ),
                                                     textAlign: TextAlign.center,
                                                   ),
+                                                ),
+                                                _buildContributorInfo(
+                                                  categoryName,
                                                 ),
                                               ],
                                             ),
