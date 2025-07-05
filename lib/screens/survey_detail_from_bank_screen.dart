@@ -210,7 +210,15 @@ class _SurveyDetailFromBankScreenState
 
       // Extract unique categories and subcategories for filtering
       _categories = _extractCategories(answers);
-      _subcategories = _extractSubcategories(answers);
+
+      // For specific category view, extract subcategories for that category only
+      if (widget.selectedCategory != null) {
+        _subcategories = _extractSubcategoriesForCategory(answers);
+      } else {
+        // For "all categories" view, extract all subcategories
+        _subcategories = _extractSubcategories(answers);
+      }
+
       print('Found categories: $_categories');
       print('Found subcategories: $_subcategories');
 
@@ -288,7 +296,7 @@ class _SurveyDetailFromBankScreenState
   void _updateFilteredAnswers(List<Map<String, dynamic>> answers) {
     List<Map<String, dynamic>> filtered = answers;
 
-    // First filter by category if selected (for "all categories" view)
+    // First filter by category if selected (for "all categories" view only)
     if (widget.selectedCategory == null &&
         _selectedCategory != null &&
         _selectedCategory != 'Semua') {
@@ -309,6 +317,9 @@ class _SurveyDetailFromBankScreenState
         _selectedSubcategory = 'Semua';
       }
     }
+
+    // For specific category view, the answers are already filtered by category
+    // so we only need to apply subcategory filtering
 
     // Then filter by subcategory if selected
     if (_selectedSubcategory != null && _selectedSubcategory != 'Semua') {
@@ -334,6 +345,9 @@ class _SurveyDetailFromBankScreenState
     );
     print(
       'Filtered results: ${_filteredAnswers.length} out of ${answers.length} answers',
+    );
+    print(
+      'View mode: ${widget.selectedCategory != null ? "Specific category (${widget.selectedCategory})" : "All categories"}',
     );
   }
 
@@ -962,8 +976,9 @@ class _SurveyDetailFromBankScreenState
                 ),
               ],
             ),
-            // Add filters only for "all categories" view
+            // Add filters
             if (widget.selectedCategory == null) ...[
+              // Show category and subcategory filter for "all categories" view
               Container(
                 width: double.infinity,
                 margin: EdgeInsets.only(top: 10, bottom: 5),
@@ -1041,6 +1056,86 @@ class _SurveyDetailFromBankScreenState
                     // Subcategory filter
                     Text(
                       'Subkategori:',
+                      style: AppSize.getTextStyle(
+                        fontSize: AppSize.smallFontSize,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.blue.shade600,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 15),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedSubcategory ?? 'Semua',
+                          icon: Icon(
+                            Icons.arrow_drop_down,
+                            color: Colors.blue.shade700,
+                          ),
+                          items:
+                              _subcategories.map((String subcategory) {
+                                return DropdownMenuItem<String>(
+                                  value: subcategory,
+                                  child: Text(
+                                    subcategory,
+                                    style: AppSize.getTextStyle(
+                                      fontSize: AppSize.bodyFontSize,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                          onChanged: _onSubcategoryChanged,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else if (widget.selectedCategory != null &&
+                _subcategories.length > 1 &&
+                !_isFilterDisabledCategory(widget.selectedCategory!)) ...[
+              // Show subcategory filter for specific category view
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.only(top: 10, bottom: 5),
+                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  border: Border.all(color: Colors.blue.shade200),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.filter_list,
+                          size: 18,
+                          color: Colors.blue.shade700,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Filter Subkategori:',
+                          style: AppSize.getTextStyle(
+                            fontSize: AppSize.smallFontSize,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+                    // Subcategory filter for specific category
+                    Text(
+                      'Subkategori untuk "${widget.selectedCategory}":',
                       style: AppSize.getTextStyle(
                         fontSize: AppSize.smallFontSize,
                         fontWeight: FontWeight.w500,
@@ -1852,5 +1947,15 @@ class _SurveyDetailFromBankScreenState
         );
       }
     }
+  }
+
+  // Helper method to check if filter should be disabled for specific categories
+  bool _isFilterDisabledCategory(String category) {
+    final disabledCategories = ['toilet', 'fasad gedung'];
+    return disabledCategories.any(
+      (disabled) =>
+          category.toLowerCase().contains(disabled.toLowerCase()) ||
+          disabled.toLowerCase().contains(category.toLowerCase()),
+    );
   }
 }
