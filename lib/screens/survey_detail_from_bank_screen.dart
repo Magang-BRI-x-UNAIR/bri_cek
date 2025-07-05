@@ -8,12 +8,14 @@ class SurveyDetailFromBankScreen extends StatefulWidget {
   final String surveyId;
   final Map<String, dynamic> surveyData;
   final String? selectedCategory;
+  final bool isEditMode;
 
   const SurveyDetailFromBankScreen({
     Key? key,
     required this.surveyId,
     required this.surveyData,
     this.selectedCategory,
+    this.isEditMode = false,
   }) : super(key: key);
 
   @override
@@ -31,6 +33,13 @@ class _SurveyDetailFromBankScreenState
   bool _isLoading = true;
   String? _error;
 
+  // Variables for edit mode
+  bool _isEditMode = false;
+  bool _isSaving = false;
+  Map<String, dynamic> _editedAnswers = {};
+  Map<String, String> _editedNotes = {};
+  Map<String, bool> _editedSkipped = {}; // Track skipped questions
+
   // Mapping untuk mengatasi variasi penulisan subcategory
   final Map<String, List<String>> _subcategoryVariations = {
     'akurat': ['akurat', 'accurate', 'accurat', 'akurasi', 'accuracy', 'tepat'],
@@ -43,9 +52,12 @@ class _SurveyDetailFromBankScreenState
   @override
   void initState() {
     super.initState();
+    _isEditMode = widget.isEditMode;
+
     // Debug print survey data
     print('Survey ID: ${widget.surveyId}');
     print('Selected Category: ${widget.selectedCategory}');
+    print('Is Edit Mode: $_isEditMode');
     print('Survey Data: ${widget.surveyData.keys.toList()}');
     if (widget.surveyData['selectedDate'] != null) {
       print('Selected Date: ${widget.surveyData['selectedDate']}');
@@ -412,12 +424,48 @@ class _SurveyDetailFromBankScreenState
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: Text(
-          'Detail Survey',
+          _isEditMode ? 'Edit Survey' : 'Detail Survey',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.blue.shade700,
+        backgroundColor:
+            _isEditMode ? Colors.orange.shade700 : Colors.blue.shade700,
         iconTheme: IconThemeData(color: Colors.white),
         elevation: 0,
+        actions: [
+          if (_isEditMode) ...[
+            // Save button in edit mode
+            if (_isSaving)
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              )
+            else
+              IconButton(
+                onPressed: _saveChanges,
+                icon: Icon(Icons.save),
+                tooltip: 'Simpan Perubahan',
+              ),
+            IconButton(
+              onPressed: _cancelEdit,
+              icon: Icon(Icons.close),
+              tooltip: 'Batal Edit',
+            ),
+          ] else ...[
+            // Edit button in view mode
+            IconButton(
+              onPressed: _enterEditMode,
+              icon: Icon(Icons.edit),
+              tooltip: 'Edit Survey',
+            ),
+          ],
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(AppSize.paddingHorizontal),
@@ -1304,9 +1352,30 @@ class _SurveyDetailFromBankScreenState
   }
 
   Widget _buildAnswerCard(Map<String, dynamic> answer, int questionNumber) {
-    final isAnswered = answer['answerValue'] != null;
-    final isSkipped = answer['skipped'] == true;
-    final answerValue = answer['answerValue'] as bool?;
+    final String questionId = answer['id'] ?? '';
+
+    // Get current answer value (either from edited answers or original)
+    // Use 'answer' field as primary, fallback to 'answerValue' for backward compatibility
+    final bool? originalAnswer =
+        answer['answer'] as bool? ?? answer['answerValue'] as bool?;
+    final bool? currentAnswerValue =
+        _isEditMode && _editedAnswers.containsKey(questionId)
+            ? _editedAnswers[questionId]
+            : originalAnswer;
+
+    // Get current note (either from edited notes or original)
+    final String currentNote =
+        _isEditMode && _editedNotes.containsKey(questionId)
+            ? _editedNotes[questionId] ?? ''
+            : answer['note']?.toString() ?? '';
+
+    // Check skip status (either from edited skip status or original)
+    final bool isSkipped =
+        _isEditMode && _editedSkipped.containsKey(questionId)
+            ? _editedSkipped[questionId] ?? false
+            : (answer['skipped'] == true);
+
+    final isAnswered = currentAnswerValue != null && !isSkipped;
 
     Color borderColor = Colors.grey.shade300;
     Color backgroundColor = Colors.white;
@@ -1321,7 +1390,7 @@ class _SurveyDetailFromBankScreenState
       statusColor = Colors.orange;
       statusText = 'Dilewati';
     } else if (isAnswered) {
-      if (answerValue == true) {
+      if (currentAnswerValue == true) {
         borderColor = Colors.green;
         backgroundColor = Colors.green.withOpacity(0.05);
         statusIcon = Icons.check_circle;
@@ -1507,68 +1576,272 @@ class _SurveyDetailFromBankScreenState
                     ],
                   ),
                 ),
-                if (statusIcon != null)
+                if (statusIcon != null && !_isEditMode)
                   Icon(statusIcon, color: statusColor, size: AppSize.iconSize),
               ],
             ),
 
             SizedBox(height: AppSize.heightPercent(1)),
 
-            // Status jawaban
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: (statusColor ?? Colors.grey).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: statusColor ?? Colors.grey, width: 1),
-              ),
-              child: Text(
-                statusText,
-                style: AppSize.getTextStyle(
-                  fontSize: AppSize.smallFontSize,
-                  color: statusColor ?? Colors.grey,
-                  fontWeight: FontWeight.bold,
+            // Edit mode answer buttons or view mode status
+            if (_isEditMode) ...[
+              _buildEditAnswerButtons(questionId, currentAnswerValue),
+              SizedBox(height: AppSize.heightPercent(1)),
+              _buildEditNoteField(questionId, currentNote),
+            ] else ...[
+              // Status jawaban
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: (statusColor ?? Colors.grey).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: statusColor ?? Colors.grey,
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  statusText,
+                  style: AppSize.getTextStyle(
+                    fontSize: AppSize.smallFontSize,
+                    color: statusColor ?? Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
 
-            // Catatan jika ada
-            if (answer['note'] != null &&
-                answer['note'].toString().isNotEmpty) ...[
-              SizedBox(height: AppSize.heightPercent(1)),
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(AppSize.paddingHorizontal * 0.8),
+              // Catatan jika ada
+              if (currentNote.isNotEmpty) ...[
+                SizedBox(height: AppSize.heightPercent(1)),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(AppSize.paddingHorizontal * 0.8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Catatan:',
+                        style: AppSize.getTextStyle(
+                          fontSize: AppSize.smallFontSize,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        currentNote,
+                        style: AppSize.getTextStyle(
+                          fontSize: AppSize.smallFontSize,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditAnswerButtons(String questionId, bool? currentAnswer) {
+    // Check if current question is skipped
+    final bool isSkipped =
+        _editedSkipped[questionId] == true ||
+        (currentAnswer == null &&
+            _editedSkipped.containsKey(questionId) == false &&
+            _answers.firstWhere(
+                  (answer) => answer['id'] == questionId,
+                  orElse: () => {},
+                )['skipped'] ==
+                true);
+
+    return Row(
+      children: [
+        // Ya button
+        Expanded(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _updateAnswer(questionId, true),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.1),
+                  color:
+                      currentAnswer == true
+                          ? Colors.green.shade50
+                          : Colors.grey.shade50,
+                  border: Border.all(
+                    color:
+                        currentAnswer == true
+                            ? Colors.green
+                            : Colors.grey.shade300,
+                    width: currentAnswer == true ? 2 : 1,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      'Catatan:',
-                      style: AppSize.getTextStyle(
-                        fontSize: AppSize.smallFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade700,
-                      ),
+                    Icon(
+                      Icons.check_circle,
+                      color:
+                          currentAnswer == true
+                              ? Colors.green
+                              : Colors.grey.shade600,
+                      size: 18,
                     ),
-                    SizedBox(height: 4),
+                    SizedBox(width: 6),
                     Text(
-                      answer['note'].toString(),
+                      'Ya',
                       style: AppSize.getTextStyle(
-                        fontSize: AppSize.smallFontSize,
-                        color: Colors.grey.shade700,
+                        fontSize: AppSize.bodyFontSize * 0.9,
+                        fontWeight:
+                            currentAnswer == true
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                        color:
+                            currentAnswer == true
+                                ? Colors.green
+                                : Colors.grey.shade600,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ],
+            ),
+          ),
         ),
+        SizedBox(width: 8),
+
+        // Tidak button
+        Expanded(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _updateAnswer(questionId, false),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color:
+                      currentAnswer == false
+                          ? Colors.red.shade50
+                          : Colors.grey.shade50,
+                  border: Border.all(
+                    color:
+                        currentAnswer == false
+                            ? Colors.red
+                            : Colors.grey.shade300,
+                    width: currentAnswer == false ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.cancel,
+                      color:
+                          currentAnswer == false
+                              ? Colors.red
+                              : Colors.grey.shade600,
+                      size: 18,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Tidak',
+                      style: AppSize.getTextStyle(
+                        fontSize: AppSize.bodyFontSize * 0.9,
+                        fontWeight:
+                            currentAnswer == false
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                        color:
+                            currentAnswer == false
+                                ? Colors.red
+                                : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 8),
+
+        // Skip button
+        Expanded(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _updateAnswerToSkip(questionId),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color:
+                      isSkipped ? Colors.orange.shade50 : Colors.grey.shade50,
+                  border: Border.all(
+                    color: isSkipped ? Colors.orange : Colors.grey.shade300,
+                    width: isSkipped ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.skip_next,
+                      color: isSkipped ? Colors.orange : Colors.grey.shade600,
+                      size: 18,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Skip',
+                      style: AppSize.getTextStyle(
+                        fontSize: AppSize.bodyFontSize * 0.9,
+                        fontWeight:
+                            isSkipped ? FontWeight.bold : FontWeight.normal,
+                        color: isSkipped ? Colors.orange : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEditNoteField(String questionId, String currentNote) {
+    final TextEditingController noteController = TextEditingController(
+      text: currentNote,
+    );
+
+    return TextField(
+      controller: noteController,
+      decoration: InputDecoration(
+        labelText: 'Catatan (opsional)',
+        hintText: 'Tambahkan catatan untuk jawaban ini...',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: EdgeInsets.all(12),
       ),
+      maxLines: 2,
+      onChanged: (value) => _updateNote(questionId, value),
+      style: AppSize.getTextStyle(fontSize: AppSize.bodyFontSize),
     );
   }
 
@@ -1634,5 +1907,162 @@ class _SurveyDetailFromBankScreenState
                   normalized,
         )
         .length;
+  }
+
+  // Edit mode functions
+  void _enterEditMode() {
+    setState(() {
+      _isEditMode = true;
+      // Initialize edited answers with current answers
+      _editedAnswers = {};
+      _editedNotes = {};
+      _editedSkipped = {};
+      for (var answer in _answers) {
+        if (answer['id'] != null) {
+          // Use 'answer' field as primary, fallback to 'answerValue' for backward compatibility
+          final originalAnswer = answer['answer'] ?? answer['answerValue'];
+          _editedAnswers[answer['id']] = originalAnswer;
+          if (answer['note'] != null) {
+            _editedNotes[answer['id']] = answer['note'].toString();
+          }
+          // Initialize skip status
+          _editedSkipped[answer['id']] = answer['skipped'] == true;
+        }
+      }
+    });
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _isEditMode = false;
+      _editedAnswers.clear();
+      _editedNotes.clear();
+      _editedSkipped.clear();
+    });
+  }
+
+  Future<void> _saveChanges() async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      // Show confirmation dialog
+      bool? confirm = await showDialog<bool>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.save, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Simpan Perubahan'),
+                ],
+              ),
+              content: Text(
+                'Apakah Anda yakin ingin menyimpan perubahan survey ini? '
+                'Perubahan akan menggantikan jawaban yang sudah ada.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Simpan'),
+                ),
+              ],
+            ),
+      );
+
+      if (confirm != true) {
+        setState(() {
+          _isSaving = false;
+        });
+        return;
+      }
+
+      // Update survey answers in the database
+      await _surveyResultService.updateSurveyAnswers(
+        widget.surveyId,
+        _editedAnswers,
+        _editedNotes,
+        updatedSkipped: _editedSkipped,
+      );
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Survey berhasil diperbarui!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      // Exit edit mode and reload data
+      setState(() {
+        _isEditMode = false;
+        _editedAnswers.clear();
+        _editedNotes.clear();
+        _editedSkipped.clear();
+      });
+
+      // Reload answers to reflect changes
+      await _loadAnswers();
+    } catch (e) {
+      print('Error saving changes: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Gagal menyimpan perubahan: $e'),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
+  void _updateAnswer(String questionId, bool? answer) {
+    setState(() {
+      _editedAnswers[questionId] = answer;
+      _editedSkipped[questionId] = false; // Clear skip status when answering
+    });
+  }
+
+  void _updateNote(String questionId, String note) {
+    setState(() {
+      _editedNotes[questionId] = note;
+    });
+  }
+
+  void _updateAnswerToSkip(String questionId) {
+    setState(() {
+      _editedAnswers[questionId] = null; // Clear answer when skipping
+      _editedSkipped[questionId] = true; // Mark as skipped
+    });
   }
 }

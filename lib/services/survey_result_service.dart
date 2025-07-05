@@ -245,7 +245,8 @@ class SurveyResultService {
           'uniformType': item.uniformType,
           'forHijab': item.forHijab,
           'order': item.order,
-          'answerValue': item.answerValue,
+          'answer': item.answerValue, // Use 'answer' field consistently
+          'answerValue': item.answerValue, // Keep for backward compatibility
           'note': item.note,
           'skipped': item.skipped ?? false,
           'answeredAt': FieldValue.serverTimestamp(),
@@ -941,6 +942,120 @@ class SurveyResultService {
     } catch (e) {
       print('Error getting category contributors: $e');
       return {};
+    }
+  }
+
+  /// Update survey answers for edit mode
+  Future<void> updateSurveyAnswers(
+    String surveyId,
+    Map<String, dynamic> updatedAnswers,
+    Map<String, String> updatedNotes, {
+    Map<String, bool>? updatedSkipped,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('User tidak login');
+      }
+
+      print('Updating survey answers for survey ID: $surveyId');
+
+      // Get existing survey document
+      final surveyDoc = _firestore.collection('survey_results').doc(surveyId);
+      final surveySnapshot = await surveyDoc.get();
+
+      if (!surveySnapshot.exists) {
+        throw Exception('Survey tidak ditemukan');
+      }
+
+      // Update answers in subcollection
+      final answersCollection = surveyDoc.collection('answers');
+      final answersSnapshot = await answersCollection.get();
+
+      // Update each answer that has been modified
+      for (var answerDoc in answersSnapshot.docs) {
+        final questionId = answerDoc.id;
+
+        if (updatedAnswers.containsKey(questionId) ||
+            (updatedSkipped?.containsKey(questionId) ?? false)) {
+          Map<String, dynamic> updateData = {
+            'updatedAt': FieldValue.serverTimestamp(),
+            'lastEditedBy': {
+              'userId': user.uid,
+              'userName': user.displayName ?? user.email ?? 'Unknown',
+            },
+          };
+
+          // Update answer if provided
+          if (updatedAnswers.containsKey(questionId)) {
+            updateData['answer'] = updatedAnswers[questionId];
+            updateData['answerValue'] =
+                updatedAnswers[questionId]; // Keep both fields for backward compatibility
+          }
+
+          // Update note if provided
+          if (updatedNotes.containsKey(questionId)) {
+            updateData['note'] = updatedNotes[questionId];
+          }
+
+          // Update skip status if provided
+          if (updatedSkipped?.containsKey(questionId) ?? false) {
+            updateData['skipped'] = updatedSkipped![questionId];
+          }
+
+          await answerDoc.reference.update(updateData);
+        }
+      }
+
+      // Recalculate statistics
+      final allAnswersSnapshot = await answersCollection.get();
+      final allAnswers = allAnswersSnapshot.docs;
+
+      int totalQuestions = allAnswers.length;
+      int answeredQuestions = 0;
+      int skippedQuestions = 0;
+      int passedQuestions = 0;
+
+      for (var answerDoc in allAnswers) {
+        final answerData = answerDoc.data();
+        final answer = answerData['answer'];
+        final skipped = answerData['skipped'] ?? false;
+
+        if (skipped) {
+          skippedQuestions++;
+        } else if (answer != null) {
+          answeredQuestions++;
+          if (answer == true) {
+            passedQuestions++;
+          }
+        }
+      }
+
+      // Calculate new score
+      double score =
+          totalQuestions > 0 ? (passedQuestions / totalQuestions) * 100 : 0;
+
+      // Update main survey document with new statistics
+      await surveyDoc.update({
+        'statistics': {
+          'score': score,
+          'totalQuestions': totalQuestions,
+          'answeredQuestions': answeredQuestions,
+          'skippedQuestions': skippedQuestions,
+          'passedQuestions': passedQuestions,
+        },
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastEditedBy': {
+          'userId': user.uid,
+          'userName': user.displayName ?? user.email ?? 'Unknown',
+          'timestamp': FieldValue.serverTimestamp(),
+        },
+      });
+
+      print('Survey answers updated successfully');
+    } catch (e) {
+      print('Error updating survey answers: $e');
+      throw Exception('Gagal memperbarui jawaban survey: $e');
     }
   }
 }

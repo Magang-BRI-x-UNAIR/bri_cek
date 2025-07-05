@@ -184,165 +184,79 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     return Colors.red;
   }
 
-  // Get text to display contributors
-  String _getContributorsText(Map<String, dynamic> survey) {
-    // Get contributors list from survey data
-    List<Map<String, dynamic>> contributors = [];
-    if (survey['contributors'] != null) {
+  // Display the survey initiator (the person who first created the survey)
+  Widget _buildContributorsList(Map<String, dynamic> survey) {
+    // The initiator is the person who first created the survey and cannot be changed
+    // Priority order: initiator field > first contributor > userName field
+
+    String initiatorName = 'Unknown';
+
+    // First, check if there's an explicit initiator field
+    if (survey['initiator'] != null) {
+      if (survey['initiator'] is Map<String, dynamic>) {
+        initiatorName = survey['initiator']['userName'] ?? 'Unknown';
+      } else if (survey['initiator'] is String) {
+        initiatorName = survey['initiator'];
+      }
+    }
+    // Second, check if there's a createdBy field (survey creator)
+    else if (survey['createdBy'] != null) {
+      if (survey['createdBy'] is Map<String, dynamic>) {
+        initiatorName = survey['createdBy']['userName'] ?? 'Unknown';
+      } else if (survey['createdBy'] is String) {
+        initiatorName = survey['createdBy'];
+      }
+    }
+    // Third, use the first contributor as initiator
+    else if (survey['contributors'] != null) {
       try {
-        contributors = List<Map<String, dynamic>>.from(survey['contributors']);
-      } catch (e) {
-        print('Error parsing contributors: $e');
-      }
-    }
-
-    // If no contributors field exists, use the old userName field
-    if (contributors.isEmpty && survey['userName'] != null) {
-      return 'Surveyor: ${survey['userName']}';
-    }
-
-    // If multiple contributors, show all names
-    if (contributors.length > 1) {
-      // Get all contributor names
-      final names =
-          contributors.map((c) => c['userName'] ?? 'Unknown').toList();
-      return 'Surveyors: ${names.join(', ')}';
-    } else if (contributors.length == 1) {
-      // If only one contributor, show their name
-      return 'Surveyor: ${contributors[0]['userName'] ?? 'Unknown'}';
-    } else {
-      // No contributor info available
-      return 'Unknown surveyor';
-    }
-  }
-
-  // Display contributors list more visibly
-  Widget _buildContributorsList(
-    Map<String, dynamic> survey, {
-    String? selectedCategory,
-  }) {
-    // We will find the actual contributor for any category from the database
-    // No more hardcoded values
-
-    // If we have a selected category and category statistics, try to find the specific contributor
-    if (selectedCategory != null && survey['categoryStatistics'] != null) {
-      final categoryStats =
-          survey['categoryStatistics'] as Map<String, dynamic>?;
-
-      // Try to find exact match first
-      if (categoryStats != null && categoryStats[selectedCategory] != null) {
-        final categoryData =
-            categoryStats[selectedCategory] as Map<String, dynamic>;
-
-        // Check if this category has a specific contributor
-        if (categoryData['contributor'] != null) {
-          final contributor =
-              categoryData['contributor'] as Map<String, dynamic>;
-
-          print(
-            'Found exact match for category contributor: ${contributor['userName']} for $selectedCategory',
-          );
-
-          return Text(
-            'Initiator: ${contributor['userName'] ?? 'Unknown'}',
-            style: TextStyle(
-              fontSize: AppSize.smallFontSize * 0.85,
-              color: Colors.grey.shade600,
-              fontStyle: FontStyle.italic,
-            ),
-          );
-        }
-      }
-
-      // Try case insensitive match if exact match failed
-      if (categoryStats != null) {
-        final matchingCategoryKey = categoryStats.keys.firstWhere(
-          (key) =>
-              key.toString().toLowerCase() == selectedCategory.toLowerCase(),
-          orElse: () => '',
+        final contributors = List<Map<String, dynamic>>.from(
+          survey['contributors'],
         );
+        if (contributors.isNotEmpty) {
+          // Sort contributors by timestamp to find the first one (initiator)
+          contributors.sort((a, b) {
+            final timeA = a['timestamp'] ?? a['createdAt'];
+            final timeB = b['timestamp'] ?? b['createdAt'];
 
-        if (matchingCategoryKey.isNotEmpty) {
-          final categoryData =
-              categoryStats[matchingCategoryKey] as Map<String, dynamic>;
-          if (categoryData['contributor'] != null) {
-            final contributor =
-                categoryData['contributor'] as Map<String, dynamic>;
+            if (timeA == null && timeB == null) return 0;
+            if (timeA == null) return 1;
+            if (timeB == null) return -1;
 
-            print(
-              'Found case-insensitive match for category contributor: ${contributor['userName']} for $selectedCategory',
-            );
+            // Convert to DateTime for comparison
+            DateTime dateA = timeA is DateTime ? timeA : timeA.toDate();
+            DateTime dateB = timeB is DateTime ? timeB : timeB.toDate();
 
-            return Text(
-              'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
-              style: TextStyle(
-                fontSize: AppSize.smallFontSize * 0.85,
-                color: Colors.grey.shade600,
-                fontStyle: FontStyle.italic,
-              ),
-            );
-          }
+            return dateA.compareTo(dateB);
+          });
+
+          initiatorName = contributors.first['userName'] ?? 'Unknown';
         }
-      }
-    }
-
-    // Get contributors list from survey data (fallback)
-    List<Map<String, dynamic>> contributors = [];
-    if (survey['contributors'] != null) {
-      try {
-        contributors = List<Map<String, dynamic>>.from(survey['contributors']);
       } catch (e) {
         print('Error parsing contributors: $e');
       }
     }
-
-    // If no contributors field exists, use the old userName field
-    if (contributors.isEmpty && survey['userName'] != null) {
-      return Text(
-        'Surveyor: ${survey['userName']}',
-        style: TextStyle(
-          fontSize: AppSize.smallFontSize * 0.85,
-          color: Colors.grey.shade600,
-          fontStyle: FontStyle.italic,
-        ),
-      );
+    // Fallback to userName field
+    else if (survey['userName'] != null) {
+      initiatorName = survey['userName'];
     }
 
-    // If only one contributor, show their name
-    if (contributors.length == 1) {
-      return Text(
-        'Surveyor: ${contributors[0]['userName'] ?? 'Unknown'}',
-        style: TextStyle(
-          fontSize: AppSize.smallFontSize * 0.85,
-          color: Colors.grey.shade600,
-          fontStyle: FontStyle.italic,
-        ),
-      );
-    }
-
-    // If multiple contributors, show them in a more visible way
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
+        Icon(
+          Icons.person_pin,
+          size: AppSize.smallFontSize,
+          color: Colors.blue.shade600,
+        ),
+        SizedBox(width: 4),
         Text(
-          'Surveyors: ${contributors.length} people',
+          'Initiator: $initiatorName',
           style: TextStyle(
             fontSize: AppSize.smallFontSize * 0.85,
-            color: Colors.grey.shade700,
+            color: Colors.blue.shade700,
             fontStyle: FontStyle.italic,
             fontWeight: FontWeight.w500,
           ),
-        ),
-        SizedBox(height: 2),
-        Text(
-          contributors.map((c) => c['userName'] ?? 'Unknown').join(', '),
-          style: TextStyle(
-            fontSize: AppSize.smallFontSize * 0.85,
-            color: Colors.grey.shade600,
-            fontStyle: FontStyle.italic,
-          ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
         ),
       ],
     );
@@ -907,13 +821,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                                 color: Colors.grey.shade600,
                               ),
                             ),
-                            _buildContributorsList(
-                              survey,
-                              selectedCategory:
-                                  categories.isNotEmpty
-                                      ? categories.first
-                                      : null,
-                            ),
+                            _buildContributorsList(survey),
                           ],
                         ),
                       ],
@@ -1032,25 +940,48 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                       ),
                     ),
 
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        // Navigate to survey detail screen with category selection
-                        _showSurveyDetailDialog(context, survey);
-                      },
-                      icon: Icon(
-                        Icons.visibility,
-                        size: AppSize.iconSize * 0.8,
-                      ),
-                      label: Text('Details'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        visualDensity: VisualDensity.compact,
-                        textStyle: AppSize.getTextStyle(
-                          fontSize: AppSize.smallFontSize,
-                          fontWeight: FontWeight.w500,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // Navigate to survey detail screen with category selection
+                            _showSurveyDetailDialog(context, survey);
+                          },
+                          icon: Icon(
+                            Icons.visibility,
+                            size: AppSize.iconSize * 0.8,
+                          ),
+                          label: Text('View'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            visualDensity: VisualDensity.compact,
+                            textStyle: AppSize.getTextStyle(
+                              fontSize: AppSize.smallFontSize,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
-                      ),
+                        SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // Navigate to edit survey
+                            _showEditSurveyDialog(context, survey);
+                          },
+                          icon: Icon(Icons.edit, size: AppSize.iconSize * 0.8),
+                          label: Text('Edit'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            visualDensity: VisualDensity.compact,
+                            textStyle: AppSize.getTextStyle(
+                              fontSize: AppSize.smallFontSize,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1061,142 +992,259 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
       ),
     );
   }
-}
 
-Widget _buildScoreIndicator(double score) {
-  // Determine color based on score
-  Color scoreColor;
-  if (score >= 80) {
-    scoreColor = Colors.green;
-  } else if (score >= 65) {
-    scoreColor = Colors.orange;
-  } else {
-    scoreColor = Colors.red;
-  }
+  Widget _buildScoreIndicator(double score) {
+    // Determine color based on score
+    Color scoreColor;
+    if (score >= 80) {
+      scoreColor = Colors.green;
+    } else if (score >= 65) {
+      scoreColor = Colors.orange;
+    } else {
+      scoreColor = Colors.red;
+    }
 
-  return Container(
-    width: AppSize.widthPercent(15),
-    child: Column(
-      children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            // Score circle background
-            CircularProgressIndicator(
-              value: score / 100,
-              backgroundColor: Colors.grey.shade200,
-              color: scoreColor,
-              strokeWidth: 5,
-            ),
-            // Score text
-            Text(
-              score.toStringAsFixed(0),
-              style: AppSize.getTextStyle(
-                fontSize: AppSize.bodyFontSize * 0.9,
-                fontWeight: FontWeight.bold,
+    return Container(
+      width: AppSize.widthPercent(15),
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Score circle background
+              CircularProgressIndicator(
+                value: score / 100,
+                backgroundColor: Colors.grey.shade200,
                 color: scoreColor,
+                strokeWidth: 5,
               ),
-            ),
-          ],
-        ),
-        SizedBox(height: 4),
-        Text(
-          'Score',
-          style: AppSize.getTextStyle(
-            fontSize: AppSize.smallFontSize * 0.9,
-            color: Colors.grey[600] ?? Colors.black54,
+              // Score text
+              Text(
+                score.toStringAsFixed(0),
+                style: AppSize.getTextStyle(
+                  fontSize: AppSize.bodyFontSize * 0.9,
+                  fontWeight: FontWeight.bold,
+                  color: scoreColor,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-void _showSurveyDetailDialog(
-  BuildContext context,
-  Map<String, dynamic> survey,
-) {
-  final categories = List<String>.from(survey['categories'] ?? []);
-
-  if (categories.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Tidak ada kategori ditemukan untuk survey ini'),
-        backgroundColor: Colors.orange.shade700,
+          SizedBox(height: 4),
+          Text(
+            'Score',
+            style: AppSize.getTextStyle(
+              fontSize: AppSize.smallFontSize * 0.9,
+              color: Colors.grey[600] ?? Colors.black54,
+            ),
+          ),
+        ],
       ),
     );
-    return;
   }
 
-  if (categories.length == 1) {
-    // Jika hanya satu kategori, langsung buka detail
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => SurveyDetailFromBankScreen(
-              surveyId: survey['id'],
-              surveyData: survey,
-              selectedCategory: categories.first,
+  void _showSurveyDetailDialog(
+    BuildContext context,
+    Map<String, dynamic> survey,
+  ) {
+    final categories = List<String>.from(survey['categories'] ?? []);
+
+    if (categories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tidak ada kategori ditemukan untuk survey ini'),
+          backgroundColor: Colors.orange.shade700,
+        ),
+      );
+      return;
+    }
+
+    if (categories.length == 1) {
+      // Jika hanya satu kategori, langsung buka detail
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => SurveyDetailFromBankScreen(
+                surveyId: survey['id'],
+                surveyData: survey,
+                selectedCategory: categories.first,
+              ),
+        ),
+      );
+    } else {
+      // Jika lebih dari satu kategori, tampilkan dialog pilihan
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Pilih Kategori'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Survey ini memiliki ${categories.length} kategori:'),
+                SizedBox(height: AppSize.heightPercent(1)),
+                ...categories
+                    .map(
+                      (category) => ListTile(
+                        title: Text(category),
+                        leading: Icon(Icons.folder),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => SurveyDetailFromBankScreen(
+                                    surveyId: survey['id'],
+                                    surveyData: survey,
+                                    selectedCategory: category,
+                                  ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                    .toList(),
+                SizedBox(height: AppSize.heightPercent(1)),
+                ListTile(
+                  title: Text('Lihat Semua Kategori'),
+                  leading: Icon(Icons.list_alt),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => SurveyDetailFromBankScreen(
+                              surveyId: survey['id'],
+                              surveyData: survey,
+                              selectedCategory:
+                                  null, // null berarti tampilkan semua
+                            ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-      ),
-    );
-  } else {
-    // Jika lebih dari satu kategori, tampilkan dialog pilihan
+          );
+        },
+      );
+    }
+  }
+
+  void _showEditSurveyDialog(
+    BuildContext context,
+    Map<String, dynamic> survey,
+  ) {
+    final categories = List<String>.from(survey['categories'] ?? []);
+
+    if (categories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tidak ada kategori ditemukan untuk survey ini'),
+          backgroundColor: Colors.orange.shade700,
+        ),
+      );
+      return;
+    }
+
+    // Show confirmation dialog before editing
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Pilih Kategori'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+          title: Row(
             children: [
-              Text('Survey ini memiliki ${categories.length} kategori:'),
-              SizedBox(height: AppSize.heightPercent(1)),
-              ...categories
-                  .map(
-                    (category) => ListTile(
-                      title: Text(category),
-                      leading: Icon(Icons.folder),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => SurveyDetailFromBankScreen(
-                                  surveyId: survey['id'],
-                                  surveyData: survey,
-                                  selectedCategory: category,
-                                ),
-                          ),
-                        );
-                      },
-                    ),
-                  )
-                  .toList(),
-              SizedBox(height: AppSize.heightPercent(1)),
-              ListTile(
-                title: Text('Lihat Semua Kategori'),
-                leading: Icon(Icons.list_alt),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => SurveyDetailFromBankScreen(
-                            surveyId: survey['id'],
-                            surveyData: survey,
-                            selectedCategory:
-                                null, // null berarti tampilkan semua
-                          ),
-                    ),
-                  );
-                },
-              ),
+              Icon(Icons.edit, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Edit Survey'),
             ],
           ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Anda akan mengedit survey yang sudah ada.'),
+              SizedBox(height: 8),
+              Text(
+                '• Jawaban yang sudah ada akan tetap tersimpan\n'
+                '• Anda dapat mengubah jawaban yang sudah ada\n'
+                '• Perubahan akan disimpan sebagai revisi baru',
+                style: TextStyle(
+                  fontSize: AppSize.smallFontSize,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info, color: Colors.orange, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Survey: ${_formatDate(survey['selectedDate'])}',
+                        style: TextStyle(
+                          fontSize: AppSize.smallFontSize,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (categories.length > 1) ...[
+                SizedBox(height: 12),
+                Text(
+                  'Kategori: ${categories.join(', ')}',
+                  style: TextStyle(
+                    fontSize: AppSize.smallFontSize,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Navigate to edit mode
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => SurveyDetailFromBankScreen(
+                          surveyId: survey['id'],
+                          surveyData: survey,
+                          selectedCategory:
+                              categories.isNotEmpty ? categories.first : null,
+                          isEditMode: true, // Enable edit mode
+                        ),
+                  ),
+                ).then((_) {
+                  // Refresh survey history when returning
+                  _loadSurveyHistory();
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Edit Survey'),
+            ),
+          ],
         );
       },
     );
