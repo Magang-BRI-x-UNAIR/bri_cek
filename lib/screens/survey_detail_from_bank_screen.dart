@@ -28,7 +28,9 @@ class _SurveyDetailFromBankScreenState
   final SurveyResultService _surveyResultService = SurveyResultService();
   List<Map<String, dynamic>> _answers = [];
   List<Map<String, dynamic>> _filteredAnswers = [];
+  List<String> _categories = [];
   List<String> _subcategories = [];
+  String? _selectedCategory;
   String? _selectedSubcategory;
   bool _isLoading = true;
   String? _error;
@@ -40,19 +42,14 @@ class _SurveyDetailFromBankScreenState
   Map<String, String> _editedNotes = {};
   Map<String, bool> _editedSkipped = {}; // Track skipped questions
 
-  // Mapping untuk mengatasi variasi penulisan subcategory
-  final Map<String, List<String>> _subcategoryVariations = {
-    'akurat': ['akurat', 'accurate', 'accurat', 'akurasi', 'accuracy', 'tepat'],
-    'sigap': ['sigap', 'cepat', 'responsive', 'tanggap', 'responsif'],
-    'grooming': ['grooming', 'groming', 'penampilan', 'appearance'],
-    'ramah': ['ramah', 'friendly', 'sopan', 'santun', 'polite'],
-    'mudah': ['mudah', 'easy', 'simple', 'sederhana'],
-  };
-
   @override
   void initState() {
     super.initState();
     _isEditMode = widget.isEditMode;
+
+    // Initialize filter values
+    _selectedCategory = 'Semua';
+    _selectedSubcategory = 'Semua';
 
     // Debug print survey data
     print('Survey ID: ${widget.surveyId}');
@@ -211,8 +208,10 @@ class _SurveyDetailFromBankScreenState
 
       print('Found ${answers.length} answers for display');
 
-      // Extract unique subcategories for filtering
+      // Extract unique categories and subcategories for filtering
+      _categories = _extractCategories(answers);
       _subcategories = _extractSubcategories(answers);
+      print('Found categories: $_categories');
       print('Found subcategories: $_subcategories');
 
       // Apply initial filtering (no filter)
@@ -269,85 +268,82 @@ class _SurveyDetailFromBankScreenState
     return subcategory.toLowerCase().trim();
   }
 
-  // Filter answers based on selected subcategory
-  void _updateFilteredAnswers(List<Map<String, dynamic>> answers) {
-    if (_selectedSubcategory == null || _selectedSubcategory == 'Semua') {
-      _filteredAnswers = answers;
-    } else {
-      print('Filtering for subcategory: $_selectedSubcategory');
+  // Extract subcategories for a specific category
+  List<String> _extractSubcategoriesForCategory(
+    List<Map<String, dynamic>> answers,
+  ) {
+    final subcategories = <String>{};
 
-      // Normalized case-insensitive filtering with variation handling
-      String normalizedTarget = _selectedSubcategory!.toLowerCase().trim();
-
-      // Get all possible variations for the selected subcategory
-      List<String> possibleVariations = [];
-
-      // Cari key yang sesuai dengan target subcategory
-      for (var key in _subcategoryVariations.keys) {
-        if (normalizedTarget.contains(key) || key.contains(normalizedTarget)) {
-          possibleVariations.addAll(_subcategoryVariations[key]!);
-          break;
-        }
-      }
-
-      // Jika tidak ada variasi yang ditemukan, gunakan subcategory asli
-      if (possibleVariations.isEmpty) {
-        possibleVariations = [normalizedTarget];
-      }
-
-      print('Looking for these variations: $possibleVariations');
-
-      // Debug: print all subcategories for inspection
-      print('All available subcategories in answers:');
-      final uniqueSubcats =
-          answers
-              .map((a) => a['subcategory']?.toString())
-              .where((s) => s != null && s.isNotEmpty)
-              .toSet()
-              .toList();
-      print(uniqueSubcats);
-
-      // Filter dengan memeriksa semua kemungkinan variasi
-      _filteredAnswers =
-          answers.where((answer) {
-            if (answer['subcategory'] == null) return false;
-
-            String answerSubcategory =
-                answer['subcategory'].toString().toLowerCase().trim();
-
-            // Periksa kecocokan dengan semua variasi yang mungkin
-            for (var variation in possibleVariations) {
-              if (answerSubcategory == variation ||
-                  answerSubcategory.contains(variation) ||
-                  variation.contains(answerSubcategory)) {
-                return true;
-              }
-            }
-
-            return false;
-          }).toList();
-
-      // Sort by order if present
-      _filteredAnswers.sort((a, b) {
-        final orderA = a['order'] as num? ?? 0;
-        final orderB = b['order'] as num? ?? 0;
-        return orderA.compareTo(orderB);
-      });
-
-      print(
-        'Found ${_filteredAnswers.length} answers after filtering for $_selectedSubcategory',
-      );
-
-      // Debug: print questions found for "Akurat"
-      if (normalizedTarget == 'akurat') {
-        print('Questions matching "Akurat":');
-        for (var answer in _filteredAnswers) {
-          print(
-            '- ${answer['question']} (subcategory: ${answer['subcategory']})',
-          );
-        }
+    for (var answer in answers) {
+      if (answer['subcategory'] != null &&
+          answer['subcategory'].toString().isNotEmpty) {
+        subcategories.add(answer['subcategory'].toString());
       }
     }
+
+    return ['Semua', ...subcategories.toList()..sort()];
+  }
+
+  // Filter answers based on selected category and subcategory
+  void _updateFilteredAnswers(List<Map<String, dynamic>> answers) {
+    List<Map<String, dynamic>> filtered = answers;
+
+    // First filter by category if selected (for "all categories" view)
+    if (widget.selectedCategory == null &&
+        _selectedCategory != null &&
+        _selectedCategory != 'Semua') {
+      filtered =
+          filtered.where((answer) {
+            return answer['category'] != null &&
+                answer['category'].toString().toLowerCase() ==
+                    _selectedCategory!.toLowerCase();
+          }).toList();
+
+      // Update subcategories based on selected category
+      _subcategories = _extractSubcategoriesForCategory(filtered);
+
+      // Reset subcategory selection if it's not available in new category
+      if (_selectedSubcategory != null &&
+          _selectedSubcategory != 'Semua' &&
+          !_subcategories.contains(_selectedSubcategory)) {
+        _selectedSubcategory = 'Semua';
+      }
+    }
+
+    // Then filter by subcategory if selected
+    if (_selectedSubcategory != null && _selectedSubcategory != 'Semua') {
+      filtered =
+          filtered.where((answer) {
+            return answer['subcategory'] != null &&
+                answer['subcategory'].toString().toLowerCase() ==
+                    _selectedSubcategory!.toLowerCase();
+          }).toList();
+    }
+
+    // Sort by order if present
+    filtered.sort((a, b) {
+      final orderA = a['order'] as num? ?? 0;
+      final orderB = b['order'] as num? ?? 0;
+      return orderA.compareTo(orderB);
+    });
+
+    _filteredAnswers = filtered;
+
+    print(
+      'Applied filters - Category: $_selectedCategory, Subcategory: $_selectedSubcategory',
+    );
+    print(
+      'Filtered results: ${_filteredAnswers.length} out of ${answers.length} answers',
+    );
+  }
+
+  // Handle category filter change
+  void _onCategoryChanged(String? category) {
+    setState(() {
+      _selectedCategory = category;
+      _selectedSubcategory = 'Semua'; // Reset subcategory when category changes
+      _updateFilteredAnswers(_answers);
+    });
   }
 
   // Handle subcategory filter change
@@ -355,37 +351,10 @@ class _SurveyDetailFromBankScreenState
     setState(() {
       _selectedSubcategory = subcategory;
       _updateFilteredAnswers(_answers);
-
-      // Debug: when filtering for "Akurat", let's print more details
-      if (subcategory?.toLowerCase() == 'akurat') {
-        print('=== DEBUG FOR AKURAT FILTER ===');
-        print('Selected subcategory: $subcategory');
-        print('Total answers before filter: ${_answers.length}');
-        print('Total answers after filter: ${_filteredAnswers.length}');
-
-        // Check for similar subcategories
-        final possibleMatches =
-            _answers
-                .where(
-                  (a) =>
-                      a['subcategory'] != null &&
-                      (a['subcategory'].toString().toLowerCase().contains(
-                            'akur',
-                          ) ||
-                          a['subcategory'].toString().toLowerCase().contains(
-                            'accur',
-                          )),
-                )
-                .map((a) => '${a['subcategory']} (${a['question']})')
-                .toSet()
-                .toList();
-
-        print('Possible similar subcategories: $possibleMatches');
-        print('==============================');
-      }
     });
   }
 
+  // Handle subcategory filter change
   String _formatDate(dynamic timestamp) {
     if (timestamp == null) return 'Tanggal tidak tersedia';
 
@@ -959,6 +928,20 @@ class _SurveyDetailFromBankScreenState
     }
   }
 
+  // Extract all unique categories from answers
+  List<String> _extractCategories(List<Map<String, dynamic>> answers) {
+    final categories = <String>{};
+
+    for (var answer in answers) {
+      if (answer['category'] != null &&
+          answer['category'].toString().isNotEmpty) {
+        categories.add(answer['category'].toString());
+      }
+    }
+
+    return ['Semua', ...categories.toList()..sort()];
+  }
+
   Widget _buildAnswersSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -979,11 +962,12 @@ class _SurveyDetailFromBankScreenState
                 ),
               ],
             ),
-            if (_subcategories.length > 1)
+            // Add filters only for "all categories" view
+            if (widget.selectedCategory == null) ...[
               Container(
                 width: double.infinity,
                 margin: EdgeInsets.only(top: 10, bottom: 5),
-                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
                   border: Border.all(color: Colors.blue.shade200),
@@ -1001,7 +985,7 @@ class _SurveyDetailFromBankScreenState
                         ),
                         SizedBox(width: 8),
                         Text(
-                          'Filter Subcategory:',
+                          'Filter Kategori & Subkategori:',
                           style: AppSize.getTextStyle(
                             fontSize: AppSize.smallFontSize,
                             fontWeight: FontWeight.bold,
@@ -1009,6 +993,59 @@ class _SurveyDetailFromBankScreenState
                           ),
                         ),
                       ],
+                    ),
+                    SizedBox(height: 10),
+                    // Category filter
+                    Text(
+                      'Kategori:',
+                      style: AppSize.getTextStyle(
+                        fontSize: AppSize.smallFontSize,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.blue.shade600,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 15),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedCategory ?? 'Semua',
+                          icon: Icon(
+                            Icons.arrow_drop_down,
+                            color: Colors.blue.shade700,
+                          ),
+                          items:
+                              _categories.map((String category) {
+                                return DropdownMenuItem<String>(
+                                  value: category,
+                                  child: Text(
+                                    category,
+                                    style: AppSize.getTextStyle(
+                                      fontSize: AppSize.bodyFontSize,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                          onChanged: _onCategoryChanged,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    // Subcategory filter
+                    Text(
+                      'Subkategori:',
+                      style: AppSize.getTextStyle(
+                        fontSize: AppSize.smallFontSize,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.blue.shade600,
+                      ),
                     ),
                     SizedBox(height: 5),
                     Container(
@@ -1028,89 +1065,14 @@ class _SurveyDetailFromBankScreenState
                           ),
                           items:
                               _subcategories.map((String subcategory) {
-                                // Hitung jumlah pertanyaan untuk subcategory ini
-                                int count = _countQuestionsForSubcategory(
-                                  subcategory,
-                                );
-                                bool isAkurat =
-                                    subcategory != 'Semua' &&
-                                    _isAkuratSubcategory(subcategory);
-
                                 return DropdownMenuItem<String>(
                                   value: subcategory,
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          if (isAkurat)
-                                            Padding(
-                                              padding: EdgeInsets.only(
-                                                right: 8,
-                                              ),
-                                              child: Icon(
-                                                Icons.check_circle_outline,
-                                                size: 16,
-                                                color: Colors.green.shade700,
-                                              ),
-                                            ),
-                                          Text(
-                                            subcategory,
-                                            style: AppSize.getTextStyle(
-                                              fontSize: AppSize.bodyFontSize,
-                                              color:
-                                                  subcategory ==
-                                                          _selectedSubcategory
-                                                      ? Colors.blue.shade700
-                                                      : (isAkurat
-                                                          ? Colors
-                                                              .green
-                                                              .shade700
-                                                          : Colors.black87),
-                                              fontWeight:
-                                                  subcategory ==
-                                                              _selectedSubcategory ||
-                                                          isAkurat
-                                                      ? FontWeight.bold
-                                                      : FontWeight.normal,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              subcategory ==
-                                                      _selectedSubcategory
-                                                  ? Colors.blue.shade100
-                                                  : (isAkurat
-                                                      ? Colors.green.shade100
-                                                      : Colors.grey.shade200),
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          count.toString(),
-                                          style: AppSize.getTextStyle(
-                                            fontSize: AppSize.smallFontSize - 1,
-                                            color:
-                                                subcategory ==
-                                                        _selectedSubcategory
-                                                    ? Colors.blue.shade700
-                                                    : (isAkurat
-                                                        ? Colors.green.shade700
-                                                        : Colors.grey.shade700),
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  child: Text(
+                                    subcategory,
+                                    style: AppSize.getTextStyle(
+                                      fontSize: AppSize.bodyFontSize,
+                                      color: Colors.black87,
+                                    ),
                                   ),
                                 );
                               }).toList(),
@@ -1121,6 +1083,7 @@ class _SurveyDetailFromBankScreenState
                   ],
                 ),
               ),
+            ],
           ],
         ),
         SizedBox(height: AppSize.heightPercent(1.5)),
@@ -1327,109 +1290,46 @@ class _SurveyDetailFromBankScreenState
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: Colors.blue.shade200),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.filter_alt,
-                                    size: 16,
-                                    color: Colors.blue.shade700,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Filter: $_selectedSubcategory',
-                                      style: AppSize.getTextStyle(
-                                        fontSize: AppSize.smallFontSize,
-                                        color: Colors.blue.shade700,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => _onSubcategoryChanged('Semua'),
-                                    child: Container(
-                                      padding: EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Colors.blue.shade300,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.close,
-                                            size: 12,
-                                            color: Colors.blue.shade700,
-                                          ),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            'Reset Filter',
-                                            style: AppSize.getTextStyle(
-                                              fontSize:
-                                                  AppSize.smallFontSize - 1,
-                                              color: Colors.blue.shade700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 5),
-                              Row(
-                                children: [
-                                  Text(
-                                    'Menampilkan ${_filteredAnswers.length} jawaban',
-                                    style: AppSize.getTextStyle(
-                                      fontSize: AppSize.smallFontSize - 1,
-                                      color: Colors.blue.shade800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        )
-                        : (_subcategories.length >
-                            2) // More than just "Semua" and one other option
-                        ? Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
                           child: Row(
                             children: [
                               Icon(
-                                Icons.info_outline,
+                                Icons.filter_alt,
                                 size: 16,
-                                color: Colors.grey.shade700,
+                                color: Colors.blue.shade700,
                               ),
                               SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  'Menampilkan semua ${_filteredAnswers.length} jawaban. Gunakan filter untuk melihat berdasarkan subcategory.',
+                                  'Filter: $_selectedSubcategory',
                                   style: AppSize.getTextStyle(
                                     fontSize: AppSize.smallFontSize,
-                                    color: Colors.grey.shade700,
+                                    color: Colors.blue.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => _onSubcategoryChanged('Semua'),
+                                child: Container(
+                                  padding: EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.blue.shade300,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.close,
+                                    size: 12,
+                                    color: Colors.blue.shade700,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         )
-                        : SizedBox(), // No info needed if there aren't multiple subcategories
+                        : SizedBox(),
               ),
               ListView.builder(
                 shrinkWrap: true,
@@ -1572,98 +1472,11 @@ class _SurveyDetailFromBankScreenState
                                 ),
                               ),
                             if (answer['subcategory'] != null)
-                              GestureDetector(
-                                onTap: () {
-                                  final subcategory =
-                                      answer['subcategory'].toString();
-                                  // If already selected, clear filter. Otherwise, apply filter
-                                  _onSubcategoryChanged(
-                                    _selectedSubcategory == subcategory
-                                        ? 'Semua'
-                                        : subcategory,
-                                  );
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  margin: EdgeInsets.only(right: 4),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        _isAkuratSubcategory(
-                                              answer['subcategory'],
-                                            )
-                                            ? Colors.green.shade50
-                                            : (_selectedSubcategory ==
-                                                    answer['subcategory']
-                                                ? Colors.blue.shade50
-                                                : Colors.grey.shade100),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color:
-                                          _isAkuratSubcategory(
-                                                answer['subcategory'],
-                                              )
-                                              ? Colors.green.shade400
-                                              : (_selectedSubcategory ==
-                                                      answer['subcategory']
-                                                  ? Colors.blue.shade300
-                                                  : Colors.grey.shade300),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (_isAkuratSubcategory(
-                                        answer['subcategory'],
-                                      ))
-                                        Padding(
-                                          padding: EdgeInsets.only(right: 4),
-                                          child: Icon(
-                                            Icons.check_circle_outline,
-                                            size: 12,
-                                            color: Colors.green.shade700,
-                                          ),
-                                        ),
-                                      Text(
-                                        answer['subcategory'].toString(),
-                                        style: AppSize.getTextStyle(
-                                          fontSize: AppSize.smallFontSize - 1,
-                                          fontWeight:
-                                              _selectedSubcategory ==
-                                                          answer['subcategory'] ||
-                                                      _isAkuratSubcategory(
-                                                        answer['subcategory'],
-                                                      )
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                          color:
-                                              _isAkuratSubcategory(
-                                                    answer['subcategory'],
-                                                  )
-                                                  ? Colors.green.shade700
-                                                  : (_selectedSubcategory ==
-                                                          answer['subcategory']
-                                                      ? Colors.blue.shade700
-                                                      : Colors.grey.shade700),
-                                        ),
-                                      ),
-                                      if (_selectedSubcategory ==
-                                              answer['subcategory'] &&
-                                          !_isAkuratSubcategory(
-                                            answer['subcategory'],
-                                          ))
-                                        Padding(
-                                          padding: EdgeInsets.only(left: 3),
-                                          child: Icon(
-                                            Icons.check_circle,
-                                            size: 12,
-                                            color: Colors.blue.shade700,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
+                              Text(
+                                answer['subcategory'].toString(),
+                                style: AppSize.getTextStyle(
+                                  fontSize: AppSize.smallFontSize,
+                                  color: Colors.grey.shade600,
                                 ),
                               ),
                           ],
@@ -1941,67 +1754,12 @@ class _SurveyDetailFromBankScreenState
   }
 
   // Helper method untuk mengecek apakah subcategory termasuk "Akurat"
-  bool _isAkuratSubcategory(dynamic subcategory) {
-    if (subcategory == null) return false;
-
-    String normalized = subcategory.toString().toLowerCase().trim();
-
-    // Cek apakah subcategory termasuk variasi "Akurat"
-    List<String> akuratVariations = _subcategoryVariations['akurat'] ?? [];
-
-    return akuratVariations.any(
-      (variation) =>
-          normalized == variation ||
-          normalized.contains(variation) ||
-          variation.contains(normalized),
-    );
-  }
-
   Color _getScoreColor(dynamic score) {
     if (score == null) return Colors.grey;
     final scoreValue = (score as num).toDouble();
     if (scoreValue >= 80) return Colors.green;
     if (scoreValue >= 60) return Colors.orange;
     return Colors.red;
-  }
-
-  // Menghitung jumlah pertanyaan untuk subcategory tertentu
-  int _countQuestionsForSubcategory(String subcategory) {
-    if (subcategory == 'Semua') return _answers.length;
-
-    String normalized = subcategory.toLowerCase().trim();
-
-    // Cek apakah subcategory termasuk variasi yang diketahui
-    for (var key in _subcategoryVariations.keys) {
-      List<String> variations = _subcategoryVariations[key] ?? [];
-      if (variations.any(
-        (v) =>
-            normalized == v || normalized.contains(v) || v.contains(normalized),
-      )) {
-        // Hitung pertanyaan yang cocok dengan semua variasi ini
-        return _answers.where((answer) {
-          if (answer['subcategory'] == null) return false;
-          String answerSub =
-              answer['subcategory'].toString().toLowerCase().trim();
-          return variations.any(
-            (v) =>
-                answerSub == v ||
-                answerSub.contains(v) ||
-                v.contains(answerSub),
-          );
-        }).length;
-      }
-    }
-
-    // Fallback ke pencocokan langsung
-    return _answers
-        .where(
-          (answer) =>
-              answer['subcategory'] != null &&
-              answer['subcategory'].toString().toLowerCase().trim() ==
-                  normalized,
-        )
-        .length;
   }
 
   // Edit mode functions

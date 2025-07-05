@@ -96,14 +96,17 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
   }
 
   Color _getCategoryBackgroundColor(String categoryName, bool isSelected) {
-    if (isSelected) {
+    final status = _categoryStatus[categoryName] ?? 'default';
+
+    if (isSelected && status != 'completed') {
       return Colors.blue.shade50;
     }
 
-    final status = _categoryStatus[categoryName] ?? 'default';
     switch (status) {
       case 'completed':
-        return Colors.green.shade50;
+        return Colors.green.shade50.withOpacity(
+          0.7,
+        ); // More muted for disabled state
       case 'partial':
         return Colors.yellow.shade50;
       default:
@@ -112,14 +115,15 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
   }
 
   Color _getCategoryBorderColor(String categoryName, bool isSelected) {
-    if (isSelected) {
+    final status = _categoryStatus[categoryName] ?? 'default';
+
+    if (isSelected && status != 'completed') {
       return Colors.blue.shade400;
     }
 
-    final status = _categoryStatus[categoryName] ?? 'default';
     switch (status) {
       case 'completed':
-        return Colors.green.shade400;
+        return Colors.grey.shade400; // Muted border for disabled state
       case 'partial':
         return Colors.yellow.shade600;
       default:
@@ -128,14 +132,15 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
   }
 
   Color _getCategoryIconColor(String categoryName, bool isSelected) {
-    if (isSelected) {
+    final status = _categoryStatus[categoryName] ?? 'default';
+
+    if (isSelected && status != 'completed') {
       return Colors.blue.shade600;
     }
 
-    final status = _categoryStatus[categoryName] ?? 'default';
     switch (status) {
       case 'completed':
-        return Colors.green.shade600;
+        return Colors.grey.shade500; // Muted icon for disabled state
       case 'partial':
         return Colors.yellow.shade700;
       default:
@@ -144,14 +149,15 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
   }
 
   Color _getCategoryTextColor(String categoryName, bool isSelected) {
-    if (isSelected) {
+    final status = _categoryStatus[categoryName] ?? 'default';
+
+    if (isSelected && status != 'completed') {
       return Colors.blue.shade700;
     }
 
-    final status = _categoryStatus[categoryName] ?? 'default';
     switch (status) {
       case 'completed':
-        return Colors.green.shade700;
+        return Colors.grey.shade600; // Muted text for disabled state
       case 'partial':
         return Colors.yellow.shade800;
       default:
@@ -433,14 +439,14 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                             children: [
                               _buildLegendItem(
                                 Colors.green.shade600,
-                                'Selesai',
+                                'Selesai (Terkunci)',
                               ),
-                              SizedBox(width: AppSize.widthPercent(4)),
+                              SizedBox(width: AppSize.widthPercent(3)),
                               _buildLegendItem(
                                 Colors.orange.shade600,
                                 'Sebagian',
                               ),
-                              SizedBox(width: AppSize.widthPercent(4)),
+                              SizedBox(width: AppSize.widthPercent(3)),
                               _buildLegendItem(
                                 Colors.grey.shade600,
                                 'Belum Mulai',
@@ -480,100 +486,142 @@ class _ChooseCategoryScreenState extends State<ChooseCategoryScreen> {
                                         category['name'] as String;
                                     final isSelected =
                                         _selectedCategory == categoryName;
+                                    final isCompleted =
+                                        _categoryStatus[categoryName] ==
+                                        'completed';
 
-                                    return GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedCategory = categoryName;
-                                        });
-                                      },
-                                      child: AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 200,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: _getCategoryBackgroundColor(
-                                            categoryName,
-                                            isSelected,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            15,
-                                          ),
-                                          border: Border.all(
-                                            color: _getCategoryBorderColor(
-                                              categoryName,
-                                              isSelected,
+                                    return AbsorbPointer(
+                                      absorbing:
+                                          isCompleted, // Disable touch for completed categories
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          // Check if category is completed
+                                          final status =
+                                              _categoryStatus[categoryName] ??
+                                              'default';
+                                          if (status == 'completed') {
+                                            // Show toast/snackbar that category is already completed
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'Kategori "$categoryName" sudah selesai dikerjakan dan tidak dapat diubah',
+                                                ),
+                                                backgroundColor: Colors.orange,
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
+                                            return;
+                                          }
+
+                                          setState(() {
+                                            _selectedCategory = categoryName;
+                                          });
+                                        },
+                                        child: Opacity(
+                                          opacity:
+                                              _categoryStatus[categoryName] ==
+                                                      'completed'
+                                                  ? 0.6
+                                                  : 1.0,
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 200,
                                             ),
-                                            width: isSelected ? 2 : 1,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
+                                            decoration: BoxDecoration(
                                               color:
-                                                  isSelected
-                                                      ? Colors.blue.withOpacity(
-                                                        0.2,
-                                                      )
-                                                      : _getCategoryBorderColor(
-                                                        categoryName,
-                                                        false,
-                                                      ).withOpacity(0.1),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 3),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  category['icon'],
-                                                  color: _getCategoryIconColor(
+                                                  _getCategoryBackgroundColor(
                                                     categoryName,
                                                     isSelected,
                                                   ),
-                                                  size: AppSize.iconSize * 1.2,
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: _getCategoryBorderColor(
+                                                  categoryName,
+                                                  isSelected,
                                                 ),
-                                                SizedBox(
-                                                  height: AppSize.heightPercent(
-                                                    1,
-                                                  ),
+                                                width: isSelected ? 2 : 1,
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color:
+                                                      isSelected
+                                                          ? Colors.blue
+                                                              .withOpacity(0.2)
+                                                          : _getCategoryBorderColor(
+                                                            categoryName,
+                                                            false,
+                                                          ).withOpacity(0.1),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 3),
                                                 ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 8.0,
-                                                      ),
-                                                  child: Text(
-                                                    categoryName,
-                                                    style: AppSize.getTextStyle(
-                                                      fontSize:
-                                                          AppSize
-                                                              .subtitleFontSize *
-                                                          0.85,
-                                                      fontWeight:
-                                                          isSelected
-                                                              ? FontWeight.bold
-                                                              : FontWeight.w500,
+                                              ],
+                                            ),
+                                            child: Stack(
+                                              alignment: Alignment.center,
+                                              children: [
+                                                Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Icon(
+                                                      category['icon'],
                                                       color:
-                                                          _getCategoryTextColor(
+                                                          _getCategoryIconColor(
                                                             categoryName,
                                                             isSelected,
                                                           ),
+                                                      size:
+                                                          AppSize.iconSize *
+                                                          1.2,
                                                     ),
-                                                    textAlign: TextAlign.center,
-                                                  ),
+                                                    SizedBox(
+                                                      height:
+                                                          AppSize.heightPercent(
+                                                            1,
+                                                          ),
+                                                    ),
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8.0,
+                                                          ),
+                                                      child: Text(
+                                                        categoryName,
+                                                        style: AppSize.getTextStyle(
+                                                          fontSize:
+                                                              AppSize
+                                                                  .subtitleFontSize *
+                                                              0.85,
+                                                          fontWeight:
+                                                              isSelected
+                                                                  ? FontWeight
+                                                                      .bold
+                                                                  : FontWeight
+                                                                      .w500,
+                                                          color:
+                                                              _getCategoryTextColor(
+                                                                categoryName,
+                                                                isSelected,
+                                                              ),
+                                                        ),
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                      ),
+                                                    ),
+                                                    _buildContributorInfo(
+                                                      categoryName,
+                                                    ),
+                                                  ],
                                                 ),
-                                                _buildContributorInfo(
+                                                _buildStatusIndicator(
                                                   categoryName,
                                                 ),
                                               ],
                                             ),
-                                            _buildStatusIndicator(categoryName),
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     );
