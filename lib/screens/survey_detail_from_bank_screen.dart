@@ -448,7 +448,7 @@ class _SurveyDetailFromBankScreenState
               )
             else
               IconButton(
-                onPressed: _saveChanges,
+                onPressed: _saveEdit,
                 icon: Icon(Icons.save),
                 tooltip: 'Simpan Perubahan',
               ),
@@ -687,10 +687,63 @@ class _SurveyDetailFromBankScreenState
 
   // Display contributors of the survey
   Widget _buildContributorsText() {
+    return FutureBuilder<String?>(
+      future: _getLastEditorFullName(),
+      builder: (context, snapshot) {
+        String? lastEditedBy;
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasData) {
+          lastEditedBy = snapshot.data;
+        } else {
+          // Fallback to current logic while loading
+          final lastEditedData = widget.surveyData['lastEditedBy'];
+          if (lastEditedData is String) {
+            lastEditedBy = lastEditedData;
+            if (lastEditedBy.contains('@')) {
+              lastEditedBy = lastEditedBy.split('@').first;
+            }
+          } else if (lastEditedData is Map<String, dynamic>) {
+            lastEditedBy = lastEditedData['userName'] as String?;
+            if (lastEditedBy != null && lastEditedBy.contains('@')) {
+              lastEditedBy = lastEditedBy.split('@').first;
+            }
+          }
+        }
+
+        return _buildContributorsTextContent(lastEditedBy);
+      },
+    );
+  }
+
+  // Get full name for last editor
+  Future<String?> _getLastEditorFullName() async {
+    try {
+      final lastEditedData = widget.surveyData['lastEditedBy'];
+      if (lastEditedData is String) {
+        return await _surveyResultService.getFullNameFromUser(lastEditedData);
+      } else if (lastEditedData is Map<String, dynamic>) {
+        final userName = lastEditedData['userName'] as String?;
+        final userId = lastEditedData['userId'] as String?;
+        if (userId != null) {
+          return await _surveyResultService.getFullNameFromUser(userId);
+        } else if (userName != null) {
+          return await _surveyResultService.getFullNameFromUser(userName);
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error getting last editor full name: $e');
+      return null;
+    }
+  }
+
+  // Build contributors text content
+  Widget _buildContributorsTextContent(String? lastEditedBy) {
     // We will get the actual contributor from the database
     // No more hardcoded values
 
     // First try to get category-specific contributor
+    String? surveyorName;
     if (widget.selectedCategory != null &&
         widget.surveyData['categoryStatistics'] != null) {
       final categoryStats =
@@ -711,18 +764,12 @@ class _SurveyDetailFromBankScreenState
             'Found exact match for category contributor: ${contributor['userName']} for ${widget.selectedCategory}',
           );
 
-          return Text(
-            'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
-            style: AppSize.getTextStyle(
-              fontSize: AppSize.smallFontSize,
-              color: Colors.grey.shade600,
-            ),
-          );
+          surveyorName = contributor['userName'] ?? 'Unknown';
         }
       }
 
       // Try case insensitive match if exact match failed
-      if (categoryStats != null) {
+      if (surveyorName == null && categoryStats != null) {
         final matchingCategoryKey = categoryStats.keys.firstWhere(
           (key) =>
               key.toString().toLowerCase() ==
@@ -741,40 +788,32 @@ class _SurveyDetailFromBankScreenState
               'Found case-insensitive match for category contributor: ${contributor['userName']} for ${widget.selectedCategory}',
             );
 
-            return Text(
-              'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
-              style: AppSize.getTextStyle(
-                fontSize: AppSize.smallFontSize,
-                color: Colors.grey.shade600,
-              ),
-            );
+            surveyorName = contributor['userName'] ?? 'Unknown';
           }
         }
 
         // If still no match, try to find matching category names with substring
-        for (final catKey in categoryStats.keys) {
-          if (catKey.toString().toLowerCase().contains(
-                widget.selectedCategory!.toLowerCase(),
-              ) ||
-              widget.selectedCategory!.toLowerCase().contains(
-                catKey.toString().toLowerCase(),
-              )) {
-            final categoryData = categoryStats[catKey] as Map<String, dynamic>?;
-            if (categoryData != null && categoryData['contributor'] != null) {
-              final contributor =
-                  categoryData['contributor'] as Map<String, dynamic>;
+        if (surveyorName == null) {
+          for (final catKey in categoryStats.keys) {
+            if (catKey.toString().toLowerCase().contains(
+                  widget.selectedCategory!.toLowerCase(),
+                ) ||
+                widget.selectedCategory!.toLowerCase().contains(
+                  catKey.toString().toLowerCase(),
+                )) {
+              final categoryData =
+                  categoryStats[catKey] as Map<String, dynamic>?;
+              if (categoryData != null && categoryData['contributor'] != null) {
+                final contributor =
+                    categoryData['contributor'] as Map<String, dynamic>;
 
-              print(
-                'Found substring match for category contributor: ${contributor['userName']} from $catKey for ${widget.selectedCategory}',
-              );
+                print(
+                  'Found substring match for category contributor: ${contributor['userName']} from $catKey for ${widget.selectedCategory}',
+                );
 
-              return Text(
-                'Surveyor: ${contributor['userName'] ?? 'Unknown'}',
-                style: AppSize.getTextStyle(
-                  fontSize: AppSize.smallFontSize,
-                  color: Colors.grey.shade600,
-                ),
-              );
+                surveyorName = contributor['userName'] ?? 'Unknown';
+                break;
+              }
             }
           }
         }
@@ -782,85 +821,141 @@ class _SurveyDetailFromBankScreenState
     }
 
     // Fall back to general contributors if no category-specific one is found
-    List<Map<String, dynamic>> contributors = [];
-    if (widget.surveyData['contributors'] != null) {
-      try {
-        contributors = List<Map<String, dynamic>>.from(
-          widget.surveyData['contributors'],
+    if (surveyorName == null) {
+      List<Map<String, dynamic>> contributors = [];
+      if (widget.surveyData['contributors'] != null) {
+        try {
+          contributors = List<Map<String, dynamic>>.from(
+            widget.surveyData['contributors'],
+          );
+        } catch (e) {
+          print('Error parsing contributors: $e');
+        }
+      }
+
+      // If no contributors field exists, use the old userName field
+      if (contributors.isEmpty && widget.surveyData['userName'] != null) {
+        surveyorName = widget.surveyData['userName'];
+      } else if (widget.selectedCategory != null && contributors.isNotEmpty) {
+        // If we're showing a specific category but couldn't find a specific contributor,
+        // just show the most recent contributor (assuming they probably did this category)
+        // Sort by timestamp if available
+        contributors.sort((a, b) {
+          if (a['timestamp'] == null || b['timestamp'] == null) return 0;
+          return (b['timestamp'] as Timestamp).compareTo(
+            a['timestamp'] as Timestamp,
+          );
+        });
+
+        surveyorName = contributors.first['userName'] ?? 'Unknown';
+      } else if (contributors.length == 1) {
+        // If only one contributor, show their name
+        surveyorName = contributors[0]['userName'] ?? 'Unknown';
+      } else if (contributors.length > 1) {
+        // Multiple contributors - we'll handle this case below
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Surveyors: ${contributors.length} people',
+              style: AppSize.getTextStyle(
+                fontSize: AppSize.smallFontSize,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              contributors.map((c) => c['userName']).join(', '),
+              style: AppSize.getTextStyle(
+                fontSize: AppSize.smallFontSize,
+                color: Colors.grey.shade600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            // Show last editor if available and different from contributors
+            if (lastEditedBy != null &&
+                !contributors.any((c) => c['userName'] == lastEditedBy)) ...[
+              SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.edit, size: 14, color: Colors.orange.shade700),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Last Editor: $lastEditedBy',
+                      style: AppSize.getTextStyle(
+                        fontSize: AppSize.smallFontSize,
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
         );
-      } catch (e) {
-        print('Error parsing contributors: $e');
       }
     }
 
-    // If no contributors field exists, use the old userName field
-    if (contributors.isEmpty && widget.surveyData['userName'] != null) {
-      return Text(
-        'Surveyor: ${widget.surveyData['userName']}',
-        style: AppSize.getTextStyle(
-          fontSize: AppSize.smallFontSize,
-          color: Colors.grey.shade600,
-        ),
-      );
-    }
-
-    // If we're showing a specific category but couldn't find a specific contributor,
-    // just show the most recent contributor (assuming they probably did this category)
-    if (widget.selectedCategory != null && contributors.isNotEmpty) {
-      // Sort by timestamp if available
-      contributors.sort((a, b) {
-        if (a['timestamp'] == null || b['timestamp'] == null) return 0;
-        return (b['timestamp'] as Timestamp).compareTo(
-          a['timestamp'] as Timestamp,
-        );
-      });
-
-      return Text(
-        'Surveyor: ${contributors.first['userName'] ?? 'Unknown'}',
-        style: AppSize.getTextStyle(
-          fontSize: AppSize.smallFontSize,
-          color: Colors.grey.shade600,
-        ),
-      );
-    }
-
-    // If multiple contributors for general survey view, show count and list them
-    if (contributors.length > 1) {
+    // Build the result widget for single surveyor case
+    if (surveyorName != null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Surveyors: ${contributors.length} people',
-            style: AppSize.getTextStyle(
-              fontSize: AppSize.smallFontSize,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            contributors.map((c) => c['userName']).join(', '),
+            'Surveyor: $surveyorName',
             style: AppSize.getTextStyle(
               fontSize: AppSize.smallFontSize,
               color: Colors.grey.shade600,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
+          // Show last editor if available and different from surveyor
+          if (lastEditedBy != null && lastEditedBy != surveyorName) ...[
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.edit, size: 14, color: Colors.orange.shade700),
+                SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Last Editor: $lastEditedBy',
+                    style: AppSize.getTextStyle(
+                      fontSize: AppSize.smallFontSize,
+                      color: Colors.orange.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       );
-    } else if (contributors.length == 1) {
-      // If only one contributor, show their name
-      return Text(
-        'Surveyor: ${contributors[0]['userName'] ?? 'Unknown'}',
-        style: AppSize.getTextStyle(
-          fontSize: AppSize.smallFontSize,
-          color: Colors.grey.shade600,
-        ),
-      );
     } else {
-      // No contributor info available
-      return SizedBox.shrink();
+      // No contributor info available - just show last editor if available
+      if (lastEditedBy != null) {
+        return Row(
+          children: [
+            Icon(Icons.edit, size: 14, color: Colors.orange.shade700),
+            SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                'Last Editor: $lastEditedBy',
+                style: AppSize.getTextStyle(
+                  fontSize: AppSize.smallFontSize,
+                  color: Colors.orange.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        );
+      } else {
+        return SizedBox.shrink();
+      }
     }
   }
 
@@ -1922,134 +2017,21 @@ class _SurveyDetailFromBankScreenState
           // Use 'answer' field as primary, fallback to 'answerValue' for backward compatibility
           final originalAnswer = answer['answer'] ?? answer['answerValue'];
           _editedAnswers[answer['id']] = originalAnswer;
-          if (answer['note'] != null) {
-            _editedNotes[answer['id']] = answer['note'].toString();
-          }
-          // Initialize skip status
-          _editedSkipped[answer['id']] = answer['skipped'] == true;
+
+          // Initialize notes
+          _editedNotes[answer['id']] = answer['note'] ?? '';
+
+          // Initialize skipped status
+          _editedSkipped[answer['id']] = answer['skipped'] ?? false;
         }
       }
     });
   }
 
-  void _cancelEdit() {
+  void _updateAnswer(String questionId, dynamic value) {
     setState(() {
-      _isEditMode = false;
-      _editedAnswers.clear();
-      _editedNotes.clear();
-      _editedSkipped.clear();
-    });
-  }
-
-  Future<void> _saveChanges() async {
-    setState(() {
-      _isSaving = true;
-    });
-
-    try {
-      // Show confirmation dialog
-      bool? confirm = await showDialog<bool>(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: Row(
-                children: [
-                  Icon(Icons.save, color: Colors.orange),
-                  SizedBox(width: 8),
-                  Text('Simpan Perubahan'),
-                ],
-              ),
-              content: Text(
-                'Apakah Anda yakin ingin menyimpan perubahan survey ini? '
-                'Perubahan akan menggantikan jawaban yang sudah ada.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text('Batal'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: Text('Simpan'),
-                ),
-              ],
-            ),
-      );
-
-      if (confirm != true) {
-        setState(() {
-          _isSaving = false;
-        });
-        return;
-      }
-
-      // Update survey answers in the database
-      await _surveyResultService.updateSurveyAnswers(
-        widget.surveyId,
-        _editedAnswers,
-        _editedNotes,
-        updatedSkipped: _editedSkipped,
-      );
-
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Survey berhasil diperbarui!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-
-      // Exit edit mode and reload data
-      setState(() {
-        _isEditMode = false;
-        _editedAnswers.clear();
-        _editedNotes.clear();
-        _editedSkipped.clear();
-      });
-
-      // Reload answers to reflect changes
-      await _loadAnswers();
-    } catch (e) {
-      print('Error saving changes: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Gagal menyimpan perubahan: $e'),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isSaving = false;
-      });
-    }
-  }
-
-  void _updateAnswer(String questionId, bool? answer) {
-    setState(() {
-      _editedAnswers[questionId] = answer;
-      _editedSkipped[questionId] = false; // Clear skip status when answering
+      _editedAnswers[questionId] = value;
+      _editedSkipped[questionId] = false; // If answering, it's not skipped
     });
   }
 
@@ -2061,8 +2043,56 @@ class _SurveyDetailFromBankScreenState
 
   void _updateAnswerToSkip(String questionId) {
     setState(() {
+      _editedSkipped[questionId] = true;
       _editedAnswers[questionId] = null; // Clear answer when skipping
-      _editedSkipped[questionId] = true; // Mark as skipped
     });
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _isEditMode = false;
+      _editedAnswers = {};
+      _editedNotes = {};
+      _editedSkipped = {};
+    });
+  }
+
+  Future<void> _saveEdit() async {
+    try {
+      await _surveyResultService.updateSurveyAnswers(
+        widget.surveyId,
+        _editedAnswers,
+        _editedNotes,
+        updatedSkipped: _editedSkipped,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Survey berhasil diperbarui'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        setState(() {
+          _isEditMode = false;
+          _editedAnswers = {};
+          _editedNotes = {};
+          _editedSkipped = {};
+        });
+
+        // Refresh data
+        _loadAnswers();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memperbarui survey: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

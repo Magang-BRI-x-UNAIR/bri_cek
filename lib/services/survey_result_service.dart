@@ -960,6 +960,30 @@ class SurveyResultService {
 
       print('Updating survey answers for survey ID: $surveyId');
 
+      // Get current user's full name from Firestore (prioritize fullName)
+      String userName = 'Unknown';
+      try {
+        final userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          userName =
+              userData['fullName'] ??
+              userData['username'] ??
+              userData['nickname'] ??
+              user.displayName ??
+              user.email ??
+              'Unknown';
+        } else {
+          // Fallback to display name or email if user document doesn't exist
+          userName = user.displayName ?? user.email ?? 'Unknown';
+        }
+      } catch (e) {
+        print('Error getting user data: $e');
+        // Fallback to display name or email
+        userName = user.displayName ?? user.email ?? 'Unknown';
+      }
+
       // Get existing survey document
       final surveyDoc = _firestore.collection('survey_results').doc(surveyId);
       final surveySnapshot = await surveyDoc.get();
@@ -980,10 +1004,7 @@ class SurveyResultService {
             (updatedSkipped?.containsKey(questionId) ?? false)) {
           Map<String, dynamic> updateData = {
             'updatedAt': FieldValue.serverTimestamp(),
-            'lastEditedBy': {
-              'userId': user.uid,
-              'userName': user.displayName ?? user.email ?? 'Unknown',
-            },
+            'lastEditedBy': {'userId': user.uid, 'userName': userName},
           };
 
           // Update answer if provided
@@ -1045,17 +1066,61 @@ class SurveyResultService {
           'passedQuestions': passedQuestions,
         },
         'updatedAt': FieldValue.serverTimestamp(),
-        'lastEditedBy': {
-          'userId': user.uid,
-          'userName': user.displayName ?? user.email ?? 'Unknown',
-          'timestamp': FieldValue.serverTimestamp(),
-        },
+        'lastEditedBy': userName, // Store as simple string for easier access
       });
 
       print('Survey answers updated successfully');
     } catch (e) {
       print('Error updating survey answers: $e');
       throw Exception('Gagal memperbarui jawaban survey: $e');
+    }
+  }
+
+  /// Get full name from users collection by email or userId
+  Future<String> getFullNameFromUser(String emailOrUserId) async {
+    try {
+      // First try to find by userId
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(emailOrUserId).get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        return userData['fullName'] ??
+            userData['username'] ??
+            userData['nickname'] ??
+            emailOrUserId;
+      }
+
+      // If not found by userId, try to find by email
+      if (emailOrUserId.contains('@')) {
+        QuerySnapshot userQuery =
+            await _firestore
+                .collection('users')
+                .where('email', isEqualTo: emailOrUserId)
+                .limit(1)
+                .get();
+
+        if (userQuery.docs.isNotEmpty) {
+          final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+          return userData['fullName'] ??
+              userData['username'] ??
+              userData['nickname'] ??
+              emailOrUserId.split('@').first;
+        }
+
+        // Fallback: return username part of email
+        return emailOrUserId.split('@').first;
+      }
+
+      // Return original if nothing found
+      return emailOrUserId;
+    } catch (e) {
+      print('Error getting full name from user: $e');
+      // Return username part if email, otherwise return original
+      if (emailOrUserId.contains('@')) {
+        return emailOrUserId.split('@').first;
+      }
+      return emailOrUserId;
     }
   }
 }
