@@ -468,6 +468,7 @@ class _SurveyDetailFromBankScreenState
     // Start with overall statistics
     num score = statistics['score'] ?? 0;
     Color scoreColor = _getScoreColor(score);
+    Map<String, dynamic> displayStatistics = statistics;
 
     // If we have category statistics for the selected category, use those instead
     if (widget.selectedCategory != null &&
@@ -476,11 +477,14 @@ class _SurveyDetailFromBankScreenState
           (widget.surveyData['categoryStatistics']
               as Map<String, dynamic>?)?[widget.selectedCategory];
       if (categoryStats != null) {
-        final categoryScore = (categoryStats as Map<String, dynamic>)['score'];
+        final categoryData = categoryStats as Map<String, dynamic>;
+        final categoryScore = categoryData['score'];
         if (categoryScore != null) {
           score = categoryScore;
           scoreColor = _getScoreColor(score);
         }
+        // Use category-specific statistics if available
+        displayStatistics = categoryData;
       }
     }
 
@@ -608,7 +612,7 @@ class _SurveyDetailFromBankScreenState
                 Expanded(
                   child: _buildStatCard(
                     'Dijawab',
-                    (statistics['answeredQuestions'] ?? 0).toString(),
+                    (displayStatistics['answeredQuestions'] ?? 0).toString(),
                     Icons.check_circle,
                     Colors.green,
                   ),
@@ -617,7 +621,7 @@ class _SurveyDetailFromBankScreenState
                 Expanded(
                   child: _buildStatCard(
                     'Dilewati',
-                    (statistics['skippedQuestions'] ?? 0).toString(),
+                    (displayStatistics['skippedQuestions'] ?? 0).toString(),
                     Icons.skip_next,
                     Colors.orange,
                   ),
