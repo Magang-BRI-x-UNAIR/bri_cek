@@ -796,11 +796,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.filter_list,
-            size: 18,
-            color: Colors.blue.shade700,
-          ),
+          Icon(Icons.filter_list, size: 18, color: Colors.blue.shade700),
           SizedBox(width: 8),
           Expanded(
             child: DropdownButtonHideUnderline(
@@ -823,10 +819,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
                   fontSize: AppSize.smallFontSize,
                   color: Colors.black87,
                 ),
-                icon: Icon(
-                  Icons.arrow_drop_down,
-                  color: Colors.blue.shade700,
-                ),
+                icon: Icon(Icons.arrow_drop_down, color: Colors.blue.shade700),
               ),
             ),
           ),

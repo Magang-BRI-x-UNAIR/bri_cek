@@ -714,139 +714,211 @@ class ExcelExportService {
       // Create Excel workbook
       var excel = Excel.createExcel();
 
-      // Create main sheet for survey data
-      var sheet = excel['Survey Detail'];
-
-      // Remove default sheet if it exists and is different
-      try {
-        if (excel.sheets.containsKey('Sheet1') && excel.sheets.length > 1) {
-          excel.delete('Sheet1');
-        }
-      } catch (e) {
-        print('Warning: Could not delete default sheet: $e');
-      }
+      // Get default sheet name
+      final defaultSheetName = excel.getDefaultSheet();
 
       // Set up styling - basic styling without colors for compatibility
       final headerStyle = CellStyle(bold: true);
-
       final subHeaderStyle = CellStyle(bold: true);
-
       final positiveStyle = CellStyle();
-
       final negativeStyle = CellStyle();
-
       final skippedStyle = CellStyle();
 
-      int currentRow = 0;
-
-      // Survey Information Header
-      _addSurveyInfoSection(
-        sheet,
-        surveyData,
-        selectedCategory,
-        currentRow,
-        headerStyle,
-        subHeaderStyle,
-        surveyId,
-      );
-      currentRow += 8; // Move past survey info section
-
-      // Survey Answers Header
-      sheet.cell(
-          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
-        )
-        ..value = TextCellValue('DETAIL JAWABAN SURVEY')
-        ..cellStyle = headerStyle;
-
-      sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
-        CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: currentRow),
-      );
-      currentRow += 2;
-
-      // Table headers
-      final headers = [
-        'No',
-        'Kategori',
-        'Subkategori',
-        'Pertanyaan',
-        'Jawaban',
-        'Catatan',
-        'Status',
-      ];
-      for (int i = 0; i < headers.length; i++) {
-        sheet.cell(
-            CellIndex.indexByColumnRow(columnIndex: i, rowIndex: currentRow),
-          )
-          ..value = TextCellValue(headers[i])
-          ..cellStyle = subHeaderStyle;
+      // Group answers by category
+      Map<String, List<Map<String, dynamic>>> answersByCategory = {};
+      for (var answer in answers) {
+        final category = answer['category']?.toString() ?? 'Lainnya';
+        if (!answersByCategory.containsKey(category)) {
+          answersByCategory[category] = [];
+        }
+        answersByCategory[category]!.add(answer);
       }
-      currentRow++;
 
-      // Add answer data
-      for (int i = 0; i < answers.length; i++) {
-        final answer = answers[i];
-        final bool? answerValue =
-            answer['answer'] as bool? ?? answer['answerValue'] as bool?;
-        final bool isSkipped = answer['skipped'] == true;
+      // If selectedCategory is specified, only create sheet for that category
+      if (selectedCategory != null) {
+        answersByCategory = {
+          selectedCategory: answersByCategory[selectedCategory] ?? [],
+        };
+      }
 
-        // Determine cell style based on answer
-        CellStyle? rowStyle;
-        String statusText = 'Tidak Dijawab';
-        String answerText = '-';
+      int sheetCount = 0;
 
-        if (isSkipped) {
-          rowStyle = skippedStyle;
-          statusText = 'Dilewati';
-          answerText = 'SKIP';
-        } else if (answerValue != null) {
-          if (answerValue == true) {
-            rowStyle = positiveStyle;
-            statusText = 'Dijawab';
-            answerText = 'Ya';
+      // Create a sheet for each category
+      for (var entry in answersByCategory.entries) {
+        final categoryName = entry.key;
+        final categoryAnswers = entry.value;
+
+        if (categoryAnswers.isEmpty) continue;
+
+        // Create sheet name (use mapping if available)
+        final sheetName = categoryToSheetName[categoryName] ?? categoryName;
+
+        try {
+          Sheet sheet;
+          if (sheetCount == 0 && defaultSheetName != null) {
+            // Rename the default sheet for the first category
+            excel.rename(defaultSheetName, sheetName);
+            sheet = excel[sheetName];
           } else {
-            rowStyle = negativeStyle;
-            statusText = 'Dijawab';
-            answerText = 'Tidak';
+            // Create a new sheet
+            sheet = excel[sheetName];
           }
-        }
 
-        // Add row data
-        final rowData = [
-          (i + 1).toString(),
-          answer['category']?.toString() ?? '-',
-          answer['subcategory']?.toString() ?? '-',
-          answer['question']?.toString() ?? '-',
-          answerText,
-          answer['note']?.toString() ?? '-',
-          statusText,
-        ];
+          int currentRow = 0;
 
-        for (int j = 0; j < rowData.length; j++) {
-          final cell = sheet.cell(
-            CellIndex.indexByColumnRow(columnIndex: j, rowIndex: currentRow),
+          // Survey Information Header for this category
+          _addSurveyInfoSection(
+            sheet,
+            surveyData,
+            categoryName,
+            currentRow,
+            headerStyle,
+            subHeaderStyle,
+            surveyId,
           );
-          cell.value = TextCellValue(rowData[j]);
-          if (rowStyle != null) {
-            cell.cellStyle = rowStyle;
+          currentRow += 8; // Move past survey info section
+
+          // Category statistics if available
+          final statistics =
+              surveyData['statistics'] as Map<String, dynamic>? ?? {};
+          if (statistics.isNotEmpty) {
+            // Calculate category-specific statistics
+            final categoryScore = _calculateCategoryScore(categoryAnswers);
+
+            sheet.cell(
+                CellIndex.indexByColumnRow(
+                  columnIndex: 0,
+                  rowIndex: currentRow,
+                ),
+              )
+              ..value = TextCellValue(
+                'Skor $categoryName: ${categoryScore.toStringAsFixed(1)}%',
+              )
+              ..cellStyle = subHeaderStyle;
+            currentRow += 2;
           }
+
+          // Survey Answers Header
+          sheet.cell(
+              CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+            )
+            ..value = TextCellValue('DETAIL JAWABAN SURVEY - $categoryName')
+            ..cellStyle = headerStyle;
+
+          sheet.merge(
+            CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+            CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: currentRow),
+          );
+          currentRow += 2;
+
+          // Table headers (removed 'Kategori' column since it's category-specific sheet)
+          final headers = [
+            'No',
+            'Subkategori',
+            'Pertanyaan',
+            'Jawaban',
+            'Catatan',
+            'Status',
+          ];
+          for (int i = 0; i < headers.length; i++) {
+            sheet.cell(
+                CellIndex.indexByColumnRow(
+                  columnIndex: i,
+                  rowIndex: currentRow,
+                ),
+              )
+              ..value = TextCellValue(headers[i])
+              ..cellStyle = subHeaderStyle;
+          }
+          currentRow++;
+
+          // Add answer data for this category
+          for (int i = 0; i < categoryAnswers.length; i++) {
+            final answer = categoryAnswers[i];
+            final bool? answerValue =
+                answer['answer'] as bool? ?? answer['answerValue'] as bool?;
+            final bool isSkipped = answer['skipped'] == true;
+
+            // Determine cell style based on answer
+            CellStyle? rowStyle;
+            String statusText = 'Tidak Dijawab';
+            String answerText = '-';
+
+            if (isSkipped) {
+              rowStyle = skippedStyle;
+              statusText = 'Dilewati';
+              answerText = 'SKIP';
+            } else if (answerValue != null) {
+              if (answerValue == true) {
+                rowStyle = positiveStyle;
+                statusText = 'Dijawab';
+                answerText = 'Ya';
+              } else {
+                rowStyle = negativeStyle;
+                statusText = 'Dijawab';
+                answerText = 'Tidak';
+              }
+            }
+
+            // Add row data (without kategori column)
+            final rowData = [
+              (i + 1).toString(),
+              answer['subcategory']?.toString() ?? '-',
+              answer['question']?.toString() ?? '-',
+              answerText,
+              answer['note']?.toString() ?? '-',
+              statusText,
+            ];
+
+            for (int j = 0; j < rowData.length; j++) {
+              final cell = sheet.cell(
+                CellIndex.indexByColumnRow(
+                  columnIndex: j,
+                  rowIndex: currentRow,
+                ),
+              );
+              cell.value = TextCellValue(rowData[j]);
+              if (rowStyle != null) {
+                cell.cellStyle = rowStyle;
+              }
+            }
+            currentRow++;
+          }
+
+          // Set column widths for this sheet
+          try {
+            sheet.setColumnWidth(0, 5.0); // No
+            sheet.setColumnWidth(1, 15.0); // Subkategori
+            sheet.setColumnWidth(2, 40.0); // Pertanyaan
+            sheet.setColumnWidth(3, 10.0); // Jawaban
+            sheet.setColumnWidth(4, 30.0); // Catatan
+            sheet.setColumnWidth(5, 12.0); // Status
+          } catch (e) {
+            print('Warning: Could not set column widths for $categoryName: $e');
+          }
+
+          sheetCount++;
+        } catch (e) {
+          print('Error creating sheet for $categoryName: $e');
         }
-        currentRow++;
       }
 
-      // Try to set column widths manually since setColumnAutoFit might not be available
-      try {
-        // Set column widths for better readability
-        sheet.setColumnWidth(0, 5.0); // No
-        sheet.setColumnWidth(1, 15.0); // Kategori
-        sheet.setColumnWidth(2, 15.0); // Subkategori
-        sheet.setColumnWidth(3, 40.0); // Pertanyaan
-        sheet.setColumnWidth(4, 10.0); // Jawaban
-        sheet.setColumnWidth(5, 30.0); // Catatan
-        sheet.setColumnWidth(6, 12.0); // Status
-      } catch (e) {
-        print('Warning: Could not set column widths: $e');
-        // Column width setting is optional, continue without it
+      // Remove default sheet if we created other sheets
+      if (sheetCount > 0 &&
+          defaultSheetName != null &&
+          excel.sheets.containsKey(defaultSheetName)) {
+        try {
+          // Only delete if it's not already renamed
+          final renamedSheets =
+              answersByCategory.keys
+                  .map((cat) => categoryToSheetName[cat] ?? cat)
+                  .toList();
+          if (!renamedSheets.contains(defaultSheetName)) {
+            excel.delete(defaultSheetName);
+          }
+        } catch (e) {
+          print('Warning: Could not delete default sheet: $e');
+        }
       }
 
       // Generate filename
@@ -1053,5 +1125,30 @@ class ExcelExportService {
     } catch (e) {
       return 'Unknown size';
     }
+  }
+
+  /// Calculate score for a specific category based on answers
+  double _calculateCategoryScore(List<Map<String, dynamic>> categoryAnswers) {
+    if (categoryAnswers.isEmpty) return 0.0;
+
+    int positiveAnswers = 0;
+    int answeredQuestions = 0;
+
+    for (var answer in categoryAnswers) {
+      final bool isSkipped = answer['skipped'] == true;
+      if (!isSkipped) {
+        answeredQuestions++;
+        final bool? answerValue =
+            answer['answer'] as bool? ?? answer['answerValue'] as bool?;
+        if (answerValue == true) {
+          positiveAnswers++;
+        }
+      }
+    }
+
+    // Calculate score based on answered questions
+    if (answeredQuestions == 0) return 0.0;
+
+    return (positiveAnswers / answeredQuestions) * 100;
   }
 }
