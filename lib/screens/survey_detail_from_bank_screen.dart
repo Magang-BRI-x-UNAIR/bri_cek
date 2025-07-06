@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:bri_cek/services/survey_result_service.dart';
+import 'package:bri_cek/services/excel_export_service.dart';
 import 'package:bri_cek/utils/app_size.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class SurveyDetailFromBankScreen extends StatefulWidget {
   final String surveyId;
@@ -26,6 +28,7 @@ class SurveyDetailFromBankScreen extends StatefulWidget {
 class _SurveyDetailFromBankScreenState
     extends State<SurveyDetailFromBankScreen> {
   final SurveyResultService _surveyResultService = SurveyResultService();
+  final ExcelExportService _excelExportService = ExcelExportService();
   List<Map<String, dynamic>> _answers = [];
   List<Map<String, dynamic>> _filteredAnswers = [];
   List<String> _categories = [];
@@ -41,6 +44,9 @@ class _SurveyDetailFromBankScreenState
   Map<String, dynamic> _editedAnswers = {};
   Map<String, String> _editedNotes = {};
   Map<String, bool> _editedSkipped = {}; // Track skipped questions
+
+  // Variables for export
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -441,6 +447,25 @@ class _SurveyDetailFromBankScreenState
               tooltip: 'Batal Edit',
             ),
           ] else ...[
+            // Export Excel button
+            if (_isExporting)
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              )
+            else
+              IconButton(
+                onPressed: _exportToExcel,
+                icon: Icon(Icons.file_download),
+                tooltip: 'Export ke Excel',
+              ),
             // Edit button in view mode
             IconButton(
               onPressed: _enterEditMode,
@@ -1960,6 +1985,188 @@ class _SurveyDetailFromBankScreenState
       (disabled) =>
           category.toLowerCase().contains(disabled.toLowerCase()) ||
           disabled.toLowerCase().contains(category.toLowerCase()),
+    );
+  }
+
+  // Export survey data to Excel
+  Future<void> _exportToExcel() async {
+    try {
+      setState(() {
+        _isExporting = true;
+      });
+
+      // Show loading toast
+      Fluttertoast.showToast(
+        msg: "Memproses export Excel...",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.blue.shade700,
+        textColor: Colors.white,
+      );
+
+      // Export to Excel
+      final filePath = await _excelExportService.exportSurveyToExcel(
+        surveyId: widget.surveyId,
+        surveyData: widget.surveyData,
+        answers: _filteredAnswers.isNotEmpty ? _filteredAnswers : _answers,
+        selectedCategory: widget.selectedCategory,
+      );
+
+      if (filePath != null) {
+        // Show success message with options
+        _showExportSuccessDialog(filePath);
+      } else {
+        throw Exception('Failed to generate Excel file');
+      }
+    } catch (e) {
+      print('Error exporting to Excel: $e');
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal export ke Excel: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      Fluttertoast.showToast(
+        msg: "Gagal export ke Excel",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
+  }
+
+  // Show export success dialog with options
+  void _showExportSuccessDialog(String filePath) {
+    final fileName = filePath.split('/').last;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Export Berhasil!',
+                  style: TextStyle(
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'File Excel berhasil dibuat:',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              SizedBox(height: 8),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Nama File:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      fileName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Lokasi:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      filePath.contains('/Download')
+                          ? 'Folder Download'
+                          : 'Folder Aplikasi',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Tutup'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                try {
+                  await _excelExportService.shareExcelFile(filePath);
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal membagikan file: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              icon: Icon(Icons.share),
+              label: Text('Bagikan'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade700,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Show success toast
+    Fluttertoast.showToast(
+      msg:
+          "Excel berhasil dibuat di: ${filePath.contains('/Download') ? 'Download' : 'App folder'}",
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: Colors.green.shade700,
+      textColor: Colors.white,
     );
   }
 }

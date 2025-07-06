@@ -19,7 +19,13 @@ class BankDetailScreen extends StatefulWidget {
 class _BankDetailScreenState extends State<BankDetailScreen> {
   final SurveyResultService _surveyResultService = SurveyResultService();
   List<Map<String, dynamic>> _surveyHistory = [];
+  List<Map<String, dynamic>> _allSurveyHistory =
+      []; // Store all data for filtering
   bool _isLoadingHistory = true;
+
+  // Filter variables
+  DateTime? _selectedMonth;
+  List<DateTime> _availableMonths = [];
 
   @override
   void initState() {
@@ -81,7 +87,7 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     try {
       final history = await _surveyResultService.getUserSurveyResults(
         userId: null, // Show all users' survey results, not just current user's
-        limit: 20, // Increased limit to ensure we get enough results
+        limit: 50, // Increased limit to get more data for filtering
       );
 
       // Filter results for this specific bank with more robust matching
@@ -135,14 +141,20 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
         }
       }
 
-      final filteredHistory = uniqueSurveys.values.toList();
+      final allFilteredHistory = uniqueSurveys.values.toList();
+
+      // Store all data and extract available months
+      _allSurveyHistory = allFilteredHistory;
+      _extractAvailableMonths();
+
+      // Apply month filter
+      _applyMonthFilter();
 
       print(
-        'Found ${filteredHistory.length} unique survey results for this bank out of ${history.length} total results',
+        'Found ${_allSurveyHistory.length} total survey results, ${_surveyHistory.length} shown after filter',
       );
 
       setState(() {
-        _surveyHistory = filteredHistory;
         _isLoadingHistory = false;
       });
     } catch (e) {
@@ -161,6 +173,63 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
         );
       }
     }
+  }
+
+  void _extractAvailableMonths() {
+    final Set<DateTime> monthsSet = {};
+
+    for (var survey in _allSurveyHistory) {
+      final dateValue = survey['selectedDate'];
+      if (dateValue != null) {
+        final date = dateValue is DateTime ? dateValue : dateValue.toDate();
+        // Create a DateTime for the first day of the month
+        final monthDate = DateTime(date.year, date.month, 1);
+        monthsSet.add(monthDate);
+      }
+    }
+
+    _availableMonths =
+        monthsSet.toList()
+          ..sort((a, b) => b.compareTo(a)); // Sort descending (newest first)
+  }
+
+  void _applyMonthFilter() {
+    if (_selectedMonth == null) {
+      // Show all if no month is selected
+      _surveyHistory = List.from(_allSurveyHistory);
+    } else {
+      // Filter by selected month
+      _surveyHistory =
+          _allSurveyHistory.where((survey) {
+            final dateValue = survey['selectedDate'];
+            if (dateValue == null) return false;
+
+            final date = dateValue is DateTime ? dateValue : dateValue.toDate();
+
+            return date.year == _selectedMonth!.year &&
+                date.month == _selectedMonth!.month;
+          }).toList();
+    }
+
+    // Sort by date (newest first)
+    _surveyHistory.sort((a, b) {
+      final dateA =
+          a['selectedDate'] is DateTime
+              ? a['selectedDate']
+              : a['selectedDate']?.toDate() ?? DateTime.now();
+      final dateB =
+          b['selectedDate'] is DateTime
+              ? b['selectedDate']
+              : b['selectedDate']?.toDate() ?? DateTime.now();
+      return dateB.compareTo(dateA);
+    });
+  }
+
+  void _onMonthFilterChanged(DateTime? month) {
+    setState(() {
+      _selectedMonth = month;
+      _applyMonthFilter();
+    });
   }
 
   String _formatDate(dynamic timestamp) {
@@ -591,38 +660,16 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section header with action
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildSectionTitle('Survey History'),
-            if (_surveyHistory.isNotEmpty)
-              TextButton.icon(
-                onPressed: () {
-                  // Navigate to full survey history
-                  Navigator.pushNamed(context, '/survey-history');
-                },
-                icon: Icon(
-                  Icons.history,
-                  size: AppSize.iconSize * 0.8,
-                  color: Colors.blue,
-                ),
-                label: Text(
-                  'View All',
-                  style: AppSize.getTextStyle(
-                    fontSize: AppSize.smallFontSize,
-                    color: Colors.blue,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-          ],
-        ),
+        // Section header
+        _buildSectionTitle('Survey History'),
 
-        SizedBox(height: AppSize.heightPercent(1.5)),
+        SizedBox(height: AppSize.heightPercent(1)),
+
+        // Month filter
+        if (_availableMonths.isNotEmpty) ...[
+          _buildMonthFilter(),
+          SizedBox(height: AppSize.heightPercent(1.5)),
+        ],
 
         _isLoadingHistory
             ? _buildLoadingHistoryState()
@@ -631,10 +678,36 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
             : Column(
               children:
                   _surveyHistory
-                      .take(3) // Show only the 3 most recent entries
+                      .take(5) // Show more entries since we have filter
                       .map((survey) => _buildSurveyHistoryItem(context, survey))
                       .toList(),
             ),
+
+        // Show total count if filtered
+        if (_selectedMonth != null && _surveyHistory.isNotEmpty) ...[
+          SizedBox(height: AppSize.heightPercent(1)),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                SizedBox(width: 8),
+                Text(
+                  'Menampilkan ${_surveyHistory.length} dari ${_allSurveyHistory.length} total survey',
+                  style: AppSize.getTextStyle(
+                    fontSize: AppSize.smallFontSize,
+                    color: Colors.blue.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
 
         // Temporary debug buttons
         if (_surveyHistory.isEmpty && !_isLoadingHistory) ...[
@@ -677,6 +750,88 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildMonthFilter() {
+    // Create list of dropdown items
+    List<DropdownMenuItem<DateTime?>> dropdownItems = [
+      DropdownMenuItem<DateTime?>(
+        value: null,
+        child: Text(
+          'Semua Bulan',
+          style: AppSize.getTextStyle(
+            fontSize: AppSize.smallFontSize,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+      ..._availableMonths.map((month) {
+        final monthLabel = DateFormat('MMMM yyyy').format(month);
+        return DropdownMenuItem<DateTime?>(
+          value: month,
+          child: Text(
+            monthLabel,
+            style: AppSize.getTextStyle(fontSize: AppSize.smallFontSize),
+          ),
+        );
+      }).toList(),
+    ];
+
+    return Container(
+      height: 40, // Reduced height
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.filter_list,
+            size: 18,
+            color: Colors.blue.shade700,
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<DateTime?>(
+                value: _selectedMonth,
+                isExpanded: true,
+                hint: Text(
+                  'Pilih Bulan',
+                  style: AppSize.getTextStyle(
+                    fontSize: AppSize.smallFontSize,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                items: dropdownItems,
+                onChanged: (DateTime? selectedMonth) {
+                  _onMonthFilterChanged(selectedMonth);
+                },
+                dropdownColor: Colors.white,
+                style: AppSize.getTextStyle(
+                  fontSize: AppSize.smallFontSize,
+                  color: Colors.black87,
+                ),
+                icon: Icon(
+                  Icons.arrow_drop_down,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

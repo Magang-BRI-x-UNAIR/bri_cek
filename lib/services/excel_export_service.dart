@@ -695,4 +695,363 @@ class ExcelExportService {
       return null;
     }
   }
+
+  /// Export survey data to Excel file
+  Future<String?> exportSurveyToExcel({
+    required String surveyId,
+    required Map<String, dynamic> surveyData,
+    required List<Map<String, dynamic>> answers,
+    String? selectedCategory,
+  }) async {
+    try {
+      // Request storage permission for Android using existing method
+      if (Platform.isAndroid) {
+        if (!await _requestPermission()) {
+          throw Exception('Storage permission required to save Excel file');
+        }
+      }
+
+      // Create Excel workbook
+      var excel = Excel.createExcel();
+
+      // Create main sheet for survey data
+      var sheet = excel['Survey Detail'];
+
+      // Remove default sheet if it exists and is different
+      try {
+        if (excel.sheets.containsKey('Sheet1') && excel.sheets.length > 1) {
+          excel.delete('Sheet1');
+        }
+      } catch (e) {
+        print('Warning: Could not delete default sheet: $e');
+      }
+
+      // Set up styling - basic styling without colors for compatibility
+      final headerStyle = CellStyle(bold: true);
+
+      final subHeaderStyle = CellStyle(bold: true);
+
+      final positiveStyle = CellStyle();
+
+      final negativeStyle = CellStyle();
+
+      final skippedStyle = CellStyle();
+
+      int currentRow = 0;
+
+      // Survey Information Header
+      _addSurveyInfoSection(
+        sheet,
+        surveyData,
+        selectedCategory,
+        currentRow,
+        headerStyle,
+        subHeaderStyle,
+        surveyId,
+      );
+      currentRow += 8; // Move past survey info section
+
+      // Survey Answers Header
+      sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+        )
+        ..value = TextCellValue('DETAIL JAWABAN SURVEY')
+        ..cellStyle = headerStyle;
+
+      sheet.merge(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+        CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: currentRow),
+      );
+      currentRow += 2;
+
+      // Table headers
+      final headers = [
+        'No',
+        'Kategori',
+        'Subkategori',
+        'Pertanyaan',
+        'Jawaban',
+        'Catatan',
+        'Status',
+      ];
+      for (int i = 0; i < headers.length; i++) {
+        sheet.cell(
+            CellIndex.indexByColumnRow(columnIndex: i, rowIndex: currentRow),
+          )
+          ..value = TextCellValue(headers[i])
+          ..cellStyle = subHeaderStyle;
+      }
+      currentRow++;
+
+      // Add answer data
+      for (int i = 0; i < answers.length; i++) {
+        final answer = answers[i];
+        final bool? answerValue =
+            answer['answer'] as bool? ?? answer['answerValue'] as bool?;
+        final bool isSkipped = answer['skipped'] == true;
+
+        // Determine cell style based on answer
+        CellStyle? rowStyle;
+        String statusText = 'Tidak Dijawab';
+        String answerText = '-';
+
+        if (isSkipped) {
+          rowStyle = skippedStyle;
+          statusText = 'Dilewati';
+          answerText = 'SKIP';
+        } else if (answerValue != null) {
+          if (answerValue == true) {
+            rowStyle = positiveStyle;
+            statusText = 'Dijawab';
+            answerText = 'Ya';
+          } else {
+            rowStyle = negativeStyle;
+            statusText = 'Dijawab';
+            answerText = 'Tidak';
+          }
+        }
+
+        // Add row data
+        final rowData = [
+          (i + 1).toString(),
+          answer['category']?.toString() ?? '-',
+          answer['subcategory']?.toString() ?? '-',
+          answer['question']?.toString() ?? '-',
+          answerText,
+          answer['note']?.toString() ?? '-',
+          statusText,
+        ];
+
+        for (int j = 0; j < rowData.length; j++) {
+          final cell = sheet.cell(
+            CellIndex.indexByColumnRow(columnIndex: j, rowIndex: currentRow),
+          );
+          cell.value = TextCellValue(rowData[j]);
+          if (rowStyle != null) {
+            cell.cellStyle = rowStyle;
+          }
+        }
+        currentRow++;
+      }
+
+      // Try to set column widths manually since setColumnAutoFit might not be available
+      try {
+        // Set column widths for better readability
+        sheet.setColumnWidth(0, 5.0); // No
+        sheet.setColumnWidth(1, 15.0); // Kategori
+        sheet.setColumnWidth(2, 15.0); // Subkategori
+        sheet.setColumnWidth(3, 40.0); // Pertanyaan
+        sheet.setColumnWidth(4, 10.0); // Jawaban
+        sheet.setColumnWidth(5, 30.0); // Catatan
+        sheet.setColumnWidth(6, 12.0); // Status
+      } catch (e) {
+        print('Warning: Could not set column widths: $e');
+        // Column width setting is optional, continue without it
+      }
+
+      // Generate filename
+      final bankName =
+          surveyData['selectedBank']
+              ?.toString()
+              .replaceAll(RegExp(r'[^\w\s]'), '')
+              .replaceAll(' ', '_') ??
+          'Unknown_Bank';
+      final categoryName =
+          selectedCategory
+              ?.replaceAll(RegExp(r'[^\w\s]'), '')
+              .replaceAll(' ', '_') ??
+          'All_Categories';
+      final dateStr = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final filename = 'Survey_${bankName}_${categoryName}_$dateStr.xlsx';
+
+      // Save file
+      final bytes = excel.encode();
+      if (bytes == null) {
+        throw Exception('Failed to generate Excel file');
+      }
+
+      // Get temporary directory first
+      final tempDir = await getTemporaryDirectory();
+      final tempFilePath = '${tempDir.path}/$filename';
+      final tempFile = File(tempFilePath);
+      await tempFile.writeAsBytes(bytes);
+
+      // Try to save to Downloads folder
+      final savedPath = await saveToDownloads(tempFilePath, filename);
+
+      return savedPath ?? tempFilePath;
+    } catch (e) {
+      print('Error exporting to Excel: $e');
+      rethrow;
+    }
+  }
+
+  /// Add survey information section to Excel sheet
+  void _addSurveyInfoSection(
+    Sheet sheet,
+    Map<String, dynamic> surveyData,
+    String? selectedCategory,
+    int startRow,
+    CellStyle headerStyle,
+    CellStyle subHeaderStyle,
+    String surveyId,
+  ) {
+    int currentRow = startRow;
+
+    // Title
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow))
+      ..value = TextCellValue('LAPORAN SURVEY BANK')
+      ..cellStyle = headerStyle;
+
+    sheet.merge(
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+      CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: currentRow),
+    );
+    currentRow += 2;
+
+    // Survey details
+    final surveyInfo = [
+      ['Bank', surveyData['selectedBank']?.toString() ?? 'Tidak diketahui'],
+      ['Kategori', selectedCategory ?? 'Semua Kategori'],
+      [
+        'Tanggal Survey',
+        _formatSurveyDate(
+          surveyData['selectedDate'] ?? surveyData['submittedAt'],
+        ),
+      ],
+      ['Surveyor', _getSurveyorInfo(surveyData)],
+      ['ID Survey', surveyId],
+    ];
+
+    for (final info in surveyInfo) {
+      sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+        )
+        ..value = TextCellValue(info[0])
+        ..cellStyle = subHeaderStyle;
+
+      sheet.cell(
+        CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow),
+      )..value = TextCellValue(info[1]);
+
+      currentRow++;
+    }
+
+    // Statistics if available
+    final statistics = surveyData['statistics'] as Map<String, dynamic>? ?? {};
+    if (statistics.isNotEmpty) {
+      currentRow++; // Add spacing
+
+      sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+        )
+        ..value = TextCellValue('STATISTIK')
+        ..cellStyle = subHeaderStyle;
+      currentRow++;
+
+      final statsInfo = [
+        ['Skor', '${(statistics['score'] ?? 0).toInt()}%'],
+        [
+          'Pertanyaan Dijawab',
+          (statistics['answeredQuestions'] ?? 0).toString(),
+        ],
+        [
+          'Pertanyaan Dilewati',
+          (statistics['skippedQuestions'] ?? 0).toString(),
+        ],
+      ];
+
+      for (final stat in statsInfo) {
+        sheet.cell(
+            CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+          )
+          ..value = TextCellValue(stat[0])
+          ..cellStyle = subHeaderStyle;
+
+        sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow),
+        )..value = TextCellValue(stat[1]);
+
+        currentRow++;
+      }
+    }
+  }
+
+  /// Format date for survey display
+  String _formatSurveyDate(dynamic timestamp) {
+    if (timestamp == null) return 'Tanggal tidak tersedia';
+
+    try {
+      DateTime date;
+      if (timestamp is DateTime) {
+        date = timestamp;
+      } else if (timestamp.runtimeType.toString().contains('Timestamp')) {
+        date = timestamp.toDate();
+      } else if (timestamp is String) {
+        date = DateTime.parse(timestamp);
+      } else {
+        date = timestamp.toDate();
+      }
+
+      return DateFormat('dd MMMM yyyy, HH:mm').format(date);
+    } catch (e) {
+      return timestamp.toString();
+    }
+  }
+
+  /// Get surveyor information
+  String _getSurveyorInfo(Map<String, dynamic> surveyData) {
+    // Try to get contributor information
+    if (surveyData['contributors'] != null) {
+      try {
+        final contributors = List<Map<String, dynamic>>.from(
+          surveyData['contributors'],
+        );
+        if (contributors.length == 1) {
+          return contributors.first['userName']?.toString() ??
+              'Tidak diketahui';
+        } else if (contributors.length > 1) {
+          return '${contributors.length} surveyor: ${contributors.map((c) => c['userName']).join(', ')}';
+        }
+      } catch (e) {
+        print('Error parsing contributors: $e');
+      }
+    }
+
+    // Fallback to userName field
+    if (surveyData['userName'] != null) {
+      return surveyData['userName'].toString();
+    }
+
+    return 'Tidak diketahui';
+  }
+
+  /// Share the exported Excel file
+  Future<void> shareExcelFile(String filePath) async {
+    try {
+      final xFile = XFile(filePath);
+      await Share.shareXFiles(
+        [xFile],
+        text: 'Survey Report - ${DateTime.now().toString().split(' ')[0]}',
+        subject: 'Survey Report Excel File',
+      );
+    } catch (e) {
+      print('Error sharing file: $e');
+      rethrow;
+    }
+  }
+
+  /// Get file size in human readable format
+  String getFileSize(String filePath) {
+    try {
+      final file = File(filePath);
+      final bytes = file.lengthSync();
+
+      if (bytes < 1024) return '${bytes}B';
+      if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
+    } catch (e) {
+      return 'Unknown size';
+    }
+  }
 }
