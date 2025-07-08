@@ -708,47 +708,6 @@ class _BankDetailScreenState extends State<BankDetailScreen> {
             ),
           ),
         ],
-
-        // Temporary debug buttons
-        if (_surveyHistory.isEmpty && !_isLoadingHistory) ...[
-          SizedBox(height: AppSize.heightPercent(1)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: () async {
-                  await _debugCheckAllSurveyData();
-                  await _loadSurveyHistory();
-                },
-                child: Text('Debug: Reload Survey Data'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () async {
-                  final allHistory = await _surveyResultService
-                      .getUserSurveyResults(userId: null);
-                  final bankNames =
-                      allHistory
-                          .map((result) => result['selectedBank'])
-                          .toSet()
-                          .toList();
-                  print('Current bank name: "${widget.branch.name}"');
-                  print('All bank names in survey results:');
-                  bankNames.forEach((name) => print(' - "$name"'));
-                },
-                child: Text('Debug: Check Bank Names'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ],
       ],
     );
   }
