@@ -523,36 +523,6 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         title: const Text('Kelola Pertanyaan'),
         backgroundColor: Colors.blue.shade700,
         elevation: 0,
-        actions: [
-          // Tombol reset & fix database
-          IconButton(
-            icon: Icon(Icons.refresh),
-            tooltip: 'Reset Database',
-            onPressed: () async {
-              try {
-                setState(() {
-                  _isLoading = true;
-                });
-                await _questionService.resetAndFixDatabase();
-                _showSuccessSnackbar(
-                  'Database berhasil direset dan diperbarui',
-                );
-                await _loadMainCategories();
-              } catch (e) {
-                _showErrorSnackbar('Gagal mereset database: $e');
-              } finally {
-                setState(() {
-                  _isLoading = false;
-                });
-              }
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.settings_applications),
-            tooltip: 'Inisialisasi Database',
-            onPressed: _initializeDatabase,
-          ),
-        ],
       ),
       body: Column(
         children: [
