@@ -5,6 +5,7 @@ import 'package:bri_cek/utils/app_size.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:open_file/open_file.dart';
 
 class SurveyDetailFromBankScreen extends StatefulWidget {
   final String surveyId;
@@ -2076,10 +2077,10 @@ class _SurveyDetailFromBankScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'File Excel berhasil dibuat:',
+                'File Excel berhasil dibuat dan disimpan:',
                 style: TextStyle(fontWeight: FontWeight.w500),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 12),
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -2124,6 +2125,34 @@ class _SurveyDetailFromBankScreenState
                   ],
                 ),
               ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: Colors.blue.shade700,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Klik "Buka File" untuk membuka dengan aplikasi Excel atau spreadsheet lainnya',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           actions: [
@@ -2132,6 +2161,56 @@ class _SurveyDetailFromBankScreenState
                 Navigator.of(context).pop();
               },
               child: Text('Tutup'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                try {
+                  // Buka file dengan aplikasi default atau tampilkan dialog "Open with..."
+                  final result = await OpenFile.open(filePath);
+
+                  // Cek status hasil pembukaan file
+                  if (result.type == ResultType.done) {
+                    Fluttertoast.showToast(
+                      msg: "File berhasil dibuka",
+                      toastLength: Toast.LENGTH_SHORT,
+                      gravity: ToastGravity.BOTTOM,
+                      backgroundColor: Colors.green.shade700,
+                      textColor: Colors.white,
+                    );
+                  } else if (result.type == ResultType.noAppToOpen) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Tidak ada aplikasi yang dapat membuka file Excel. Silakan install aplikasi seperti Microsoft Excel, WPS Office, atau Google Sheets.',
+                        ),
+                        backgroundColor: Colors.orange.shade700,
+                        duration: Duration(seconds: 5),
+                      ),
+                    );
+                  } else if (result.type == ResultType.error) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Gagal membuka file: ${result.message}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal membuka file: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              icon: Icon(Icons.open_in_new),
+              label: Text('Buka File'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade700,
+                foregroundColor: Colors.white,
+              ),
             ),
             ElevatedButton.icon(
               onPressed: () async {
